@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Clear Gabriel's Applications</title>
+</head>
+
+<body>
+    <h1>Clear Applications for Gabriel Fontejon</h1>
+    <button onclick="clearApplications()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">
+        Clear All Applications
+    </button>
+    <div id="result" style="margin-top: 20px; font-weight: bold;"></div>
+
+    <script>
+        function clearApplications() {
+            try {
+                // Get all applications
+                const allApps = JSON.parse(localStorage.getItem('mock_applications_custom') || '[]');
+
+                // Count before
+                const beforeCount = allApps.filter(app =>
+                    app.applicantEmail === 'gabriel1@gmail.com' ||
+                    app.email === 'gabriel1@gmail.com'
+                ).length;
+
+                // Filter out Gabriel's applications
+                const filteredApps = allApps.filter(app =>
+                    app.applicantEmail !== 'gabriel1@gmail.com' &&
+                    app.email !== 'gabriel1@gmail.com'
+                );
+
+                // Save back to localStorage
+                localStorage.setItem('mock_applications_custom', JSON.stringify(filteredApps));
+
+                // Trigger storage event for other tabs
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: 'mock_applications_custom'
+                }));
+
+                document.getElementById('result').innerHTML =
+                    `✅ Success! Removed ${beforeCount} application(s) for Gabriel Fontejon.<br>` +
+                    `Remaining applications: ${filteredApps.length}`;
+                document.getElementById('result').style.color = 'green';
+
+            } catch (error) {
+                document.getElementById('result').innerHTML =
+                    `❌ Error: ${error.message}`;
+                document.getElementById('result').style.color = 'red';
+            }
+        }
+    </script>
+</body>
+
+</html>

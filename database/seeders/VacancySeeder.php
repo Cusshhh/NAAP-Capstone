@@ -1,0 +1,540 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use App\Models\Vacancy;
+
+class VacancySeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        $jobs = [
+            [
+                'id' => 1,
+                'title' => 'Chief Flight Instructor',
+                'department' => 'Flight Training',
+                'location' => 'NAAP - Villamor Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Oversee all flight training operations and ensure compliance with CAAP regulations. Mentor senior instructors and manage the training syllabus.',
+                'responsibilities' => ['Manage flight training department.'],
+                'requirements' => ['CAAP License', '10+ years experience'],
+                'salary_grade' => 24,
+                'deadline' => '2026-03-01',
+                'status' => 'Open',
+                'created_at' => '2026-01-15 08:00:00',
+            ],
+            [
+                'id' => 2,
+                'title' => 'Senior Flight Instructor',
+                'department' => 'Flight Training',
+                'location' => 'NAAP - Basa Air Base Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Experienced instructor needed to handle advanced flight phases and instrument ratings for cadets.',
+                'responsibilities' => [
+                    'Conduct instrument flight training.',
+                    'Perform stage checks.',
+                    'Mentor student pilots.',
+                    'Assist Chief Flight Instructor.'
+                ],
+                'requirements' => [
+                    'CPL with Instrument Rating.',
+                    'Flight Instructor License.',
+                    'Minimum 1,500 flight hours.',
+                    'Class 1 Medical.'
+                ],
+                'salary_grade' => 23,
+                'deadline' => '2026-03-01',
+                'status' => 'Open',
+                'created_at' => '2026-01-20 09:00:00',
+            ],
+            [
+                'id' => 3,
+                'title' => 'Flight Instructor (Basic)',
+                'department' => 'Flight Training',
+                'location' => 'NAAP - Fernando Air Base Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Provide primary flight instruction to new student pilots in Cessna 172 aircraft.',
+                'responsibilities' => [
+                    'Teach basic flight maneuvers.',
+                    'Conduct pre-flight briefings.',
+                    'Ensure safe flight operations.',
+                    'Grade student performance.'
+                ],
+                'requirements' => [
+                    'CPL holder.',
+                    'Flight Instructor License.',
+                    'Minimum 500 flight hours.',
+                    'Passion for teaching.'
+                ],
+                'salary_grade' => 21,
+                'deadline' => '2026-03-15',
+                'status' => 'Open',
+                'created_at' => '2026-02-01 10:00:00',
+            ],
+            [
+                'id' => 4,
+                'title' => 'Flight Instructor (Multi-Engine)',
+                'department' => 'Flight Training',
+                'location' => 'NAAP - Mactan Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Specialized instructor for Multi-Engine training modules on the Piper Seneca simulator and aircraft.',
+                'responsibilities' => [
+                    'Conduct multi-engine training.',
+                    'Teach asymmetric flight procedures.',
+                    'Verify student proficiency.',
+                    'Safety management.'
+                ],
+                'requirements' => [
+                    'CPL with Multi-Engine Rating.',
+                    'Flight Instructor License.',
+                    'Minimum 1,000 flight hours.',
+                    'Multi-engine teaching experience.'
+                ],
+                'salary_grade' => 24,
+                'deadline' => '2026-03-20',
+                'status' => 'Open',
+                'created_at' => '2026-02-02 11:00:00',
+            ],
+            [
+                'id' => 5,
+                'title' => 'Aircraft Mechanic (Airframe)',
+                'department' => 'Maintenance',
+                'location' => 'NAAP - Villamor Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Perform scheduled structural repairs and inspections on academy aircraft.',
+                'responsibilities' => [
+                    'Riveting and sheet metal repair.',
+                    'Composite material repair.',
+                    'Corrosion control.',
+                    'Landing gear maintenance.'
+                ],
+                'requirements' => [
+                    'AMT License (Airframe rating).',
+                    '3 years aviation experience.',
+                    'Ability to read blueprints.',
+                    'Physical fitness.'
+                ],
+                'salary_grade' => 15,
+                'deadline' => '2026-02-28',
+                'status' => 'Open',
+                'created_at' => '2026-01-25 12:00:00',
+            ],
+            [
+                'id' => 6,
+                'title' => 'Aircraft Mechanic (Powerplant)',
+                'department' => 'Maintenance',
+                'location' => 'NAAP - Basa-Palmayo Extension Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Maintain and overhaul piston engines for training aircraft.',
+                'responsibilities' => [
+                    'Engine inspection and tuning.',
+                    'Propeller balancing.',
+                    'Oil system analysis.',
+                    'Troubleshooting engine issues.'
+                ],
+                'requirements' => [
+                    'AMT License (Powerplant rating).',
+                    'Experience with Lycoming engines.',
+                    'Safety conscious.',
+                    'Troubleshooting skills.'
+                ],
+                'salary_grade' => 15,
+                'deadline' => '2026-03-05',
+                'status' => 'Open',
+                'created_at' => '2026-01-28 13:00:00',
+            ],
+            [
+                'id' => 7,
+                'title' => 'Avionics Technician',
+                'department' => 'Maintenance',
+                'location' => 'NAAP - Fernando Air Base Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Install, troubleshoot, and repair aircraft communication and navigation systems.',
+                'responsibilities' => [
+                    'Test radio and navigation equipment.',
+                    'Repair wiring and electrical systems.',
+                    'Calibrate flight instruments.',
+                    'Software updates.'
+                ],
+                'requirements' => [
+                    'AMS License (Avionics).',
+                    'Electronics knowledge.',
+                    'Experience with Garmin G1000 is a plus.',
+                    'Detail oriented.'
+                ],
+                'salary_grade' => 15,
+                'deadline' => '2026-03-10',
+                'status' => 'Open',
+                'created_at' => '2026-02-03 14:00:00',
+            ],
+            [
+                'id' => 8,
+                'title' => 'Maintenance Supervisor',
+                'department' => 'Maintenance',
+                'location' => 'NAAP - Mactan-Medellin Extension Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Lead the maintenance team at the extension campus and ensure aircraft availability.',
+                'responsibilities' => [
+                    'Schedule maintenance shifts.',
+                    'Manage spare parts inventory.',
+                    'Sign off maintenance releases.',
+                    'Supervise mechanics.'
+                ],
+                'requirements' => [
+                    'AMT License with Airframe & Powerplant.',
+                    '5+ years experience.',
+                    'Leadership skills.',
+                    'Knowledge of CAAP airworthiness regs.'
+                ],
+                'salary_grade' => 18,
+                'deadline' => '2026-03-01',
+                'status' => 'Open',
+                'created_at' => '2026-01-30 15:00:00',
+            ],
+            [
+                'id' => 9,
+                'title' => 'Ground Instructor (Meteorology)',
+                'department' => 'Academics',
+                'location' => 'NAAP - Villamor Campus',
+                'employment_type' => 'Part-time',
+                'description' => 'Teach aviation meteorology responsibilities to student pilots.',
+                'responsibilities' => [
+                    'Lecture on performing weather analysis.',
+                    'Teach METAR/TAF decoding.',
+                    'Explain hazardous weather phenomena.',
+                    'Prepare exams.'
+                ],
+                'requirements' => [
+                    'Ground Instructor License.',
+                    'Meteorology background preferred.',
+                    'Teaching experience.',
+                    'Good presentation skills.'
+                ],
+                'salary_grade' => 16,
+                'deadline' => '2026-03-15',
+                'status' => 'Open',
+                'created_at' => '2026-02-04 16:00:00',
+            ],
+            [
+                'id' => 10,
+                'title' => 'Ground Instructor (Air Law)',
+                'department' => 'Academics',
+                'location' => 'NAAP - Basa Air Base Campus',
+                'employment_type' => 'Part-time',
+                'description' => 'Instruct students on Civil Aviation Regulations and international aviation laws.',
+                'responsibilities' => [
+                    'Teach PCARs and ICAO annexes.',
+                    'Discuss license privileges and limitations.',
+                    'Explain air traffic rules.',
+                    'Conduct assessments.'
+                ],
+                'requirements' => [
+                    'Ground Instructor License.',
+                    'Deep knowledge of aviation law.',
+                    'Attention to detail.',
+                    'Communication skills.'
+                ],
+                'salary_grade' => 16,
+                'deadline' => '2026-03-20',
+                'status' => 'Open',
+                'created_at' => '2026-02-05 17:00:00',
+            ],
+            [
+                'id' => 11,
+                'title' => 'Flight Simulator Technician',
+                'department' => 'Maintenance',
+                'location' => 'NAAP - Villamor Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Maintain and repair flight training devices and full flight simulators.',
+                'responsibilities' => [
+                    'Perform daily simulator qualification tests.',
+                    'Troubleshoot hardware and software issues.',
+                    'Replace faulty components.',
+                    'Assist instructors with sim setup.'
+                ],
+                'requirements' => [
+                    'Electronics or Computer Engineering degree.',
+                    'Experience with simulation systems.',
+                    'Networking skills.',
+                    'Shift work required.'
+                ],
+                'salary_grade' => 15,
+                'deadline' => '2026-02-28',
+                'status' => 'Open',
+                'created_at' => '2026-01-18 18:00:00',
+            ],
+            [
+                'id' => 12,
+                'title' => 'Aviation Safety Officer',
+                'department' => 'Safety',
+                'location' => 'NAAP - Mactan Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Monitor safety metrics and conduct risk assessments for flight operations.',
+                'responsibilities' => [
+                    'Maintain Safety Management System.',
+                    'Investigate hazards and incidents.',
+                    'Promote safety awareness.',
+                    'Audit compliance.'
+                ],
+                'requirements' => [
+                    'Aviation Safety certification.',
+                    'Knowledge of SMS.',
+                    'Analytical mindset.',
+                    'Experience in flight ops.'
+                ],
+                'salary_grade' => 18,
+                'deadline' => '2026-03-10',
+                'status' => 'Open',
+                'created_at' => '2026-02-01 19:00:00',
+            ],
+            [
+                'id' => 13,
+                'title' => 'Flight Operations Officer',
+                'department' => 'Flight Operations',
+                'location' => 'NAAP - Villamor Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Support flight planning and dispatch duties.',
+                'responsibilities' => [
+                    'File flight plans with ATS.',
+                    'Check NOTAMs and weather.',
+                    'Coordinate aircraft refueling.',
+                    'Track fleet movement.'
+                ],
+                'requirements' => [
+                    'Flight Dispatcher License or training.',
+                    'Radio Operator License.',
+                    'Computer literate.',
+                    'Ability to work under pressure.'
+                ],
+                'salary_grade' => 14,
+                'deadline' => '2026-02-25',
+                'status' => 'Open',
+                'created_at' => '2026-01-22 20:00:00',
+            ],
+            [
+                'id' => 14,
+                'title' => 'Admissions Officer',
+                'department' => 'Administration',
+                'location' => 'NAAP - Villamor Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Process student applications and conduct campus tours for prospective cadets.',
+                'responsibilities' => [
+                    'Review application documents.',
+                    'Answer student inquiries.',
+                    'Organize orientation events.',
+                    'Maintain applicant database.'
+                ],
+                'requirements' => [
+                    'Bachelor’s degree.',
+                    'Customer service experience.',
+                    'Organized and friendly.',
+                    'Communication skills.'
+                ],
+                'salary_grade' => 11,
+                'deadline' => '2026-03-05',
+                'status' => 'Open',
+                'created_at' => '2026-02-03 21:00:00',
+            ],
+            [
+                'id' => 15,
+                'title' => 'School Registrar',
+                'department' => 'Administration',
+                'location' => 'NAAP - Basa Air Base Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Manage student records, grades, and licensing documentation for CAAP.',
+                'responsibilities' => [
+                    'Maintain student 201 files.',
+                    'Process transcript requests.',
+                    'Liaise with CAAP Licensing department.',
+                    'Ensure data privacy.'
+                ],
+                'requirements' => [
+                    'Bachelor’s degree.',
+                    'Experience in records management.',
+                    'Strict attention to detail.',
+                    'Integrity.'
+                ],
+                'salary_grade' => 14,
+                'deadline' => '2026-02-28',
+                'status' => 'Open',
+                'created_at' => '2026-01-15 22:00:00',
+            ],
+            [
+                'id' => 16,
+                'title' => 'School Nurse',
+                'department' => 'Medical',
+                'location' => 'NAAP - Basa-Palmayo Extension Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Provide basic medical care and first aid to students and staff.',
+                'responsibilities' => [
+                    'Manage campus clinic.',
+                    'Provide first aid.',
+                    'Monitor student health records.',
+                    'Assist in annual medical exams.'
+                ],
+                'requirements' => [
+                    'Registered Nurse (RN).',
+                    'BLS/ACLS certified.',
+                    'Experience in school setting preferred.',
+                    'Caring attitude.'
+                ],
+                'salary_grade' => 11,
+                'deadline' => '2026-03-10',
+                'status' => 'Open',
+                'created_at' => '2026-02-01 23:00:00',
+            ],
+            [
+                'id' => 17,
+                'title' => 'Guidance Counselor',
+                'department' => 'Student Affairs',
+                'location' => 'NAAP - Fernando Air Base Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Provide counseling and psychological support to student pilots.',
+                'responsibilities' => [
+                    'Conduct individual counseling.',
+                    'Assess student mental fitness.',
+                    'Facilitate stress management workshops.',
+                    'Support student retention.'
+                ],
+                'requirements' => [
+                    'Registered Guidance Counselor (RGC).',
+                    'Experience with students.',
+                    'Empathy and confidentiality.',
+                    'Understanding of aviation stress factors.'
+                ],
+                'salary_grade' => 15,
+                'deadline' => '2026-03-15',
+                'status' => 'Open',
+                'created_at' => '2026-01-30 00:00:00',
+            ],
+            [
+                'id' => 18,
+                'title' => 'Librarian',
+                'department' => 'Academics',
+                'location' => 'NAAP - Mactan-Medellin Extension Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Manage the aviation library and technical publications.',
+                'responsibilities' => [
+                    'Catalog books and manuals.',
+                    'Assist students with research.',
+                    'Update technical library subscriptions.',
+                    'Maintain quiet study environment.'
+                ],
+                'requirements' => [
+                    'Licensed Librarian.',
+                    'Organizational skills.',
+                    'Computer literate.',
+                    'Interest in aviation.'
+                ],
+                'salary_grade' => 11,
+                'deadline' => '2026-03-05',
+                'status' => 'Open',
+                'created_at' => '2026-02-02 01:00:00',
+            ],
+            [
+                'id' => 19,
+                'title' => 'IT Support Specialist',
+                'department' => 'IT',
+                'location' => 'NAAP - Villamor Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Provide technical support for campus computers, networks, and smart classrooms.',
+                'responsibilities' => [
+                    'Troubleshoot PC and network issues.',
+                    'Maintain classroom AV equipment.',
+                    'Install software updates.',
+                    'Assist users with technical problems.'
+                ],
+                'requirements' => [
+                    'IT-related degree.',
+                    'Networking knowledge.',
+                    'Problem-solving skills.',
+                    'Customer service oriented.'
+                ],
+                'salary_grade' => 11,
+                'deadline' => '2026-02-28',
+                'status' => 'Open',
+                'created_at' => '2026-01-20 02:00:00',
+            ],
+            [
+                'id' => 20,
+                'title' => 'Marketing Specialist',
+                'department' => 'Administration',
+                'location' => 'NAAP - Villamor Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Develop marketing campaigns to attract new aspiring pilots.',
+                'responsibilities' => [
+                    'Create social media content.',
+                    'Design brochures and flyers.',
+                    'Coordinate school visits.',
+                    'Analyze marketing metrics.'
+                ],
+                'requirements' => [
+                    'Marketing degree.',
+                    'Graphic design skills (Canva/Adobe).',
+                    'Social media savvy.',
+                    'Creativity.'
+                ],
+                'salary_grade' => 15,
+                'deadline' => '2026-03-20',
+                'status' => 'Open',
+                'created_at' => '2026-02-05 03:00:00',
+            ],
+            [
+                'id' => 21,
+                'title' => 'Dormitory Manager',
+                'department' => 'Administration',
+                'location' => 'NAAP - Basa Air Base Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Oversee the operation and maintenance of the student cadet dormitory.',
+                'responsibilities' => [
+                    'Enforce dorm rules and regulations.',
+                    'Manage room assignments.',
+                    'Coordinate cleaning and repairs.',
+                    'Ensure resident safety.'
+                ],
+                'requirements' => [
+                    'Experience in property or hospitality management.',
+                    'Strong leadership.',
+                    'Ability to handle discipline.',
+                    'Live-in option available.'
+                ],
+                'salary_grade' => 11,
+                'deadline' => '2026-02-25',
+                'status' => 'Closed',
+                'created_at' => '2026-01-12 04:00:00',
+            ],
+            [
+                'id' => 22,
+                'title' => 'Utility Staff',
+                'department' => 'Maintenance',
+                'location' => 'NAAP - Fernando Air Base Campus',
+                'employment_type' => 'Full-time',
+                'description' => 'Ensure cleanliness and orderliness of the hangar and campus grounds.',
+                'responsibilities' => [
+                    'Clean hangars and classrooms.',
+                    'Assist in moving equipment.',
+                    'Groundskeeping duties.',
+                    'Dispose of waste properly.'
+                ],
+                'requirements' => [
+                    'High school diploma.',
+                    'Hardworking and reliable.',
+                    'Physically fit.',
+                    'Honest.'
+                ],
+                'salary_grade' => 6,
+                'deadline' => '2026-03-30',
+                'status' => 'Closed',
+                'created_at' => '2026-02-01 05:00:00',
+            ],
+        ];
+
+        foreach ($jobs as $job) {
+            Vacancy::updateOrCreate(['id' => $job['id']], $job);
+        }
+    }
+}

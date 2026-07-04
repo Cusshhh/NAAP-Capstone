@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Applicants Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #193153;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #193153;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #2a4a7a;
+        }
+        .success {
+            background: #10b981;
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            margin-top: 20px;
+            display: none;
+        }
+        .info {
+            background: #e0f2fe;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #0284c7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Clear Applicants Data</h1>
+        
+        <div class="info">
+            <strong>Why clear?</strong><br>
+            The new applicant data includes education level, years of experience, awards, and training hours for manual verification. Old data doesn't have these fields.
+        </div>
+        
+        <button onclick="clearData()">Clear Applicants Data</button>
+        <button onclick="clearAll()">Clear All Data (Jobs + Applicants)</button>
+        
+        <div class="success" id="success">
+            ✅ Data cleared successfully! Redirecting to admin page...
+        </div>
+    </div>
+
+    <script>
+        function clearData() {
+            localStorage.removeItem('mock_applications_custom');
+            document.getElementById('success').style.display = 'block';
+            setTimeout(() => {
+                window.location.href = '/admin/applicants';
+            }, 2000);
+        }
+
+        function clearAll() {
+            localStorage.removeItem('mock_applications_custom');
+            localStorage.removeItem('mock_jobs_custom');
+            localStorage.removeItem('mock_jobs_archived');
+            document.getElementById('success').style.display = 'block';
+            setTimeout(() => {
+                window.location.href = '/admin/applicants';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

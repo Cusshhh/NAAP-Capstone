@@ -1,0 +1,221 @@
+<?php
+
+use App\Http\Controllers\Admin\JobController;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use App\Http\Controllers\AuthSecond\RegisterUserController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+*/
+
+// --- 1. Public Routes ---
+
+// Landing Page (The Welcome.tsx we created)
+Route::get('/', function () {
+    if (Auth::check()) {
+        $adminEmails = ['admin@naap.edu.ph', 'admin@admin.com'];
+        if (in_array(Auth::user()->email, $adminEmails)) {
+            return redirect()->route('admin.dashboard');
+        }
+        return redirect()->route('dashboard');
+    }
+    return Inertia::render('ProfessionalsHired'); 
+})->name('home');
+
+Route::get('/dashboard', [\App\Http\Controllers\ApplicantController::class, 'dashboard'])->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::get('/calendar', function () {
+    $user = Auth::user();
+    
+    $applications = \App\Models\Application::where('email', $user->email)
+        ->latest()
+        ->get()
+        ->map(function ($app) {
+            return [
+                'id' => $app->id,
+                'jobTitle' => $app->job_title,
+                'jobId' => $app->job_id,
+                'status' => $app->status,
+                'submittedDate' => $app->created_at->toISOString(),
+                'phone' => $app->phone_number,
+                'education' => $app->education,
+                'email' => $app->email,
+            ];
+        });
+
+    $jobs = \App\Models\Vacancy::where('status', 'Open')->latest()->get()->map(function ($vacancy) {
+        return [
+            'id' => $vacancy->id,
+            'title' => $vacancy->title,
+            'department' => $vacancy->department,
+            'employmentType' => $vacancy->employment_type,
+            'location' => $vacancy->location,
+            'salaryGrade' => $vacancy->salary_grade,
+            'description' => $vacancy->description,
+            'postedDate' => $vacancy->created_at->toDateString(),
+            'deadline' => $vacancy->deadline ? $vacancy->deadline->toDateString() : null,
+            'applicantCount' => $vacancy->applications()->count(),
+            'status' => $vacancy->status,
+        ];
+    });
+
+    return Inertia::render('Calendar', [
+        'applications' => $applications,
+        'jobs' => $jobs,
+    ]);
+})->middleware(['auth', 'verified'])->name('calendar');
+
+Route::get('/login', function () {
+    // Points to resources/js/Pages/auth/login.tsx
+    return Inertia::render('auth/login'); 
+})->name('login'); // Name must be 'login' for route('login') to work
+
+// resources/js/Pages/auth/forgot-password.tsx
+Route::get('/forgot-password', function () {
+    return Inertia::render('auth/forgot-password'); 
+})->name('password.request');
+
+// Handle the Registration Form Submission (POST)
+// We use the RegisterUserController you created
+Route::post('/register', [RegisterUserController::class, 'store'])->name('register.store');
+
+// Handle Application Submission (POST)
+Route::post('/applications', [\App\Http\Controllers\ApplicantController::class, 'store'])->name('applications.store');
+
+// Register Page (GET)
+Route::get('/register', function () {
+    return Inertia::render('auth/register'); 
+})->name('register');
+
+// Public Job Board (Restored)
+Route::get('/jobs', [\App\Http\Controllers\PublicJobController::class, 'index'])->name('public.jobs');
+
+// Public Job Details
+Route::get('/jobs/{id}', [\App\Http\Controllers\PublicJobController::class, 'show'])->name('jobs.show');
+
+Route::get('/employee-benefits', function () {
+    return Inertia::render('EmployeeBenefits');
+})->name('employee-benefits');
+
+Route::get('/news/csc-prime-hrm-level-2', function () {
+    return Inertia::render('news');
+})->name('news.csc-level-2');
+
+Route::get('/hr-news', function () {
+    return Inertia::render('HRNewsDashboard');
+})->name('hr.news');
+
+Route::get('/hr-news/{id}', function ($id) {
+    return Inertia::render('HRNewsArticle', ['id' => $id]);
+})->name('hr.news.show');
+
+// routes/web.php
+
+// Route para sa Admin Login Page
+Route::get('/admin-login', function () {
+    return Inertia::render('auth/login', [
+        'title' => 'Admin Login',
+        'description' => 'Enter your admin credentials to access the management dashboard',
+    ]);
+})->name('admin.login');
+
+
+
+
+
+
+// --- 2. Authentication Routes ---
+
+// Custom Logout (Fixes the React router issue)
+Route::post('/logout', function () {
+    Auth::logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+    return redirect('/');
+})->name('logout');
+
+
+// --- 3. Admin / Authenticated Routes ---
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/messages/{application}', [\App\Http\Controllers\MessageController::class, 'index'])->name('messages.index');
+    Route::post('/messages/{application}', [\App\Http\Controllers\MessageController::class, 'store'])->name('messages.store');
+
+    Route::prefix('admin')->name('admin.')->group(function () {
+        Route::get('/dashboard', function () {
+            return Inertia::render('Admin/Dashboard');
+        })->name('dashboard');
+
+        Route::get('/jobs', [\App\Http\Controllers\Admin\JobController::class, 'index'])->name('jobs');
+        Route::post('/jobs', [\App\Http\Controllers\Admin\JobController::class, 'store'])->name('jobs.store');
+        Route::put('/jobs/{vacancy}', [\App\Http\Controllers\Admin\JobController::class, 'update'])->name('jobs.update');
+        Route::delete('/jobs/{vacancy}', [\App\Http\Controllers\Admin\JobController::class, 'destroy'])->name('jobs.destroy');
+
+        Route::post('/applications/{application}/status', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'updateStatus'])->name('applications.status');
+
+        Route::get('/applicants', function () {
+            return Inertia::render('Admin/Applicants', [
+                'applications' => \App\Models\Application::latest()->get()->map(function ($app) {
+                    return [
+                        'id' => $app->id,
+                        'applicantName' => $app->applicant_name,
+                        'email' => $app->email,
+                        'jobTitle' => $app->job_title,
+                        'status' => $app->status,
+                        'submittedDate' => $app->created_at->toIso8601String(),
+                        'hasUnreadMessages' => \App\Models\Message::where('application_id', $app->id)
+                            ->where('sender_id', '!=', auth()->id())
+                            ->where('is_read', false)
+                            ->exists(),
+                        // Stable & Data-Driven Score Percentage (0-100)
+                        'aiScore' => (function($app) {
+                            $base = (crc32($app->applicant_name . $app->job_title) % 30) + 50; 
+                            $eduBonus = $app->education ? 10 : 0;
+                            $docBonus = count($app->custom_file_responses ?? []) * 5;
+                            $missingPenalty = count($app->to_follow_docs ?? []) * 2;
+                            return min(100, max(0, $base + $eduBonus + $docBonus - $missingPenalty));
+                        })($app),
+                        'aiScoreBreakdown' => [
+                            'education' => $app->education ? 5 : 0, // Using 0-5 scale for sub-scores as UI expects
+                            'experience' => (crc32($app->applicant_name) % 15) + 10, // 10-25 scale
+                            'accomplishments' => (crc32($app->job_title) % 5), // 0-5 scale
+                            'training' => count($app->custom_file_responses ?? []) * 2, // 0-10 scale
+                        ],
+                        'skills' => [],
+                        'toFollowDocs' => $app->to_follow_docs ?? [],
+                        'custom_file_responses' => $app->custom_file_responses ?? [],
+                    ];
+                }),
+            ]);
+        })->name('applicants');
+
+        Route::get('/staffing', [\App\Http\Controllers\Admin\StaffingController::class, 'index'])->name('staffing');
+
+        Route::get('/activity-log', function () {
+            return Inertia::render('Admin/ActivityLog');
+        })->name('activity-log');
+
+        Route::get('/cms', function () {
+            return Inertia::render('Admin/CMS');
+        })->name('cms');
+
+        Route::get('/calendar', function () {
+            return Inertia::render('Admin/Calendar');
+        })->name('calendar');
+
+        Route::get('/landing-page', function () {
+            return Inertia::render('Admin/LandingPageManager');
+        })->name('landing-page');
+    });
+});
+
+
+require __DIR__.'/settings.php';
+
+Route::get('/_boost/browser-logs', function () {
+    return response()->noContent();
+});

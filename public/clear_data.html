@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Application Data</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .container {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 500px;
+        }
+
+        h1 {
+            color: #193153;
+            margin-bottom: 1rem;
+            font-size: 2rem;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            color: #856404;
+        }
+
+        button {
+            background: #193153;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #2a4a73;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(25, 49, 83, 0.3);
+        }
+
+        .success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 2rem;
+            color: #155724;
+            display: none;
+        }
+
+        .info {
+            background: #e7f3ff;
+            border: 2px solid #2196F3;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+            color: #0c5460;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔄 Clear Application Data</h1>
+        <p>This will remove all stored applicant and job data from your browser and regenerate fresh data with proper
+            score caps (max 45 points).</p>
+
+        <div class="warning">
+            ⚠️ <strong>Warning:</strong> This will delete all custom applicant and job data. The system will regenerate
+            150 new applicants with scores properly capped at 45 points.
+        </div>
+
+        <button onclick="clearData()">Clear & Regenerate Data</button>
+
+        <div class="success" id="successMessage">
+            ✅ <strong>Success!</strong> Data cleared successfully. Redirecting to applicants page...
+        </div>
+
+        <div class="info">
+            <strong>What this does:</strong><br>
+            • Removes old applicant data with incorrect scores (85/45, 98/45, etc.)<br>
+            • Removes old job listings<br>
+            • Forces regeneration with new score cap (max 45 points)<br>
+            • All applicants will have verification data (education, experience, awards, training)
+        </div>
+    </div>
+
+    <script>
+        function clearData() {
+            // Clear the custom data
+            localStorage.removeItem('mock_applications_custom');
+            localStorage.removeItem('mock_jobs_custom');
+
+            // Show success message
+            document.getElementById('successMessage').style.display = 'block';
+
+            // Redirect after 2 seconds
+            setTimeout(() => {
+                window.location.href = '/admin/applicants';
+            }, 2000);
+        }
+    </script>
+</body>
+
+</html>
