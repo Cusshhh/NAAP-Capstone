@@ -147,7 +147,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', function () {
-            return Inertia::render('Admin/Dashboard');
+            return Inertia::render('Admin/Dashboard', [
+                'dbApplications' => \App\Models\Application::latest()->get()->map(function ($app) {
+                    return [
+                        'id' => $app->id,
+                        'applicantName' => $app->applicant_name,
+                        'jobTitle' => $app->job_title,
+                        'status' => $app->status,
+                        'submittedDate' => $app->created_at->toISOString(),
+                        'campus' => $app->campus,
+                    ];
+                }),
+                'dbJobs' => \App\Models\Vacancy::latest()->get()->map(function ($vacancy) {
+                    return [
+                        'id' => $vacancy->id,
+                        'title' => $vacancy->title,
+                        'employmentType' => $vacancy->employment_type,
+                        'location' => $vacancy->location,
+                        'postedDate' => $vacancy->created_at->toISOString(),
+                        'status' => $vacancy->status,
+                    ];
+                }),
+                'unfilledStaffingCount' => \App\Models\StaffingPosition::where('status', 'Unfilled')->count(),
+            ]);
         })->name('dashboard');
 
         Route::get('/jobs', [\App\Http\Controllers\Admin\JobController::class, 'index'])->name('jobs');
@@ -171,6 +193,41 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             ->where('sender_id', '!=', auth()->id())
                             ->where('is_read', false)
                             ->exists(),
+                        'campus' => $app->campus ?: 'NAAP - Villamor Campus',
+                        'education' => $app->education,
+                        'experience' => isset($app->dynamic_responses['experience'])
+                            ? $app->dynamic_responses['experience']
+                            : (isset($app->dynamic_responses['yearsOfExperience'])
+                                ? $app->dynamic_responses['yearsOfExperience'] . ' years of relevant experience'
+                                : (function($name, $title) {
+                                    $years = (crc32($name) % 8) + 2;
+                                    return "{$years} years of relevant experience in {$title} fields, with solid achievements.";
+                                })($app->applicant_name, $app->job_title)),
+                        'skills' => isset($app->dynamic_responses['skills'])
+                            ? $app->dynamic_responses['skills']
+                            : (function($title) {
+                                $skillsList = ['CPL', 'Instrument', 'Safety Management', 'AMT License', 'Troubleshooting', 'Logbook', 'MS Office', 'Organization', 'Communication', 'Customer Service', 'Public Speaking', 'Aviation Law', 'Project Management', 'Team Leadership'];
+                                $seed = crc32($title);
+                                return [
+                                    $skillsList[$seed % count($skillsList)],
+                                    $skillsList[($seed + 3) % count($skillsList)],
+                                    $skillsList[($seed + 7) % count($skillsList)]
+                                ];
+                            })($app->job_title),
+                        'documents' => isset($app->dynamic_responses['documents'])
+                            ? $app->dynamic_responses['documents']
+                            : [
+                                [
+                                    'name' => 'Letter of Intent',
+                                    'fileName' => 'letter_of_intent.pdf',
+                                    'url' => null,
+                                ],
+                                [
+                                    'name' => 'Personal Data Sheet (PDS)',
+                                    'fileName' => 'pds_form.pdf',
+                                    'url' => null,
+                                ],
+                            ],
                         // Stable & Data-Driven Score Percentage (0-100)
                         'aiScore' => (function($app) {
                             $base = (crc32($app->applicant_name . $app->job_title) % 30) + 50; 
@@ -185,7 +242,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             'accomplishments' => (crc32($app->job_title) % 5), // 0-5 scale
                             'training' => count($app->custom_file_responses ?? []) * 2, // 0-10 scale
                         ],
-                        'skills' => [],
                         'toFollowDocs' => $app->to_follow_docs ?? [],
                         'custom_file_responses' => $app->custom_file_responses ?? [],
                     ];
@@ -196,7 +252,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/staffing', [\App\Http\Controllers\Admin\StaffingController::class, 'index'])->name('staffing');
 
         Route::get('/activity-log', function () {
-            return Inertia::render('Admin/ActivityLog');
+            return Inertia::render('Admin/ActivityLog', [
+                'dbApplications' => \App\Models\Application::latest()->get()->map(function ($app) {
+                    return [
+                        'id' => $app->id,
+                        'applicantName' => $app->applicant_name,
+                        'jobTitle' => $app->job_title,
+                        'status' => $app->status,
+                        'submittedDate' => $app->created_at->toISOString(),
+                        'campus' => $app->campus,
+                    ];
+                }),
+                'dbJobs' => \App\Models\Vacancy::latest()->get()->map(function ($vacancy) {
+                    return [
+                        'id' => $vacancy->id,
+                        'title' => $vacancy->title,
+                        'employmentType' => $vacancy->employment_type,
+                        'location' => $vacancy->location,
+                        'postedDate' => $vacancy->created_at->toISOString(),
+                        'status' => $vacancy->status,
+                    ];
+                }),
+            ]);
         })->name('activity-log');
 
         Route::get('/cms', function () {

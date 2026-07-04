@@ -23,17 +23,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getActivities } from '@/data/mockData';
 import AdminLayout from '@/layouts/AdminLayout';
 
-export default function ActivityLog({ auth }: { auth: any }) {
+export default function ActivityLog({ auth, dbApplications = [], dbJobs = [] }: { auth: any, dbApplications?: any[], dbJobs?: any[] }) {
     const admin = auth?.user || { name: 'Admin' };
     const [searchTerm, setSearchTerm] = useState('');
     const [typeFilter, setTypeFilter] = useState('all');
-    const [activities, setActivities] = useState(getActivities());
+    const [activities, setActivities] = useState(() => getActivities(dbApplications, dbJobs));
 
     React.useEffect(() => {
-        const handleSync = () => setActivities(getActivities());
+        const handleSync = () => setActivities(getActivities(dbApplications, dbJobs));
         window.addEventListener('storage', handleSync);
         return () => window.removeEventListener('storage', handleSync);
-    }, []);
+    }, [dbApplications, dbJobs]);
 
     const getIcon = (iconName: string) => {
         switch (iconName) {

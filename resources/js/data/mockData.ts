@@ -938,13 +938,98 @@ export const getTimeAgo = (dateStr: string) => {
     return `${Math.floor(diffDays / 30)} months ago`;
 };
 
-export const getActivities = () => {
+export const getActivities = (dbApps: any[] = [], dbJobs: any[] = []) => {
     if (typeof window === 'undefined') return mockActivities;
     
     const activities: any[] = [];
     let idCounter = 1;
 
-    // 1. Add Jobs as "Job Posted" (Only Custom Jobs)
+    // 1. Add real database jobs
+    (dbJobs || []).forEach((job: any) => {
+        if (!job.postedDate) return;
+        activities.push({
+            id: `db_job_${job.id}`,
+            action: 'Job Posted',
+            details: `New position: ${job.title} (${job.employmentType || 'Full-time'})`,
+            time: getTimeAgo(job.postedDate),
+            date: job.postedDate,
+            icon: 'Briefcase',
+            color: 'text-green-500 bg-green-100',
+            campus: job.location || 'Pasay City',
+            timestamp: new Date(job.postedDate).getTime()
+        });
+    });
+
+    // 2. Add real database applications and status changes
+    (dbApps || []).forEach((app: any) => {
+        if (!app.submittedDate) return;
+        
+        // Base Submission
+        activities.push({
+            id: `db_app_sub_${app.id}`,
+            action: 'New Application',
+            details: `${app.applicantName} applied for ${app.jobTitle}`,
+            time: getTimeAgo(app.submittedDate),
+            date: app.submittedDate,
+            icon: 'UserPlus',
+            color: 'text-blue-500 bg-blue-100',
+            campus: app.campus || 'Pasay City',
+            timestamp: new Date(app.submittedDate).getTime()
+        });
+        
+        // Status changes
+        if (app.status === 'Hired') {
+            const dateObj = new Date(app.submittedDate);
+            dateObj.setMinutes(dateObj.getMinutes() + 5);
+            const hiredDateStr = dateObj.toISOString();
+            
+            activities.push({
+                id: `db_app_hired_${app.id}`,
+                action: 'Candidate Hired',
+                details: `${app.applicantName} has been officially hired as ${app.jobTitle}`,
+                time: getTimeAgo(hiredDateStr),
+                date: hiredDateStr,
+                icon: 'UserCheck',
+                color: 'text-green-600 bg-green-50',
+                campus: app.campus || 'Pasay City',
+                timestamp: dateObj.getTime()
+            });
+        } else if (app.status === 'Rejected') {
+            const dateObj = new Date(app.submittedDate);
+            dateObj.setMinutes(dateObj.getMinutes() + 3);
+            const rejectedDateStr = dateObj.toISOString();
+            
+            activities.push({
+                id: `db_app_rejected_${app.id}`,
+                action: 'Application Rejected',
+                details: `${app.applicantName} - ${app.jobTitle}`,
+                time: getTimeAgo(rejectedDateStr),
+                date: rejectedDateStr,
+                icon: 'XCircle',
+                color: 'text-red-500 bg-red-100',
+                campus: app.campus || 'Pasay City',
+                timestamp: dateObj.getTime()
+            });
+        } else if (app.status === 'Shortlisted' || app.status === 'Interview' || app.status === 'Under Review') {
+            const dateObj = new Date(app.submittedDate);
+            dateObj.setMinutes(dateObj.getMinutes() + 2);
+            const shortStr = dateObj.toISOString();
+            
+            activities.push({
+                id: `db_app_short_${app.id}`,
+                action: app.status === 'Interview' ? 'Interview Scheduled' : 'Candidate Shortlisted',
+                details: `${app.applicantName} status updated to ${app.status} for ${app.jobTitle}`,
+                time: getTimeAgo(shortStr),
+                date: shortStr,
+                icon: app.status === 'Interview' ? 'Calendar' : 'Users',
+                color: app.status === 'Interview' ? 'text-purple-500 bg-purple-50' : 'text-indigo-500 bg-indigo-50',
+                campus: app.campus || 'Pasay City',
+                timestamp: dateObj.getTime()
+            });
+        }
+    });
+
+    // 3. Add Custom localStorage Jobs (if any)
     let jobs: any[] = [];
     let apps: any[] = [];
     try {
@@ -967,7 +1052,7 @@ export const getActivities = () => {
         });
     });
 
-    // 2. Add Applications (Only Custom Applications / Status updates)
+    // 4. Add Custom localStorage Applications (if any)
     apps.forEach((app: any) => {
         if (!app.submittedDate) return;
         
@@ -984,10 +1069,10 @@ export const getActivities = () => {
             timestamp: new Date(app.submittedDate).getTime()
         });
         
-        // Status changes (simulate date slightly after submission if not submitted)
+        // Status changes
         if (app.status === 'Hired') {
             const dateObj = new Date(app.submittedDate);
-            dateObj.setDate(dateObj.getDate() + 5); // arbitrarily 5 days later
+            dateObj.setDate(dateObj.getDate() + 5);
             const hiredDateStr = dateObj.toISOString().split('T')[0];
             
             activities.push({
@@ -1036,7 +1121,7 @@ export const getActivities = () => {
         }
     });
 
-    // 3. System Activities (from static mockActivities that are system-related)
+    // 5. System Activities (from static mockActivities that are system-related or reports)
     mockActivities.forEach((act: any) => {
         if (['System Maintenance', 'Account Security', 'Report Generated'].includes(act.action)) {
             activities.push({
@@ -1232,18 +1317,24 @@ export const getDynamicNotifications = (userEmail?: string) => {
     return notifications.sort((a, b) => b.id.localeCompare(a.id));
 };
 
-export const getAnalyticsData = (campus?: string) => {
-    const allApplications = getApplications();
-    const allJobs = getJobs();
+export const getAnalyticsData = (campus?: string, dbApps?: any[], dbJobs?: any[], unfilledCount?: number) => {
+    // Exclude 'Archived' applications to match visible applicant list
+    const allApplications = dbApps 
+        ? dbApps.filter((app: any) => app.status !== 'Archived') 
+        : getApplications().filter((app: any) => app.status !== 'Archived');
+        
+    const allJobs = dbJobs ? dbJobs : getJobs();
 
-    // Filter out applicants for archived/deleted OR non-open jobs to match public job listings
-    const openJobs = allJobs.filter((j: any) => j.status === 'Open');
-    const activeIds = new Set(openJobs.map((j: any) => String(j.id)));
-    const activeTitles = new Set(openJobs.map((j: any) => j.title));
-
-    const validApps = allApplications.filter((app: any) =>
-        activeIds.has(String(app.jobId)) || activeTitles.has(app.jobTitle)
-    );
+    // If using mock data (no dbApps), filter valid apps to match public listings
+    let validApps = allApplications;
+    if (!dbApps) {
+        const openJobs = allJobs.filter((j: any) => j.status === 'Open');
+        const activeIds = new Set(openJobs.map((j: any) => String(j.id)));
+        const activeTitles = new Set(openJobs.map((j: any) => j.title));
+        validApps = allApplications.filter((app: any) =>
+            activeIds.has(String(app.jobId)) || activeTitles.has(app.jobTitle)
+        );
+    }
 
     // Filter by campus if provided
     const filteredApplications = campus
@@ -1278,20 +1369,22 @@ export const getAnalyticsData = (campus?: string) => {
     }).length;
 
     const staffingData = getStaffingData();
-    const unfilledPositions = campus
-        ? staffingData.filter(i => {
-            const mapping: Record<string, string[]> = {
-                'NAAP - Villamor Campus': ['Villamor'],
-                'NAAP - Basa Air Base Campus': ['BAB', 'Basa'],
-                'NAAP - Basa-Palmayo Extension Campus': ['Basa-Palmayo'],
-                'NAAP - Fernando Air Base Campus': ['FAB', 'Fernando'],
-                'NAAP - Mactan Campus': ['MBEAB', 'Mactan'],
-                'NAAP - Mactan-Medellin Extension Campus': ['Mactan-Medellin']
-            };
-            const aliases = mapping[campus] || [campus];
-            return i.status === 'Unfilled' && (aliases.includes(i.campus) || i.campus === campus);
-        }).length
-        : staffingData.filter(i => i.status === 'Unfilled').length;
+    const unfilledPositions = unfilledCount !== undefined
+        ? unfilledCount
+        : (campus
+            ? staffingData.filter(i => {
+                const mapping: Record<string, string[]> = {
+                    'NAAP - Villamor Campus': ['Villamor'],
+                    'NAAP - Basa Air Base Campus': ['BAB', 'Basa'],
+                    'NAAP - Basa-Palmayo Extension Campus': ['Basa-Palmayo'],
+                    'NAAP - Fernando Air Base Campus': ['FAB', 'Fernando'],
+                    'NAAP - Mactan Campus': ['MBEAB', 'Mactan'],
+                    'NAAP - Mactan-Medellin Extension Campus': ['Mactan-Medellin']
+                };
+                const aliases = mapping[campus] || [campus];
+                return i.status === 'Unfilled' && (aliases.includes(i.campus) || i.campus === campus);
+            }).length
+            : staffingData.filter(i => i.status === 'Unfilled').length);
 
     // Calculate distribution dynamically
     const statusCounts = filteredApplications.reduce((acc, app) => {

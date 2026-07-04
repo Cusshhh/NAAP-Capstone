@@ -24,23 +24,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getAnalyticsData, mockInterviews, getActivities, getStaffingData, getJobs, mockEvents } from '@/data/mockData';
 import AdminLayout from '@/layouts/AdminLayout';
 
-export default function AdminDashboard({ auth }: { auth: any }) {
+export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [], unfilledStaffingCount = 16 }: { auth: any, dbApplications?: any[], dbJobs?: any[], unfilledStaffingCount?: number }) {
     const admin = auth?.user || { name: 'Admin' };
-    const [analytics, setAnalytics] = useState(getAnalyticsData());
-    const [activities, setActivities] = useState(getActivities());
+    const [analytics, setAnalytics] = useState(() => getAnalyticsData(undefined, dbApplications, dbJobs, unfilledStaffingCount));
+    const [activities, setActivities] = useState(() => getActivities(dbApplications, dbJobs));
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [interviews, setInterviews] = useState<any[]>(() => {
+        if (typeof window === 'undefined') return [];
+        try {
+            const saved = localStorage.getItem('scheduled_interviews_custom');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    });
 
     // Initial load and sync
     React.useEffect(() => {
         const handleSync = () => {
-            setAnalytics(getAnalyticsData());
-            setActivities(getActivities());
+            setAnalytics(getAnalyticsData(undefined, dbApplications, dbJobs, unfilledStaffingCount));
+            setActivities(getActivities(dbApplications, dbJobs));
+            try {
+                const saved = localStorage.getItem('scheduled_interviews_custom');
+                setInterviews(saved ? JSON.parse(saved) : []);
+            } catch(e) {}
         };
         window.addEventListener('storage', handleSync);
         // Also refresh on mount in case things changed
         handleSync();
         return () => window.removeEventListener('storage', handleSync);
-    }, []);
+    }, [dbApplications, dbJobs, unfilledStaffingCount]);
 
     const [reportType, setReportType] = useState('applicants');
     const [dateRange, setDateRange] = useState('month');
@@ -64,7 +77,7 @@ export default function AdminDashboard({ auth }: { auth: any }) {
     const [campusAnalytics, setCampusAnalytics] = useState<any>(null);
 
     const handleCampusClick = (campus: string) => {
-        const data = getAnalyticsData(campus);
+        const data = getAnalyticsData(campus, dbApplications, dbJobs);
         setCampusAnalytics(data);
         setSelectedCampus(campus);
         setViewMode('campus');
@@ -508,18 +521,22 @@ export default function AdminDashboard({ auth }: { auth: any }) {
                                         Upcoming Interviews
                                     </h4>
                                     <div className="space-y-3">
-                                        {mockInterviews.map((interview) => (
-                                            <div key={interview.id} className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm">
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-gray-900 truncate">{interview.candidateName}</p>
-                                                    <p className="text-xs text-gray-500 truncate">{interview.position}</p>
+                                        {interviews.length > 0 ? (
+                                            interviews.map((interview, index) => (
+                                                <div key={interview.id || index} className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-gray-900 truncate">{interview.candidateName}</p>
+                                                        <p className="text-xs text-gray-500 truncate">{interview.position}</p>
+                                                    </div>
+                                                    <div className="text-right ml-2">
+                                                        <p className="text-xs font-bold text-gray-700">{interview.date ? new Date(interview.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</p>
+                                                        <p className="text-[10px] text-gray-400">{interview.time}</p>
+                                                    </div>
                                                 </div>
-                                                <div className="text-right ml-2">
-                                                    <p className="text-xs font-bold text-gray-700">{new Date(interview.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                                                    <p className="text-[10px] text-gray-400">{interview.time}</p>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            ))
+                                        ) : (
+                                            <p className="text-xs text-gray-400 text-center py-4">No upcoming interviews scheduled.</p>
+                                        )}
                                         <Link href="/admin/applicants" className="block pt-2">
                                             <Button variant="outline" size="sm" className="w-full text-xs h-8 bg-white border-gray-200 hover:bg-gray-50 border-gray-300">
                                                 View All Interviews <ChevronRight className="w-3 h-3 ml-1" />

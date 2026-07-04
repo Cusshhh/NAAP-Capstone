@@ -19,16 +19,28 @@ class Application extends Model
         'status',
         'to_follow_docs',
         'custom_file_responses',
+        'dynamic_responses',
     ];
 
     protected $casts = [
         'to_follow_docs' => 'array',
         'custom_file_responses' => 'array',
+        'dynamic_responses' => 'array',
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class, 'email', 'email');
+    }
+
+    public function vacancy()
+    {
+        return $this->belongsTo(Vacancy::class, 'job_id');
+    }
+
+    public function getCampusAttribute()
+    {
+        return $this->vacancy ? $this->vacancy->location : 'NAAP - Villamor Campus';
     }
 
     public function getApplicantNameAttribute($value)

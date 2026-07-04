@@ -22,6 +22,7 @@ class ApplicantController extends Controller
             'phone_number' => 'required|string',
             'education' => 'required|string',
             'to_follow_docs' => 'nullable|array',
+            'dynamic_responses' => 'nullable|array',
         ]);
 
         $customFileResponses = [];
@@ -43,6 +44,7 @@ class ApplicantController extends Controller
             'education' => $validated['education'],
             'to_follow_docs' => $validated['to_follow_docs'],
             'custom_file_responses' => $customFileResponses,
+            'dynamic_responses' => $validated['dynamic_responses'] ?? [],
             'status' => 'Submitted',
         ]);
 
@@ -73,6 +75,10 @@ class ApplicantController extends Controller
                     'phone' => $app->phone_number,
                     'education' => $app->education,
                     'email' => $app->email,
+                    'hasUnreadMessages' => \App\Models\Message::where('application_id', $app->id)
+                        ->where('sender_id', '!=', Auth::id())
+                        ->where('is_read', false)
+                        ->exists(),
                 ];
             });
 

@@ -48,13 +48,23 @@ export default function Applicants({ auth, applications: serverApplications }: {
     const [candidateName, setCandidateName] = useState('');
     const [position, setPosition] = useState('');
 
-    // State to hold scheduled interviews - Initialize with Mock Data
-    const [scheduledInterviews, setScheduledInterviews] = useState<any[]>(mockInterviews.map(m => ({
-        ...m,
-        venue: m.type,
-        panelMembers: 'HR Panel',
-        notifyApplicant: true
-    })));
+    // State to hold scheduled interviews - Initialize from LocalStorage
+    const [scheduledInterviews, setScheduledInterviews] = useState<any[]>(() => {
+        if (typeof window === 'undefined') return [];
+        try {
+            const saved = localStorage.getItem('scheduled_interviews_custom');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('scheduled_interviews_custom', JSON.stringify(scheduledInterviews));
+        // Dispatch storage event so other tabs/components sync instantly
+        window.dispatchEvent(new Event('storage'));
+    }, [scheduledInterviews]);
+
     const [editingInterviewIndex, setEditingInterviewIndex] = useState<number | null>(null);
     const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
 

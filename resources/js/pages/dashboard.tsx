@@ -86,7 +86,7 @@ const CardContent = ({ className, children }: any) => (
 // --- INTERFACES ---
 
 interface Application {
-    id: number;
+    id: any;
     jobTitle: string;
     jobId: number;
     department?: string;
@@ -96,6 +96,7 @@ interface Application {
     phone?: string;
     education?: string;
     email: string;
+    hasUnreadMessages?: boolean;
     // AI Scoring fields
     educationLevel?: 'bachelor' | 'masters' | 'doctoral_graduate' | 'doctoral_27+' | 'doctoral_18-24' | 'doctoral_15-18' | 'doctoral_9-15';
     yearsOfExperience?: number;
@@ -443,51 +444,68 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         }
     };
 
-    const buildNotifications = () => {
+    const buildNotifications = (currentApps = myApplications) => {
         const notifications: any[] = [];
         const readNotifications = JSON.parse(localStorage.getItem(`read_notifications_${auth.user.id}`) || '[]');
 
-        // 1. Database-based applications (propApplications)
-        (propApplications || []).forEach((app: any) => {
+        // Use currentApps, or fallback to mapping props and mocks if not defined yet
+        let appsToUse = currentApps;
+        if (!appsToUse) {
+            const dbAppsMapped = (propApplications || []).map((app: any) => ({
+                ...app,
+                department: app.department || 'Aviation',
+                location: app.location || 'Pasay City'
+            }));
+            const mockApps = typeof window !== 'undefined' ? getApplications().filter((app: any) => app.applicantEmail === auth.user.id || app.applicantEmail === auth.user.email) : [];
+            const mockAppsMapped = mockApps.map((app: any) => ({
+                ...app,
+                id: `mock_${app.id}`,
+                jobTitle: app.jobTitle,
+                jobId: app.jobId,
+                status: app.status,
+                submittedDate: app.submittedDate,
+                phone: app.phone,
+                education: app.education,
+                email: app.email,
+                department: app.department || 'Aviation',
+                location: app.location || 'Pasay City'
+            }));
+            appsToUse = [...dbAppsMapped, ...mockAppsMapped];
+        }
+
+        // 1. All applications (myApplications / appsToUse)
+        (appsToUse || []).forEach((app: any) => {
+            const isMock = String(app.id).startsWith('mock_');
+            const prefix = isMock ? 'mock' : 'db';
+            
             // Application Submitted
             notifications.push({
-                id: `db_sub_${app.id}`,
+                id: `${prefix}_sub_${app.id}`,
                 text: `Your application for ${app.jobTitle} was successfully submitted.`,
                 time: app.submittedDate ? app.submittedDate.split('T')[0] : '',
-                isRead: readNotifications.includes(`db_sub_${app.id}`),
+                isRead: readNotifications.includes(`${prefix}_sub_${app.id}`),
                 type: 'success'
             });
 
             // Application Status Changes
             if (app.status !== 'Submitted') {
                 notifications.push({
-                    id: `db_status_${app.id}_${app.status}`,
+                    id: `${prefix}_status_${app.id}_${app.status}`,
                     text: `Update: Your application for ${app.jobTitle} is now "${app.status}".`,
                     time: new Date().toISOString().split('T')[0],
-                    isRead: readNotifications.includes(`db_status_${app.id}_${app.status}`),
+                    isRead: readNotifications.includes(`${prefix}_status_${app.id}_${app.status}`),
                     type: 'info'
                 });
             }
-        });
 
-        // 2. Mock-based applications (from local storage / getApplications())
-        const mockApps = typeof window !== 'undefined' ? getApplications().filter((app: any) => app.applicantEmail === user.email) : [];
-        mockApps.forEach((app: any) => {
-            notifications.push({
-                id: `mock_sub_${app.id}`,
-                text: `Your application for ${app.jobTitle} was successfully submitted.`,
-                time: app.submittedDate,
-                isRead: readNotifications.includes(`mock_sub_${app.id}`),
-                type: 'success'
-            });
-
-            if (app.status !== 'Submitted') {
+            // Unread messages notification (only for database applications)
+            if (!isMock && app.hasUnreadMessages) {
                 notifications.push({
-                    id: `mock_status_${app.id}_${app.status}`,
-                    text: `Update: Your application for ${app.jobTitle} is now "${app.status}".`,
+                    id: `db_message_${app.id}`,
+                    text: `New message from NAAP HR Admin regarding your application for ${app.jobTitle}.`,
                     time: new Date().toISOString().split('T')[0],
-                    isRead: readNotifications.includes(`mock_status_${app.id}_${app.status}`),
-                    type: 'info'
+                    isRead: false,
+                    type: 'message'
                 });
             }
         });
@@ -525,11 +543,19 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             localStorage.setItem(`read_notifications_${auth.user.id}`, JSON.stringify(updated));
             setNotifications(buildNotifications());
         }
+
+        if (id.startsWith('db_message_')) {
+            const appId = id.replace('db_message_', '');
+            const app = myApplications.find(a => String(a.id) === String(appId));
+            if (app) {
+                openMessages(app.id, app.jobTitle);
+            }
+        }
     };
 
     useEffect(() => {
         setNotifications(buildNotifications());
-    }, [propApplications, jobs]);
+    }, [myApplications, jobs]);
 
     const [savedJobDetails, setSavedJobDetails] = useState<any[]>([]);
 
@@ -693,6 +719,14 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         try {
             const response = await axios.get(`/messages/${appId}`);
             setMessages(response.data);
+
+            // Mark as read in local state immediately
+            setMyApplications(prev => prev.map(app => {
+                if (app.id === appId) {
+                    return { ...app, hasUnreadMessages: false };
+                }
+                return app;
+            }));
         } catch (e) {
             console.error(e);
             toast.error("Failed to load messages.");
@@ -1074,15 +1108,23 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                     <ChevronRight className="w-5 h-5" />
                                                                 </Button>
                                                             </Link>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                                                                onClick={() => openMessages(app.id, app.jobTitle)}
-                                                                title="Messages"
-                                                            >
-                                                                <MessageCircle className="w-4 h-4" />
-                                                            </Button>
+                                                            <div className="relative inline-block">
+                                                                 <Button
+                                                                     variant="ghost"
+                                                                     size="sm"
+                                                                     className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                                                     onClick={() => openMessages(app.id, app.jobTitle)}
+                                                                     title="Messages"
+                                                                 >
+                                                                     <MessageCircle className="w-4 h-4" />
+                                                                 </Button>
+                                                                 {app.hasUnreadMessages && (
+                                                                     <span className="absolute top-0 right-0 flex h-2 w-2">
+                                                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                                         <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 border border-white"></span>
+                                                                     </span>
+                                                                 )}
+                                                             </div>
                                                             {app.status === 'Withdrawn' ? (
                                                                 <Trash2
                                                                     className="w-4 h-4 text-red-500 hover:text-red-700 cursor-pointer transition-colors"
