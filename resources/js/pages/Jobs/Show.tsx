@@ -188,6 +188,39 @@ export default function JobDetails({ id, auth, job: serverJob }: JobDetailsProps
 
         const fullName = `${formData.firstName} ${formData.middleName ? formData.middleName + ' ' : ''}${formData.lastName}${formData.extensionName ? ' ' + formData.extensionName : ''}`.trim();
 
+        // Gather uploaded documents from localStorage (including base64 contents)
+        const docNames = [
+            "Letter of Intent",
+            "Personal Data Sheet (PDS)",
+            "Work Experience Sheet",
+            "Certificate of Eligibility",
+            "Transcript of Records (TOR)",
+            "Training Certificates",
+            "Performance Rating"
+        ];
+        const uploadedDocs = docNames.map(docName => {
+            const isUploaded = localStorage.getItem(`doc_${user?.id}_${docName}`) === 'uploaded' || localStorage.getItem(`profile_doc_${user?.id}_${docName}`) === 'uploaded';
+            if (!isUploaded) return null;
+            const fileName = localStorage.getItem(`file_${user?.id}_${docName}`) || localStorage.getItem(`profile_file_${user?.id}_${docName}`) || `${docName.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`;
+            const content = localStorage.getItem(`content_${user?.id}_${docName}`) || localStorage.getItem(`profile_content_${user?.id}_${docName}`) || '';
+            return {
+                name: docName,
+                fileName: fileName,
+                url: content // Base64 data URL
+            };
+        }).filter(Boolean);
+
+        // Generate job-specific skills based on job title
+        const mockSkillsList = ['CPL', 'Instrument', 'Safety Management', 'AMT License', 'Troubleshooting', 'Logbook', 'MS Office', 'Organization', 'Communication', 'Customer Service', 'Public Speaking', 'Aviation Law', 'Project Management', 'Team Leadership'];
+        const seed = job.title.charCodeAt(0) + job.title.charCodeAt(job.title.length - 1);
+        const skills = [
+            mockSkillsList[seed % mockSkillsList.length],
+            mockSkillsList[(seed + 3) % mockSkillsList.length],
+            mockSkillsList[(seed + 7) % mockSkillsList.length]
+        ];
+
+        const experienceDescription = `${formData.yearsOfExperience} years of relevant experience in ${job.title} fields. Completed ${formData.trainingHours} hours of training and seminars.`;
+
         router.post('/applications', {
             job_id: job.id,
             job_title: job.title,
@@ -197,6 +230,19 @@ export default function JobDetails({ id, auth, job: serverJob }: JobDetailsProps
             education: formData.educationLevel === 'bachelor' ? 'College Graduate' : 'Post-Graduate',
             to_follow_docs: Object.keys(toFollowDocs).filter(k => toFollowDocs[k]),
             custom_files: customFiles,
+            dynamic_responses: {
+                address: formData.address,
+                age: formData.age,
+                sex: formData.sex,
+                civilStatus: formData.civilStatus,
+                educationLevel: formData.educationLevel,
+                yearsOfExperience: formData.yearsOfExperience,
+                trainingHours: formData.trainingHours,
+                awards: formData.awards,
+                skills: skills,
+                experience: experienceDescription,
+                documents: uploadedDocs
+            }
         }, {
             onSuccess: () => {
                 setIsSubmitting(false);
