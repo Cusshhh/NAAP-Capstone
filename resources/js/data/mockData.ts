@@ -561,7 +561,7 @@ export interface RecentlyHiredApplicant {
     hiredDate: string;
 }
 
-let recentlyHiredApplicants: RecentlyHiredApplicant[] = [
+const recentlyHiredApplicants: RecentlyHiredApplicant[] = [
     { id: 1, name: 'John Paul F. Vivar', position: 'IT Instructor', image: '/images/hired_pilot_1.png', hiredDate: '2026-03-01' },
     { id: 2, name: 'Maria Elena S. Cruz', position: 'HR Specialist', image: '/images/hired_admin_1.png', hiredDate: '2026-03-10' },
     { id: 3, name: 'Roberto G. Santos', position: 'Aircraft Mechanic', image: '/images/hired_mechanic_1.png', hiredDate: '2026-03-12' },

@@ -1,4 +1,5 @@
 import { Link, router, Head } from '@inertiajs/react';
+import axios from 'axios';
 import {
     User,
     LogOut,
@@ -30,7 +31,6 @@ import {
     Trash2
 } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from "@/components/ui/input";
