@@ -27,6 +27,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('/dashboard', [\App\Http\Controllers\ApplicantController::class, 'dashboard'])->middleware(['auth', 'verified'])->name('dashboard');
+Route::post('/profile/save', [\App\Http\Controllers\ApplicantController::class, 'saveProfileData'])->middleware(['auth', 'verified'])->name('profile.saveData');
 
 Route::get('/calendar', function () {
     $user = Auth::user();
@@ -244,6 +245,43 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         ],
                         'toFollowDocs' => $app->to_follow_docs ?? [],
                         'custom_file_responses' => $app->custom_file_responses ?? [],
+                        'dynamic_responses' => (function($app) {
+                            $dyn = $app->dynamic_responses ?? [];
+                            $userProfile = $app->user && $app->user->profile_data ? $app->user->profile_data : [];
+                            
+                            $parts = explode(' ', $app->applicant_name);
+                            $firstName = $parts[0] ?? 'Applicant';
+                            $middleName = '';
+                            $lastName = '';
+                            $extensionName = '';
+                            
+                            $c = count($parts);
+                            if ($c > 3) {
+                                $middleName = $parts[1];
+                                $lastName = $parts[2];
+                                $extensionName = $parts[3];
+                            } elseif ($c === 3) {
+                                $middleName = $parts[1];
+                                $lastName = $parts[2];
+                            } elseif ($c === 2) {
+                                $lastName = $parts[1];
+                            }
+                            
+                            $defaults = [
+                                'firstName' => $firstName,
+                                'lastName' => $lastName,
+                                'phone_number' => $app->phone_number,
+                                'middleName' => $middleName,
+                                'extensionName' => $extensionName,
+                                'religion' => '',
+                                'alternateContact' => '',
+                                'source' => '',
+                                'isIP' => 'No',
+                                'isPWD' => 'No',
+                            ];
+                            
+                            return array_merge($defaults, $userProfile, $dyn);
+                        })($app),
                     ];
                 }),
             ]);

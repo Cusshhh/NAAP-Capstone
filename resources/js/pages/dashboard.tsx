@@ -123,6 +123,7 @@ interface DashboardProps {
     };
     applications: Application[];
     jobs?: any[];
+    dbProfileData?: any;
 }
 
 // --- CHATBOT COMPONENT ---
@@ -296,7 +297,7 @@ const ChatBot = () => {
 
 // --- MAIN COMPONENT ---
 
-export default function ApplicantDashboard({ auth, applications: propApplications, jobs = [] }: DashboardProps) {
+export default function ApplicantDashboard({ auth, applications: propApplications, jobs = [], dbProfileData }: DashboardProps) {
     // Profile Image State
     const [profileImage, setProfileImage] = useState<string | null>(() => {
         if (typeof window !== 'undefined') {
@@ -305,8 +306,6 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         return null;
     });
 
-
-
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mechanicJob = [...jobs, ...getJobs()].find(j => j.title.toLowerCase().includes('mechanic'));
     const instructorJob = [...jobs, ...getJobs()].find(j => j.title.toLowerCase().includes('instructor') && !j.title.toLowerCase().includes('flight'));
@@ -314,9 +313,24 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     // Profile Data State
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [profileData, setProfileData] = useState(() => {
+        if (dbProfileData) {
+            return {
+                ...dbProfileData,
+                get fullName() {
+                    return `${this.firstName} ${this.middleName ? this.middleName + ' ' : ''}${this.lastName}${this.extensionName ? ' ' + this.extensionName : ''}`.trim() || auth.user.name;
+                }
+            };
+        }
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem(`user_profile_data_${auth.user.id}`);
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                return {
+                    ...JSON.parse(saved),
+                    get fullName() {
+                        return `${this.firstName} ${this.middleName ? this.middleName + ' ' : ''}${this.lastName}${this.extensionName ? ' ' + this.extensionName : ''}`.trim() || auth.user.name;
+                    }
+                };
+            }
         }
         return {
             lastName: auth.user.name.split(' ').slice(-1)[0] || '',
@@ -332,12 +346,23 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             phone: '',
             address: 'Pasay City, Philippines',
             email: auth.user.email,
-            // Computed full name for display
             get fullName() {
                 return `${this.firstName} ${this.middleName ? this.middleName + ' ' : ''}${this.lastName}${this.extensionName ? ' ' + this.extensionName : ''}`.trim() || auth.user.name;
             }
         };
     });
+
+    useEffect(() => {
+        if (dbProfileData) {
+            localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(dbProfileData));
+            setProfileData({
+                ...dbProfileData,
+                get fullName() {
+                    return `${this.firstName} ${this.middleName ? this.middleName + ' ' : ''}${this.lastName}${this.extensionName ? ' ' + this.extensionName : ''}`.trim() || auth.user.name;
+                }
+            });
+        }
+    }, [dbProfileData]);
 
     const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -345,9 +370,35 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     };
 
     const saveProfile = () => {
-        localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(profileData));
-        setIsEditingProfile(false);
-        toast.success("Profile updated successfully!");
+        const syncData = {
+            firstName: profileData.firstName,
+            middleName: profileData.middleName,
+            lastName: profileData.lastName,
+            extensionName: profileData.extensionName,
+            age: profileData.age,
+            sex: profileData.sex,
+            civilStatus: profileData.civilStatus,
+            religion: profileData.religion,
+            ipGroup: profileData.ipGroup,
+            pwd: profileData.pwd,
+            phone: profileData.phone,
+            address: profileData.address,
+            email: profileData.email
+        };
+
+        localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(syncData));
+        
+        router.post('/profile/save', {
+            profile_data: syncData
+        }, {
+            onSuccess: () => {
+                setIsEditingProfile(false);
+                toast.success("Profile saved and synchronized successfully!");
+            },
+            onError: () => {
+                toast.error("Failed to sync profile with database.");
+            }
+        });
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

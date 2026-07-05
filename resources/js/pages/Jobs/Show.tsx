@@ -71,6 +71,7 @@ export default function JobDetails({ id, auth, job: serverJob }: JobDetailsProps
     const [attachedDocs, setAttachedDocs] = useState<Record<string, boolean>>({});
     const [toFollowDocs, setToFollowDocs] = useState<Record<string, boolean>>({});
     const [customFiles, setCustomFiles] = useState<Record<string, File | null>>({});
+    const [selectedEligibilities, setSelectedEligibilities] = useState<string[]>([]);
     // Auto-fill from Profile
     // Update the useEffect hook to populate form data from local storage when the application form (isApplyOpen) is opened.
     // This ensures that users don't have to re-enter their information if they have already saved it in their dashboard.
@@ -241,7 +242,16 @@ export default function JobDetails({ id, auth, job: serverJob }: JobDetailsProps
                 awards: formData.awards,
                 skills: skills,
                 experience: experienceDescription,
-                documents: uploadedDocs
+                documents: uploadedDocs,
+                middleName: formData.middleName,
+                extensionName: formData.extensionName,
+                religion: formData.religion,
+                isIP: formData.isIP,
+                isPWD: formData.isPWD,
+                alternateContact: formData.alternateContact,
+                source: formData.source,
+                openToOthers: formData.openToOthers,
+                eligibilities: selectedEligibilities
             }
         }, {
             onSuccess: () => {
@@ -622,7 +632,18 @@ export default function JobDetails({ id, auth, job: serverJob }: JobDetailsProps
                                     "Other"
                                 ].map((eligibility, i) => (
                                     <div key={i} className="flex items-start space-x-2">
-                                        <Checkbox id={`civil-${i}`} className="mt-1" />
+                                        <Checkbox 
+                                            id={`civil-${i}`} 
+                                            className="mt-1" 
+                                            checked={selectedEligibilities.includes(eligibility)}
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                    setSelectedEligibilities([...selectedEligibilities, eligibility]);
+                                                } else {
+                                                    setSelectedEligibilities(selectedEligibilities.filter(e => e !== eligibility));
+                                                }
+                                            }}
+                                        />
                                         <Label htmlFor={`civil-${i}`} className="leading-snug cursor-pointer font-normal text-gray-700">
                                             {eligibility}
                                         </Label>

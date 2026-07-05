@@ -101,6 +101,51 @@ class ApplicantController extends Controller
         return Inertia::render('dashboard', [
             'applications' => $applications,
             'jobs' => $jobs,
+            'dbProfileData' => $user->profile_data,
         ]);
+    }
+
+    /**
+     * Save the applicant's profile data.
+     */
+    public function saveProfileData(Request $request)
+    {
+        $user = Auth::user();
+        $profile = $request->input('profile_data');
+        
+        $user->profile_data = $profile;
+        $user->save();
+
+        // Sync with existing applications
+        $applications = Application::where('email', $user->email)->get();
+        foreach ($applications as $app) {
+            $dyn = $app->dynamic_responses ?? [];
+            
+            // Merge profile fields into dynamic_responses
+            foreach ($profile as $key => $value) {
+                $dyn[$key] = $value;
+            }
+            
+            if (isset($profile['phone'])) {
+                $app->phone_number = $profile['phone'];
+                $dyn['phone_number'] = $profile['phone'];
+            }
+            
+            if (isset($profile['firstName']) || isset($profile['lastName'])) {
+                $first = $profile['firstName'] ?? '';
+                $middle = $profile['middleName'] ?? '';
+                $last = $profile['lastName'] ?? '';
+                $ext = $profile['extensionName'] ?? '';
+                $fullName = trim("{$first} " . ($middle ? "{$middle} " : "") . $last . ($ext ? " {$ext}" : ""));
+                if ($fullName) {
+                    $app->applicant_name = $fullName;
+                }
+            }
+
+            $app->dynamic_responses = $dyn;
+            $app->save();
+        }
+
+        return redirect()->back()->with('message', 'Profile updated successfully!');
     }
 }

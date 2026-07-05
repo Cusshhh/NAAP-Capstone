@@ -1,6 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import axios from 'axios';
-import { Shield, Users, LogOut, Search, Download, Star, Calendar, Eye, Edit, Trash, Plus, ChevronDown, ChevronUp, Briefcase, Layout, TrendingUp, GraduationCap, Award, BookOpen, FileText } from 'lucide-react';
+import { Shield, Users, LogOut, Search, Download, Star, Calendar, Eye, Edit, Trash, Plus, ChevronDown, ChevronUp, Briefcase, Layout, TrendingUp, GraduationCap, Award, BookOpen, FileText, ExternalLink } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { mockApplications, mockInterviews, getApplications } from '@/data/mockData';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import AdminLayout from '@/layouts/AdminLayout';
 
 export default function Applicants({ auth, applications: serverApplications }: { auth: any, applications: any[] }) {
@@ -124,10 +125,42 @@ export default function Applicants({ auth, applications: serverApplications }: {
     // Document Viewer State
     const [viewingDocument, setViewingDocument] = useState<{ name: string; url: string; fileName?: string } | null>(null);
     const [isDocViewerOpen, setIsDocViewerOpen] = useState(false);
+    const [isZoomed, setIsZoomed] = useState(false);
 
     const handleViewDocument = (name: string, url: string, fileName?: string) => {
         setViewingDocument({ name, url, fileName });
         setIsDocViewerOpen(true);
+        setIsZoomed(false);
+    };
+
+    const handleDownload = () => {
+        if (!viewingDocument) return;
+        const link = document.createElement('a');
+        link.href = viewingDocument.url || '#';
+        link.download = viewingDocument.fileName || viewingDocument.name || 'document';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleOpenInNewTab = () => {
+        if (!viewingDocument) return;
+        if (viewingDocument.url.startsWith('data:image')) {
+            const newTab = window.open();
+            if (newTab) {
+                newTab.document.write(
+                    `<html><head><title>${viewingDocument.name}</title></head>` +
+                    `<body style="margin:0;display:flex;justify-content:center;align-items:center;background:#1e1e24;color:white;font-family:sans-serif;">` +
+                    `<img src="${viewingDocument.url}" style="max-width:100%;box-shadow:0 10px 25px rgba(0,0,0,0.5);border-radius:4px;" />` +
+                    `</body></html>`
+                );
+                newTab.document.close();
+            } else {
+                toast.error("Popup blocked! Please allow popups to view this image in a new tab.");
+            }
+        } else {
+            window.open(viewingDocument.url, '_blank');
+        }
     };
 
     const scoreToPercentage = (score: number) => {
@@ -574,136 +607,246 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                         <DialogTrigger asChild>
                                                             <Button variant="outline" size="sm">View</Button>
                                                         </DialogTrigger>
-                                                        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                                                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                                                             <DialogHeader>
                                                                 <DialogTitle>Applicant Details</DialogTitle>
                                                             </DialogHeader>
                                                             <div className="space-y-4 text-sm">
-                                                                <div className="grid grid-cols-2 gap-4">
-                                                                    <div className="space-y-1">
-                                                                        <h4 className="font-semibold text-gray-900">Application</h4>
-                                                                        <p className="flex justify-between"><span className="text-gray-500">Position:</span> <span>{app.jobTitle}</span></p>
-                                                                        <p className="flex justify-between"><span className="text-gray-500">Campus:</span> <span>{app.campus ? app.campus.replace('NAAP - ', '') : 'N/A'}</span></p>
-                                                                        <p className="flex justify-between"><span className="text-gray-500">Applied:</span> <span>{new Date(app.submittedDate).toLocaleDateString()}</span></p>
-                                                                    </div>
-                                                                    <div className="space-y-1">
-                                                                        <h4 className="font-semibold text-gray-900">Personal Info</h4>
-                                                                        <p className="flex justify-between"><span className="text-gray-500">Name:</span> <span className="font-medium">{app.applicantName}</span></p>
-                                                                        <p className="flex justify-between"><span className="text-gray-500">Email:</span> <span className="truncate w-32 text-right" title={app.email}>{app.email}</span></p>
-
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="grid grid-cols-2 gap-4">
-                                                                    <div className="space-y-1">
-                                                                        <h4 className="font-semibold text-gray-900">Education</h4>
-                                                                        <p className="text-gray-700 leading-tight">{app.education}</p>
-                                                                    </div>
-                                                                    <div className="space-y-1">
-                                                                        <h4 className="font-semibold text-gray-900">Experience</h4>
-                                                                        <p className="text-gray-700 leading-tight">{app.experience}</p>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div>
-                                                                    <h4 className="font-semibold text-gray-900 mb-1">Skills</h4>
-                                                                    <div className="flex flex-wrap gap-1.5">
-                                                                        {app.skills.map((skill: string, i: number) => (
-                                                                            <Badge key={i} variant="secondary" className="text-xs px-1.5 py-0">{skill}</Badge>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="space-y-2">
-                                                                    <h4 className="font-semibold text-gray-900">Uploaded Documents</h4>
-                                                                    <div className="grid grid-cols-1 gap-2">
-                                                                        {app.documents && app.documents.length > 0 ? (
-                                                                            app.documents.map((doc: any, i: number) => (
-                                                                                <div key={i} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-100">
-                                                                                    <div className="flex items-center overflow-hidden mr-2">
-                                                                                        <FileText className="flex-shrink-0 h-4 w-4 text-blue-500 mr-2" />
-                                                                                        <span className="text-sm text-gray-700 font-medium truncate">{doc.name}</span>
-                                                                                        {doc.fileName && (
-                                                                                            <span className="text-xs text-gray-500 ml-2 italic truncate max-w-[150px]">({doc.fileName})</span>
-                                                                                        )}
+                                                                <Tabs defaultValue="application" className="w-full">
+                                                                    <TabsList className="grid w-full grid-cols-4 h-9 bg-gray-100/80 rounded-lg p-1 mb-4 border">
+                                                                        <TabsTrigger value="application" className="text-xs">Application</TabsTrigger>
+                                                                        <TabsTrigger value="personal" className="text-xs">Personal Info</TabsTrigger>
+                                                                        <TabsTrigger value="qualifications" className="text-xs">Qualifications</TabsTrigger>
+                                                                        <TabsTrigger value="documents" className="text-xs">Documents</TabsTrigger>
+                                                                    </TabsList>
+                                                                    <TabsContent value="application" className="space-y-4">
+                                                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                                                            <h3 className="font-semibold text-gray-900 mb-3 text-sm">Position Details</h3>
+                                                                            <div className="grid grid-cols-2 gap-y-2 text-xs">
+                                                                                <span className="text-gray-500">Position Applied:</span>
+                                                                                <span className="font-semibold text-gray-950 text-right">{app.jobTitle}</span>
+                                                                                <span className="text-gray-500">Campus/Location:</span>
+                                                                                <span className="font-semibold text-gray-950 text-right">{app.campus ? app.campus.replace('NAAP - ', '') : 'N/A'}</span>
+                                                                                <span className="text-gray-500">Date Applied:</span>
+                                                                                <span className="font-semibold text-gray-950 text-right">{new Date(app.submittedDate).toLocaleDateString()}</span>
+                                                                                <span className="text-gray-500">Current Status:</span>
+                                                                                <span className="font-semibold text-right">
+                                                                                    <Badge className={`${getStatusColor(app.status)} px-2 py-0.5 text-[10px]`}>{app.status}</Badge>
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200">
+                                                                            <div className="flex justify-between items-center mb-3">
+                                                                                <h3 className="font-semibold text-blue-900 text-sm">AI Qualification Analysis</h3>
+                                                                                <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs px-2 py-0.5">{app.aiScore}% Match</Badge>
+                                                                            </div>
+                                                                            <p className="text-xs text-blue-800 leading-relaxed mb-4">
+                                                                                <span className="font-semibold">{getAiMatch(app.aiScore)}:</span> This applicant shows {getAiMatch(app.aiScore).toLowerCase()} alignment based on computed education level, years of experience, and training credentials.
+                                                                            </p>
+                                                                            {(() => {
+                                                                                const breakdown = app.aiScoreBreakdown || { education: 0, experience: 0, accomplishments: 0, training: 0 };
+                                                                                return (
+                                                                                    <div className="space-y-3">
+                                                                                        <div>
+                                                                                            <div className="flex justify-between text-[11px] mb-1">
+                                                                                                <span className="text-gray-600">Education Fit</span>
+                                                                                                <span className="font-semibold text-gray-900">{Math.round((breakdown.education / 5) * 100)}%</span>
+                                                                                            </div>
+                                                                                            <div className="w-full bg-gray-200 rounded-full h-1">
+                                                                                                <div className="bg-purple-600 h-1 rounded-full" style={{ width: `${(breakdown.education / 5) * 100}%` }} />
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <div className="flex justify-between text-[11px] mb-1">
+                                                                                                <span className="text-gray-600">Work Experience Fit</span>
+                                                                                                <span className="font-semibold text-gray-900">{Math.round((breakdown.experience / 25) * 100)}%</span>
+                                                                                            </div>
+                                                                                            <div className="w-full bg-gray-200 rounded-full h-1">
+                                                                                                <div className="bg-blue-600 h-1 rounded-full" style={{ width: `${(breakdown.experience / 25) * 100}%` }} />
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <div className="flex justify-between text-[11px] mb-1">
+                                                                                                <span className="text-gray-600">Awards & Recognition Fit</span>
+                                                                                                <span className="font-semibold text-gray-900">{Math.round((breakdown.accomplishments / 5) * 100)}%</span>
+                                                                                            </div>
+                                                                                            <div className="w-full bg-gray-200 rounded-full h-1">
+                                                                                                <div className="bg-yellow-600 h-1 rounded-full" style={{ width: `${(breakdown.accomplishments / 5) * 100}%` }} />
+                                                                                            </div>
+                                                                                        </div>
                                                                                     </div>
-                                                                                    <Button
-                                                                                        variant="ghost"
-                                                                                        size="sm"
-                                                                                        className="h-6 w-6 p-0 hover:bg-blue-100"
-                                                                                        type="button"
-                                                                                        onClick={(e) => {
-                                                                                            e.preventDefault();
-                                                                                            e.stopPropagation();
-                                                                                            handleViewDocument(doc.name, doc.url || '#', doc.fileName);
-                                                                                        }}
-                                                                                    >
-                                                                                        <Eye className="h-3 w-3 text-blue-600" />
-                                                                                    </Button>
-                                                                                </div>
-                                                                            ))
-                                                                        ) : (
-                                                                            <p className="text-xs text-gray-500 italic">No documents uploaded.</p>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-
-                                                                {app.toFollowDocs && app.toFollowDocs.length > 0 && (
-                                                                    <div className="space-y-2">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <h4 className="font-semibold text-orange-700">Pending Requirements</h4>
-                                                                            <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700 border-orange-200">To Follow</Badge>
+                                                                                );
+                                                                            })()}
                                                                         </div>
-                                                                        <div className="grid grid-cols-1 gap-2">
-                                                                            {app.toFollowDocs.map((docName: string, i: number) => (
-                                                                                <div key={i} className="flex items-center p-2 bg-orange-50/50 rounded border border-orange-100">
-                                                                                    <FileText className="flex-shrink-0 h-4 w-4 text-orange-400 mr-2" />
-                                                                                    <span className="text-sm text-gray-700 font-medium truncate">{docName}</span>
+                                                                    </TabsContent>
+                                                                    <TabsContent value="personal" className="space-y-4">
+                                                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
+                                                                            <div>
+                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Identity & Personal Information</h3>
+                                                                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">First Name</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.firstName || app.applicantName.split(' ')[0]}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Middle Name</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.middleName || 'N/A'}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Last Name</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.lastName || app.applicantName.split(' ').pop()}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Extension Name</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.extensionName || 'N/A'}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Age</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.age || 'N/A'}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Sex / Gender</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{app.dynamic_responses?.sex || 'N/A'}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Civil Status</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{app.dynamic_responses?.civilStatus || 'N/A'}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Religion</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{app.dynamic_responses?.religion || 'N/A'}</span></div>
                                                                                 </div>
-                                                                            ))}
+                                                                            </div>
+                                                                            <div>
+                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Demographics</h3>
+                                                                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Indigenous Group Member</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.isIP || 'No'}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Person with Disability (PWD)</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.isPWD || 'No'}</span></div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div>
+                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Contact Information</h3>
+                                                                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Email Address</span><span className="font-semibold text-gray-900 mt-0.5 truncate" title={app.email}>{app.email}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Primary Phone Number</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.phone_number || app.phone_number || 'N/A'}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Alternate Phone Number</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.alternateContact || 'N/A'}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Source Referral</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{app.dynamic_responses?.source ? app.dynamic_responses.source.replace('_', ' ') : 'N/A'}</span></div>
+                                                                                    <div className="flex flex-col col-span-2"><span className="text-gray-500">Residential Address</span><span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{app.dynamic_responses?.address || 'N/A'}</span></div>
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                )}
-
-                                                                {app.custom_file_responses && Object.keys(app.custom_file_responses).length > 0 && (
-                                                                    <div className="space-y-2">
-                                                                        <h4 className="font-semibold text-blue-900 border-t pt-2 mt-2">Custom File Requirements</h4>
-                                                                        <div className="grid grid-cols-1 gap-2">
-                                                                            {Object.entries(app.custom_file_responses).map(([label, path]: [string, any]) => (
-                                                                                <div key={label} className="flex items-center justify-between p-2 bg-blue-50/30 rounded border border-blue-100">
-                                                                                    <div className="flex items-center overflow-hidden mr-2">
-                                                                                        <FileText className="flex-shrink-0 h-4 w-4 text-blue-500 mr-2" />
-                                                                                        <span className="text-sm text-gray-700 font-medium truncate">{label}</span>
+                                                                    </TabsContent>
+                                                                    <TabsContent value="qualifications" className="space-y-4">
+                                                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
+                                                                            <div>
+                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Professional Credentials</h3>
+                                                                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Highest Education Attained</span><span className="font-semibold text-gray-900 mt-0.5">{app.education || 'N/A'}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Years of Experience</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.yearsOfExperience || (app.aiScoreBreakdown?.experience ? Math.max(1, app.aiScoreBreakdown.experience) : 'N/A')} years</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Training hours</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.trainingHours || 'N/A'} hours</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Open to other positions?</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{app.dynamic_responses?.openToOthers || 'Yes'}</span></div>
+                                                                                    <div className="flex flex-col col-span-2"><span className="text-gray-500">Detailed Experience Summary</span><span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{app.experience}</span></div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div>
+                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Awards & Recognition</h3>
+                                                                                {app.dynamic_responses?.awards && app.dynamic_responses.awards.length > 0 ? (
+                                                                                    <div className="flex flex-wrap gap-1.5 mt-1">
+                                                                                        {app.dynamic_responses.awards.map((award: string, i: number) => (
+                                                                                            <Badge key={i} variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 capitalize">
+                                                                                                {award.replace('_', ' ')}
+                                                                                            </Badge>
+                                                                                        ))}
                                                                                     </div>
-                                                                                    <Button
-                                                                                        variant="ghost"
-                                                                                        size="sm"
-                                                                                        className="h-6 w-6 p-0 hover:bg-blue-100"
-                                                                                        type="button"
-                                                                                        onClick={(e) => {
-                                                                                            e.preventDefault();
-                                                                                            e.stopPropagation();
-                                                                                            window.open(`/storage/${path}`, '_blank');
-                                                                                        }}
-                                                                                    >
-                                                                                        <Eye className="h-3 w-3 text-blue-600" />
-                                                                                    </Button>
+                                                                                ) : (
+                                                                                    <p className="text-xs text-gray-500 italic">No awards listed</p>
+                                                                                )}
+                                                                            </div>
+                                                                            <div>
+                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Verified Skills</h3>
+                                                                                <div className="flex flex-wrap gap-1.5 mt-1">
+                                                                                    {app.skills && app.skills.length > 0 ? (
+                                                                                        app.skills.map((skill: string, i: number) => (
+                                                                                            <Badge key={i} variant="secondary" className="text-xs px-1.5 py-0.5">{skill}</Badge>
+                                                                                        ))
+                                                                                    ) : (
+                                                                                        <span className="text-xs text-gray-500 italic">No skills listed</span>
+                                                                                    )}
                                                                                 </div>
-                                                                            ))}
+                                                                            </div>
+                                                                            <div>
+                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Civil Service & Board Eligibilities</h3>
+                                                                                {app.dynamic_responses?.eligibilities && app.dynamic_responses.eligibilities.length > 0 ? (
+                                                                                    <ul className="list-disc pl-4 text-xs text-gray-700 space-y-1 mt-1">
+                                                                                        {app.dynamic_responses.eligibilities.map((eligibility: string, i: number) => (
+                                                                                            <li key={i} className="font-semibold">{eligibility}</li>
+                                                                                        ))}
+                                                                                    </ul>
+                                                                                ) : (
+                                                                                    <p className="text-xs text-gray-500 italic">No CS/Board eligibilities declared</p>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                )}
-
-                                                                <div className="bg-blue-50 p-3 rounded-md">
-                                                                    <div className="flex justify-between items-center mb-1">
-                                                                        <h4 className="font-semibold text-blue-900 text-xs uppercase tracking-wide">AI Analysis</h4>
-                                                                        <Badge variant="outline" className="bg-white text-blue-700 border-blue-200">{app.aiScore}% Match</Badge>
-                                                                    </div>
-                                                                    <p className="text-xs text-blue-800 leading-relaxed">
-                                                                        <span className="font-medium">{getAiMatch(app.aiScore)}:</span> Evaluation based on skills alignment and experience.
-                                                                    </p>
-                                                                </div>
-
+                                                                    </TabsContent>
+                                                                    <TabsContent value="documents" className="space-y-4">
+                                                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
+                                                                            <div className="space-y-2">
+                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Uploaded Documents</h3>
+                                                                                <div className="grid grid-cols-1 gap-2">
+                                                                                    {app.documents && app.documents.length > 0 ? (
+                                                                                        app.documents.map((doc: any, i: number) => (
+                                                                                            <div key={i} className="flex items-center justify-between p-2 bg-white rounded border border-gray-100 shadow-sm animate-fade-in">
+                                                                                                <div className="flex items-center overflow-hidden mr-2">
+                                                                                                    <FileText className="flex-shrink-0 h-4 w-4 text-blue-500 mr-2" />
+                                                                                                    <span className="text-sm text-gray-700 font-medium truncate">{doc.name}</span>
+                                                                                                    {doc.fileName && (
+                                                                                                        <span className="text-xs text-gray-500 ml-2 italic truncate max-w-[150px]">({doc.fileName})</span>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                                <Button
+                                                                                                    variant="ghost"
+                                                                                                    size="sm"
+                                                                                                    className="h-6 w-6 p-0 hover:bg-blue-100"
+                                                                                                    type="button"
+                                                                                                    onClick={(e) => {
+                                                                                                        e.preventDefault();
+                                                                                                        e.stopPropagation();
+                                                                                                        handleViewDocument(doc.name, doc.url || '#', doc.fileName);
+                                                                                                    }}
+                                                                                                >
+                                                                                                    <Eye className="h-3 w-3 text-blue-600" />
+                                                                                                </Button>
+                                                                                            </div>
+                                                                                        ))
+                                                                                    ) : (
+                                                                                        <p className="text-xs text-gray-500 italic">No documents uploaded.</p>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                            {app.toFollowDocs && app.toFollowDocs.length > 0 && (
+                                                                                <div className="space-y-2">
+                                                                                    <div className="flex items-center gap-2 border-b pb-1.5 mb-2">
+                                                                                        <h3 className="font-semibold text-orange-700 text-sm">Pending Requirements</h3>
+                                                                                        <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700 border-orange-200">To Follow</Badge>
+                                                                                    </div>
+                                                                                    <div className="grid grid-cols-1 gap-2">
+                                                                                        {app.toFollowDocs.map((docName: string, i: number) => (
+                                                                                            <div key={i} className="flex items-center p-2 bg-orange-50/20 rounded border border-orange-100">
+                                                                                                <FileText className="flex-shrink-0 h-4 w-4 text-orange-400 mr-2" />
+                                                                                                <span className="text-sm text-gray-700 font-medium truncate">{docName}</span>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                            {app.custom_file_responses && Object.keys(app.custom_file_responses).length > 0 && (
+                                                                                <div className="space-y-2">
+                                                                                    <h3 className="font-semibold text-blue-900 text-sm border-b pb-1.5 mb-2">Custom File Requirements</h3>
+                                                                                    <div className="grid grid-cols-1 gap-2">
+                                                                                        {Object.entries(app.custom_file_responses).map(([label, path]: [string, any]) => (
+                                                                                            <div key={label} className="flex items-center justify-between p-2 bg-white rounded border border-blue-100 shadow-sm">
+                                                                                                <div className="flex items-center overflow-hidden mr-2">
+                                                                                                    <FileText className="flex-shrink-0 h-4 w-4 text-blue-500 mr-2" />
+                                                                                                    <span className="text-sm text-gray-700 font-medium truncate">{label}</span>
+                                                                                                </div>
+                                                                                                <Button
+                                                                                                    variant="ghost"
+                                                                                                    size="sm"
+                                                                                                    className="h-6 w-6 p-0 hover:bg-blue-100"
+                                                                                                    type="button"
+                                                                                                    onClick={(e) => {
+                                                                                                        e.preventDefault();
+                                                                                                        e.stopPropagation();
+                                                                                                        window.open(`/storage/${path}`, '_blank');
+                                                                                                    }}
+                                                                                                >
+                                                                                                    <Eye className="h-3 w-3 text-blue-600" />
+                                                                                                </Button>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </TabsContent>
+                                                                </Tabs>
                                                                 <div className="flex gap-2 pt-2 border-t mt-2">
                                                                     <Button
                                                                         size="sm"
@@ -716,7 +859,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                     </Button>
                                                                     <Button
                                                                         size="sm"
-                                                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
                                                                         onClick={() => handleStatusUpdate(app.id, 'Hired')}
                                                                     >
                                                                         Hire
@@ -972,14 +1115,36 @@ export default function Applicants({ auth, applications: serverApplications }: {
                             {viewingDocument?.fileName && <span className="text-sm font-normal text-gray-500 ml-2">({viewingDocument.fileName})</span>}
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="flex-1 bg-gray-100 p-4 overflow-hidden flex items-center justify-center relative">
+
+                    {/* Dedicated Document Toolbar */}
+                    {viewingDocument?.url && (
+                        <div className="bg-white border-b px-6 py-2 flex items-center justify-between flex-shrink-0 shadow-sm">
+                            <span className="text-xs text-gray-500 font-medium">
+                                {viewingDocument.url.startsWith('data:image') ? '💡 Click the document image below to zoom in/out' : '📄 Document preview'}
+                            </span>
+                            <div className="flex gap-2">
+                                <Button variant="outline" size="sm" onClick={handleOpenInNewTab} className="h-8 text-xs border-gray-300 text-gray-700 hover:bg-gray-100 py-1 px-3">
+                                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                                    Open in New Tab
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={handleDownload} className="h-8 text-xs border-gray-300 text-gray-700 hover:bg-gray-100 py-1 px-3">
+                                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                                    Download
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className={`flex-1 bg-gray-100 p-6 overflow-auto relative ${isZoomed ? 'block text-center' : 'flex items-center justify-center'}`}>
                         {/* Real File Viewer */}
                         {viewingDocument?.url && viewingDocument.url.startsWith('data:') ? (
                             viewingDocument.url.startsWith('data:image') ? (
                                 <img
                                     src={viewingDocument.url}
                                     alt={viewingDocument.name}
-                                    className="max-w-full max-h-full object-contain shadow-lg border border-gray-300 rounded-md bg-white"
+                                    onClick={() => setIsZoomed(!isZoomed)}
+                                    className={`${isZoomed ? 'w-[150%] max-w-none mx-auto cursor-zoom-out' : 'max-w-full max-h-full object-contain cursor-zoom-in'} shadow-lg border border-gray-300 rounded-md bg-white transition-all duration-200`}
+                                    title="Click to zoom in/out"
                                 />
                             ) : (
                                 <iframe
@@ -1002,7 +1167,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                     <Button variant="outline" onClick={() => setIsDocViewerOpen(false)}>
                                         Close Preview
                                     </Button>
-                                    <Button className="bg-blue-600 text-white hover:bg-blue-700">
+                                    <Button className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleDownload}>
                                         <Download className="h-4 w-4 mr-2" />
                                         Download File
                                     </Button>
