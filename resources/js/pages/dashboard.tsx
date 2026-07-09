@@ -7,6 +7,7 @@ import {
     FileText,
     Clock,
     CheckCircle,
+    Award,
     XCircle,
     Users,
     Mail,
@@ -32,7 +33,7 @@ import {
 } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from "@/components/ui/input";
 import { mockApplications, getApplications, getDynamicNotifications, getJobs } from '@/data/mockData';
 
@@ -477,12 +478,40 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         if (filterStatus === 'Total') return true;
         if (filterStatus === 'Submitted') return app.status === 'Submitted';
         if (filterStatus === 'In Review') return app.status === 'Under Review';
-        if (filterStatus === 'Interview') return app.status === 'Interview' || app.status === 'Hired'; // Adjust mapping as needed
+        if (filterStatus === 'Interview') return app.status === 'Shortlisted';
         return false;
     });
 
     const [activeTab, setActiveTab] = useState<'applications' | 'profile'>('applications');
     const user = auth.user;
+
+    const checkInterviewMatch = (interview: any) => {
+        if (!interview) return false;
+        
+        const candidateName = (interview.candidateName || '').toLowerCase();
+        const applicantEmail = (interview.applicantEmail || '').toLowerCase();
+
+        const userName = (auth.user?.name || '').toLowerCase();
+        const userEmail = (auth.user?.email || '').toLowerCase();
+        const userId = String(auth.user?.id || '').toLowerCase();
+        const userFullName = (profileData?.fullName || '').toLowerCase();
+
+        const nameMatches = candidateName && (
+            candidateName.includes(userName) ||
+            userName.includes(candidateName) ||
+            (userFullName && (
+                candidateName.includes(userFullName) ||
+                userFullName.includes(candidateName)
+            ))
+        );
+
+        const emailMatches = applicantEmail && (
+            applicantEmail === userEmail ||
+            applicantEmail === userId
+        );
+
+        return !!(nameMatches || emailMatches);
+    };
 
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -574,6 +603,23 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             });
         });
 
+        // 4. Real Scheduled Interviews notifications
+        try {
+            const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+            savedInterviews.forEach((interview: any) => {
+                if (checkInterviewMatch(interview)) {
+                    const notifyId = `interview_notify_${interview.date}_${interview.time}`;
+                    notifications.push({
+                        id: notifyId,
+                        text: `Interview Scheduled: For ${interview.position || 'School Nurse'} on ${new Date(interview.date).toLocaleDateString()} at ${interview.time}. Venue: ${interview.venue}.`,
+                        time: new Date().toISOString().split('T')[0],
+                        isRead: readNotifications.includes(notifyId),
+                        type: 'info'
+                    });
+                }
+            });
+        } catch (e) {}
+
         // Sort by date (newest first), then by id as tie-breaker
         return notifications.sort((a, b) => {
             const timeA = a.time ? new Date(a.time).getTime() : 0;
@@ -606,6 +652,14 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
     useEffect(() => {
         setNotifications(buildNotifications());
+
+        const handleStorage = (e: StorageEvent) => {
+            if (e.key === 'scheduled_interviews_custom' || !e.key) {
+                setNotifications(buildNotifications());
+            }
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
     }, [myApplications, jobs]);
 
     const [savedJobDetails, setSavedJobDetails] = useState<any[]>([]);
@@ -689,16 +743,48 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 }
             });
 
+            // 4. Real Scheduled Interviews from admin
+            try {
+                const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+                savedInterviews.forEach((interview: any) => {
+                    if (checkInterviewMatch(interview)) {
+                        let formattedDate = interview.date;
+                        try {
+                            const dateObj = new Date(interview.date);
+                            formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        } catch (e) {}
+
+                        eventsList.push({
+                            id: `real_interview_${interview.date}_${interview.time}`,
+                            title: `Interview: ${interview.position || 'School Nurse'}`,
+                            date: formattedDate,
+                            time: interview.time,
+                            venue: interview.venue,
+                            panelMembers: interview.panelMembers,
+                            resultNotes: interview.resultNotes,
+                            type: 'Interview'
+                        });
+                    }
+                });
+            } catch (e) {}
+
             // Add custom local events
             const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('custom_calendar_events') || '[]') : [];
-            setMockEvents([...eventsList, ...localCustom]);
+            
+            // Sort events by date descending (newest/most recent first)
+            const sortedEvents = [...eventsList, ...localCustom].sort((a, b) => {
+                const dateA = a.date ? new Date(a.date).getTime() : 0;
+                const dateB = b.date ? new Date(b.date).getTime() : 0;
+                return dateB - dateA;
+            });
+            setMockEvents(sortedEvents);
         };
 
         buildEvents();
         
-        // Listen to storage changes in case custom events are added/deleted on Calendar page
+        // Listen to storage changes
         const handleStorage = (e: StorageEvent) => {
-            if (e.key === 'custom_calendar_events') {
+            if (e.key === 'custom_calendar_events' || e.key === 'scheduled_interviews_custom') {
                 buildEvents();
             }
         };
@@ -711,9 +797,20 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         total: myApplications.length,
         submitted: myApplications.filter(a => a.status === 'Submitted').length,
         underReview: myApplications.filter(a => a.status === 'Under Review').length,
+        shortlisted: myApplications.filter(a => a.status === 'Shortlisted').length,
         rejected: myApplications.filter(a => a.status === 'Rejected').length,
         hired: myApplications.filter(a => a.status === 'Hired').length,
     };
+
+    const scheduledInterviewsCount = (() => {
+        if (typeof window === 'undefined') return 0;
+        try {
+            const saved = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+            return saved.filter((interview: any) => checkInterviewMatch(interview)).length;
+        } catch (e) {
+            return 0;
+        }
+    })();
 
     const handleWithdraw = (id: number) => {
         if (confirm("Are you sure you want to withdraw this application?")) {
@@ -754,6 +851,10 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     const handleLogout = () => {
         router.post('/logout');
     };
+
+    // Event Details Dialog State
+    const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
+    const [selectedEventDetails, setSelectedEventDetails] = useState<any>(null);
 
     // Messaging State
     const [messages, setMessages] = useState<any[]>([]);
@@ -802,10 +903,29 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     };
 
     // Status Badge Helper
-    const getStatusBadge = (status: string) => {
+    const getStatusBadge = (status: string, jobTitle?: string) => {
+        let displayStatus = status;
+
+        // If jobTitle is provided, check if there is an active scheduled interview for this job
+        if (jobTitle && typeof window !== 'undefined') {
+            try {
+                const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+                const hasInterview = savedInterviews.some((interview: any) => {
+                    if (!interview) return false;
+                    const isMatchingJob = (interview.position || '').toLowerCase() === jobTitle.toLowerCase();
+                    return isMatchingJob && checkInterviewMatch(interview);
+                });
+                if (hasInterview) {
+                    displayStatus = 'Interview';
+                }
+            } catch (e) {}
+        }
+
         const styles: Record<string, string> = {
             'Submitted': 'bg-blue-100 text-blue-700 border-blue-200',
             'Under Review': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+            'Shortlisted': 'bg-[#eef2ff] text-[#4f46e5] border-[#c7d2fe]',
+            'Interview': 'bg-purple-100 text-purple-700 border-purple-200',
             'Hired': 'bg-emerald-100 text-emerald-700 border-emerald-200',
             'Rejected': 'bg-red-100 text-red-700 border-red-200',
             'Withdrawn': 'bg-gray-100 text-gray-700 border-gray-200',
@@ -813,18 +933,20 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         const icons: Record<string, any> = {
             'Submitted': Clock,
             'Under Review': FileText,
+            'Shortlisted': Award,
+            'Interview': Calendar,
             'Hired': CheckCircle,
             'Rejected': XCircle,
             'Withdrawn': Ban,
         };
 
-        const Icon = icons[status] || Clock;
-        const style = styles[status] || 'bg-gray-100 text-gray-700 border-gray-200';
+        const Icon = icons[displayStatus] || Clock;
+        const style = styles[displayStatus] || 'bg-gray-100 text-gray-700 border-gray-200';
 
         return (
             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${style}`}>
                 <Icon className="w-3.5 h-3.5" />
-                {status}
+                {displayStatus}
             </span>
         );
     };
@@ -1006,7 +1128,27 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                             <div>
                                 <h1 className="text-3xl font-bold">{getGreeting()}, {user.name}!</h1>
-                                <p className="text-blue-200 mt-2 max-w-xl">You have <span className="text-[#ffdd59] font-bold">{statusCounts.underReview} applications</span> under review. Keep your profile updated to increase your chances.</p>
+                                {(() => {
+                                    if (scheduledInterviewsCount > 0) {
+                                        return (
+                                            <p className="text-blue-200 mt-2 max-w-xl">
+                                                You have <span className="text-[#ffdd59] font-bold">{scheduledInterviewsCount} scheduled {scheduledInterviewsCount === 1 ? 'interview' : 'interviews'}</span> upcoming! Best of luck with your preparation.
+                                            </p>
+                                        );
+                                    } else if (statusCounts.total > 0) {
+                                        return (
+                                            <p className="text-blue-200 mt-2 max-w-xl">
+                                                You have <span className="text-[#ffdd59] font-bold">{statusCounts.total} active {statusCounts.total === 1 ? 'application' : 'applications'}</span> in progress. Keep checking here for updates!
+                                            </p>
+                                        );
+                                    } else {
+                                        return (
+                                            <p className="text-blue-200 mt-2 max-w-xl">
+                                                Welcome to NAAP Careers! Explore open positions below to start your application journey.
+                                            </p>
+                                        );
+                                    }
+                                })()}
                             </div>
 
                             <div className="flex gap-3">
@@ -1063,7 +1205,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                             { label: 'Total', value: statusCounts.total, color: 'text-gray-700', bg: 'bg-gray-50', border: 'border-gray-200' },
                                             { label: 'Submitted', value: statusCounts.submitted, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
                                             { label: 'In Review', value: statusCounts.underReview, color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200' },
-                                            { label: 'Interview', value: 0, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
+                                            { label: 'Interview', value: statusCounts.shortlisted, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
                                         ].map((stat, i) => (
                                             <div
                                                 key={i}
@@ -1080,43 +1222,61 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                     </div>
 
                                     {/* Recent Application Timeline Feature */}
-                                    {myApplications.length > 0 && (
-                                        <div ref={timelineRef} className="bg-white border border-gray-200 rounded-xl p-6">
-                                            <h3 className="font-bold text-[#193153] flex items-center gap-2 mb-6">
-                                                <Clock className="w-5 h-5 text-[#ffdd59]" />
-                                                Latest Application Timeline
-                                            </h3>
-                                            <div className="relative">
-                                                <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-100 -translate-y-1/2 rounded-full"></div>
-                                                <div className="relative flex justify-between">
-                                                    {/* Step 1 */}
-                                                    <div className="flex flex-col items-center gap-2 bg-white px-2">
-                                                        <div className="w-8 h-8 rounded-full bg-[#193153] text-white flex items-center justify-center text-xs font-bold ring-4 ring-white">1</div>
-                                                        <span className="text-xs font-bold text-[#193153]">Applied</span>
-                                                    </div>
-                                                    {/* Step 2 */}
-                                                    <div className="flex flex-col items-center gap-2 bg-white px-2">
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-white ${myApplications[0].status !== 'Submitted' ? 'bg-[#193153] text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
-                                                        <span className="text-xs font-semibold text-gray-500">Review</span>
-                                                    </div>
-                                                    {/* Step 3 */}
-                                                    <div className="flex flex-col items-center gap-2 bg-white px-2">
-                                                        <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold ring-4 ring-white">3</div>
-                                                        <span className="text-xs font-semibold text-gray-500">Interview</span>
-                                                    </div>
-                                                    {/* Step 4 */}
-                                                    <div className="flex flex-col items-center gap-2 bg-white px-2">
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-white ${myApplications[0].status === 'Hired' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'}`}>4</div>
-                                                        <span className="text-xs font-semibold text-gray-500">Result</span>
+                                    {myApplications.length > 0 && (() => {
+                                        const activeApp = myApplications[0];
+                                        let activeInterview = null;
+                                        try {
+                                            const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+                                            activeInterview = savedInterviews.find((interview: any) => {
+                                                if (!interview) return false;
+                                                const candidateJob = (interview.position || '').toLowerCase();
+                                                const isMatchingJob = candidateJob === (activeApp.jobTitle || '').toLowerCase();
+                                                return isMatchingJob && checkInterviewMatch(interview);
+                                            });
+                                        } catch (e) {}
+
+                                        return (
+                                            <div ref={timelineRef} className="bg-white border border-gray-200 rounded-xl p-6">
+                                                <h3 className="font-bold text-[#193153] flex items-center gap-2 mb-6">
+                                                    <Clock className="w-5 h-5 text-[#ffdd59]" />
+                                                    Latest Application Timeline
+                                                </h3>
+                                                <div className="relative">
+                                                    <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-100 -translate-y-1/2 rounded-full"></div>
+                                                    <div className="relative flex justify-between">
+                                                        {/* Step 1 */}
+                                                        <div className="flex flex-col items-center gap-2 bg-white px-2">
+                                                            <div className="w-8 h-8 rounded-full bg-[#193153] text-white flex items-center justify-center text-xs font-bold ring-4 ring-white">1</div>
+                                                            <span className="text-xs font-bold text-[#193153]">Applied</span>
+                                                        </div>
+                                                        {/* Step 2 */}
+                                                        <div className="flex flex-col items-center gap-2 bg-white px-2">
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-white ${activeApp.status !== 'Submitted' ? 'bg-[#193153] text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
+                                                            <span className={`text-xs ${activeApp.status !== 'Submitted' ? 'font-bold text-[#193153]' : 'font-semibold text-gray-500'}`}>Review</span>
+                                                        </div>
+                                                        {/* Step 3 */}
+                                                        <div className="flex flex-col items-center gap-2 bg-white px-2">
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-white ${['Shortlisted', 'Hired'].includes(activeApp.status) ? 'bg-[#193153] text-white' : 'bg-gray-200 text-gray-500'}`}>3</div>
+                                                            <span className={`text-xs ${['Shortlisted', 'Hired'].includes(activeApp.status) ? 'font-bold text-[#193153]' : 'font-semibold text-gray-500'}`}>Interview</span>
+                                                        </div>
+                                                        {/* Step 4 */}
+                                                        <div className="flex flex-col items-center gap-2 bg-white px-2">
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-white ${['Hired', 'Rejected'].includes(activeApp.status) ? (activeApp.status === 'Hired' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white') : 'bg-gray-200 text-gray-500'}`}>4</div>
+                                                            <span className={`text-xs ${['Hired', 'Rejected'].includes(activeApp.status) ? (activeApp.status === 'Hired' ? 'font-bold text-emerald-600' : 'font-bold text-red-600') : 'font-semibold text-gray-500'}`}>Result</span>
+                                                        </div>
                                                     </div>
                                                 </div>
+                                                <div className="mt-6 p-3 bg-blue-50 rounded-lg text-sm text-blue-800 flex items-start gap-3">
+                                                    <AlertCircle className="w-5 h-5 shrink-0" />
+                                                    {activeInterview ? (
+                                                        <p>Your interview for <strong>{activeApp.jobTitle}</strong> is scheduled on <strong>{new Date(activeInterview.date).toLocaleDateString()} at {activeInterview.time}</strong>. Venue: <strong>{activeInterview.venue}</strong>. {activeInterview.panelMembers ? `Panel: ${activeInterview.panelMembers}.` : ''}</p>
+                                                    ) : (
+                                                        <p>Your application for <strong>{activeApp.jobTitle}</strong> is currently <strong>{activeApp.status}</strong>. We will notify you via email for the next steps.</p>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="mt-6 p-3 bg-blue-50 rounded-lg text-sm text-blue-800 flex items-start gap-3">
-                                                <AlertCircle className="w-5 h-5 shrink-0" />
-                                                <p>Your application for <strong>{myApplications[0].jobTitle}</strong> is currently <strong>{myApplications[0].status}</strong>. We will notify you via email for the next steps.</p>
-                                            </div>
-                                        </div>
-                                    )}
+                                        );
+                                    })()}
 
                                     {/* Application List */}
                                     <div>
@@ -1153,7 +1313,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                         </div>
 
                                                         <div className="flex items-center gap-4">
-                                                            {getStatusBadge(app.status)}
+                                                            {getStatusBadge(app.status, app.jobTitle)}
                                                             <Link href={`/jobs/${app.jobId}`}>
                                                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
                                                                     <ChevronRight className="w-5 h-5" />
@@ -1213,17 +1373,31 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                         <div className="p-4 bg-gray-50 min-h-[150px] flex flex-col gap-3">
                                             {mockEvents.length > 0 ? (
                                                 mockEvents.map(event => {
+                                                    const isInterview = event.type === 'Interview';
                                                     const cardContent = (
-                                                        <div className="bg-white p-3 rounded-lg border border-gray-100 flex items-start gap-3 shadow-sm hover:border-[#193153] transition-colors text-left h-full">
-                                                            <div className="bg-blue-50 text-[#193153] p-2 rounded text-center min-w-[50px]">
-                                                                <span className="block text-xs font-bold uppercase">{event.date.split(' ')[0]}</span>
-                                                                <span className="block text-lg font-bold leading-none">{event.date.split(' ')[1].replace(',', '')}</span>
+                                                        <div 
+                                                            onClick={() => {
+                                                                if (isInterview) {
+                                                                    setSelectedEventDetails(event);
+                                                                    setIsEventDialogOpen(true);
+                                                                }
+                                                            }}
+                                                            className={`bg-white p-3 rounded-lg border border-gray-100 flex items-start gap-3 shadow-sm hover:border-[#193153] transition-colors text-left h-full ${isInterview ? 'cursor-pointer hover:border-purple-600' : ''}`}
+                                                        >
+                                                            <div className={`p-2 rounded text-center min-w-[50px] ${isInterview ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-[#193153]'}`}>
+                                                                <span className="block text-xs font-bold uppercase">{String(event.date || '').split(' ')[0] || ''}</span>
+                                                                <span className="block text-lg font-bold leading-none">{String(event.date || '').split(' ')[1]?.replace(',', '') || ''}</span>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-sm font-bold text-gray-900 leading-tight">{event.title}</h4>
                                                                 <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                                                                     <Clock className="w-3 h-3" /> {event.time}
                                                                 </p>
+                                                                {isInterview && event.venue && (
+                                                                    <p className="text-[10px] text-purple-600 font-semibold mt-1">
+                                                                        Venue: {event.venue}
+                                                                    </p>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     );
@@ -1783,6 +1957,55 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                 </div>
                             )}
                         </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* --- INTERVIEW EVENT DETAILS DIALOG --- */}
+                <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
+                    <DialogContent className="max-w-md bg-white p-6 rounded-xl">
+                        <DialogHeader className="border-b pb-4 mb-4">
+                            <DialogTitle className="flex items-center gap-2 text-lg text-purple-700 font-bold">
+                                <Calendar className="h-5 w-5 text-purple-600" />
+                                {selectedEventDetails?.title || 'Interview Details'}
+                            </DialogTitle>
+                        </DialogHeader>
+                        {selectedEventDetails && (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-3 gap-2">
+                                    <span className="text-sm font-semibold text-gray-500">Date:</span>
+                                    <span className="text-sm text-gray-900 col-span-2">{selectedEventDetails.date}</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <span className="text-sm font-semibold text-gray-500">Time:</span>
+                                    <span className="text-sm text-gray-900 col-span-2">{selectedEventDetails.time}</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <span className="text-sm font-semibold text-gray-500">Venue:</span>
+                                    <span className="text-sm text-gray-900 col-span-2 font-medium">{selectedEventDetails.venue || 'Not specified'}</span>
+                                </div>
+                                {selectedEventDetails.panelMembers && (
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <span className="text-sm font-semibold text-gray-500">Panel Members:</span>
+                                        <span className="text-sm text-gray-900 col-span-2">{selectedEventDetails.panelMembers}</span>
+                                    </div>
+                                )}
+                                {selectedEventDetails.resultNotes && (
+                                    <div className="border-t pt-4 mt-2">
+                                        <span className="text-sm font-semibold text-gray-700 block mb-1">Additional Notes:</span>
+                                        <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border italic whitespace-pre-wrap">{selectedEventDetails.resultNotes}</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        <DialogFooter className="border-t pt-4 mt-4">
+                            <Button 
+                                type="button" 
+                                onClick={() => setIsEventDialogOpen(false)}
+                                className="bg-purple-600 hover:bg-purple-700 text-white font-bold w-full"
+                            >
+                                Close
+                            </Button>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
 

@@ -67,17 +67,71 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
             }
         });
 
+        // Load real Scheduled Interviews from admin
+        try {
+            const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+            savedInterviews.forEach((interview: any) => {
+                if (!interview) return;
+                const candidateName = (interview.candidateName || '').toLowerCase();
+                const applicantEmail = (interview.applicantEmail || '').toLowerCase();
+                const userName = (user?.name || '').toLowerCase();
+                const userEmail = (user?.email || '').toLowerCase();
+                const userId = String(user?.id || '').toLowerCase();
+
+                const nameMatches = candidateName && (
+                    candidateName.includes(userName) ||
+                    userName.includes(candidateName)
+                );
+                const emailMatches = applicantEmail && (
+                    applicantEmail === userEmail ||
+                    applicantEmail === userId
+                );
+
+                if (nameMatches || emailMatches) {
+                    let formattedDate = interview.date;
+                    try {
+                        const dateObj = new Date(interview.date);
+                        formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    } catch (e) {}
+
+                    eventsList.push({
+                        id: `real_interview_${interview.date}_${interview.time}`,
+                        title: `Interview: ${interview.position || 'School Nurse'}`,
+                        date: formattedDate,
+                        time: interview.time,
+                        venue: interview.venue,
+                        panelMembers: interview.panelMembers,
+                        type: 'Interview'
+                    });
+                }
+            });
+        } catch (e) {}
+
         // Load custom events from LocalStorage
         const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('custom_calendar_events') || '[]') : [];
-        return [...eventsList, ...localCustom];
+        
+        // Sort events by date descending (newest/most recent first)
+        return [...eventsList, ...localCustom].sort((a, b) => {
+            const dateA = a.date ? new Date(a.date).getTime() : 0;
+            const dateB = b.date ? new Date(b.date).getTime() : 0;
+            return dateB - dateA;
+        });
     };
 
     // Local state for interactive events
     const [events, setEvents] = useState(() => buildEvents());
 
-    // Sync state if applications or jobs update
+    // Sync state if applications or jobs update, or storage changes
     React.useEffect(() => {
         setEvents(buildEvents());
+
+        const handleStorage = (e: StorageEvent) => {
+            if (e.key === 'custom_calendar_events' || e.key === 'scheduled_interviews_custom') {
+                setEvents(buildEvents());
+            }
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
     }, [applications, jobs]);
 
     // Form state

@@ -523,21 +523,21 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                     <div className="space-y-3">
                                         {interviews.length > 0 ? (
                                             interviews.map((interview, index) => (
-                                                <div key={interview.id || index} className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm">
+                                                <Link href="/admin/applicants#scheduled-interviews" key={interview.id || index} className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm cursor-pointer block">
                                                     <div className="flex-1 min-w-0">
                                                         <p className="text-sm font-medium text-gray-900 truncate">{interview.candidateName}</p>
                                                         <p className="text-xs text-gray-500 truncate">{interview.position}</p>
                                                     </div>
-                                                    <div className="text-right ml-2">
+                                                    <div className="text-right ml-2 bg-gray-50/80 px-2 py-1 rounded border border-gray-100">
                                                         <p className="text-xs font-bold text-gray-700">{interview.date ? new Date(interview.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</p>
                                                         <p className="text-[10px] text-gray-400">{interview.time}</p>
                                                     </div>
-                                                </div>
+                                                </Link>
                                             ))
                                         ) : (
                                             <p className="text-xs text-gray-400 text-center py-4">No upcoming interviews scheduled.</p>
                                         )}
-                                        <Link href="/admin/applicants" className="block pt-2">
+                                        <Link href="/admin/applicants#scheduled-interviews" className="block pt-2">
                                             <Button variant="outline" size="sm" className="w-full text-xs h-8 bg-white border-gray-200 hover:bg-gray-50 border-gray-300">
                                                 View All Interviews <ChevronRight className="w-3 h-3 ml-1" />
                                             </Button>

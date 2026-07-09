@@ -16,8 +16,65 @@ export default function AdminCalendar() {
     const { auth } = usePage().props as any;
     const admin = auth?.user || { name: 'Admin' };
 
+    // Helper to build dynamic and custom events
+    const buildEvents = () => {
+        const eventsList = [...mockEvents];
+
+        // Load custom events from LocalStorage
+        try {
+            const localCustom = JSON.parse(localStorage.getItem('custom_calendar_events') || '[]');
+            localCustom.forEach((e: any) => {
+                if (!eventsList.some(item => String(item.id) === String(e.id))) {
+                    eventsList.push(e);
+                }
+            });
+        } catch (e) {}
+
+        // Load scheduled interviews from admin
+        try {
+            const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+            savedInterviews.forEach((interview: any) => {
+                let formattedDate = interview.date;
+                try {
+                    const dateObj = new Date(interview.date);
+                    formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                } catch (e) {}
+
+                eventsList.push({
+                    id: `real_interview_${interview.date}_${interview.time}`,
+                    title: `Interview: ${interview.candidateName} - ${interview.position}`,
+                    date: formattedDate,
+                    time: interview.time,
+                    venue: interview.venue,
+                    panelMembers: interview.panelMembers,
+                    type: 'Interview'
+                });
+            });
+        } catch (e) {}
+
+        // Sort events by date descending (newest/most recent first)
+        return eventsList.sort((a, b) => {
+            const dateA = a.date ? new Date(a.date).getTime() : 0;
+            const dateB = b.date ? new Date(b.date).getTime() : 0;
+            return dateB - dateA;
+        });
+    };
+
     // Local state for interactive events
-    const [events, setEvents] = useState(mockEvents);
+    const [events, setEvents] = useState(() => buildEvents());
+
+    // Sync state if localStorage changes
+    React.useEffect(() => {
+        setEvents(buildEvents());
+
+        const handleStorage = (e: StorageEvent) => {
+            if (e.key === 'custom_calendar_events' || e.key === 'scheduled_interviews_custom') {
+                setEvents(buildEvents());
+            }
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, []);
 
     // Form state
     const [newEvent, setNewEvent] = useState({
@@ -53,8 +110,29 @@ export default function AdminCalendar() {
         toast.success("Event added successfully!");
     };
 
-    const handleDeleteEvent = (id: number) => {
-        setEvents(events.filter(e => e.id !== id));
+    const handleDeleteEvent = (id: any) => {
+        const updated = events.filter(e => String(e.id) !== String(id));
+        setEvents(updated);
+
+        // Update custom events in LocalStorage if it's custom
+        const customOnly = updated.filter(e => String(e.id).match(/^\d+$/));
+        localStorage.setItem('custom_calendar_events', JSON.stringify(customOnly));
+
+        // If it is a scheduled interview, remove it from scheduled_interviews_custom
+        if (String(id).startsWith('real_interview_')) {
+            try {
+                const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+                const updatedInterviews = savedInterviews.filter((interview: any) => {
+                    const eventId = `real_interview_${interview.date}_${interview.time}`;
+                    return String(eventId) !== String(id);
+                });
+                localStorage.setItem('scheduled_interviews_custom', JSON.stringify(updatedInterviews));
+                window.dispatchEvent(new Event('storage'));
+            } catch (e) {
+                console.error("Failed to delete interview", e);
+            }
+        }
+
         toast.success("Event removed.");
     };
 

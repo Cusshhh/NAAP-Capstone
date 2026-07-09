@@ -45,15 +45,21 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
     const [savedJobIds, setSavedJobIds] = useState<any[]>([]);
 
     useEffect(() => {
-        const saved = localStorage.getItem(`saved_jobs_${user?.id || 'guest'}`);
-        if (saved) {
-            try {
-                setSavedJobIds(JSON.parse(saved));
-            } catch (e) {
-                console.error('Failed to parse saved jobs', e);
+        if (user) {
+            const saved = localStorage.getItem(`saved_jobs_${user.id}`);
+            if (saved) {
+                try {
+                    setSavedJobIds(JSON.parse(saved));
+                } catch (e) {
+                    console.error('Failed to parse saved jobs', e);
+                }
+            } else {
+                setSavedJobIds([]);
             }
+        } else {
+            setSavedJobIds([]);
         }
-    }, []);
+    }, [user]);
 
     const toggleSaveJob = (e: React.MouseEvent, id: any) => {
         e.preventDefault();

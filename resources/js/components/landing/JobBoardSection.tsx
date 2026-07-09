@@ -38,13 +38,19 @@ export default function JobBoardSection() {
     const [savedJobIds, setSavedJobIds] = useState<any[]>([]);
 
     useEffect(() => {
-        const saved = localStorage.getItem(`saved_jobs_${user?.id || 'guest'}`);
-        if (saved) {
-            try {
-                setSavedJobIds(JSON.parse(saved));
-            } catch (e) { console.error(e); }
+        if (user) {
+            const saved = localStorage.getItem(`saved_jobs_${user.id}`);
+            if (saved) {
+                try {
+                    setSavedJobIds(JSON.parse(saved));
+                } catch (e) { console.error(e); }
+            } else {
+                setSavedJobIds([]);
+            }
+        } else {
+            setSavedJobIds([]);
         }
-    }, []);
+    }, [user]);
 
     const toggleSaveJob = (e: React.MouseEvent, id: any) => {
         e.preventDefault();

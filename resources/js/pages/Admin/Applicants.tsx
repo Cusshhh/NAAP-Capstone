@@ -48,6 +48,8 @@ export default function Applicants({ auth, applications: serverApplications }: {
     const [resultNotes, setResultNotes] = useState('');
     const [candidateName, setCandidateName] = useState('');
     const [position, setPosition] = useState('');
+    const [selectedAppId, setSelectedAppId] = useState<number | null>(null);
+    const [selectedAppEmail, setSelectedAppEmail] = useState<string>('');
 
     // State to hold scheduled interviews - Initialize from LocalStorage
     const [scheduledInterviews, setScheduledInterviews] = useState<any[]>(() => {
@@ -63,8 +65,19 @@ export default function Applicants({ auth, applications: serverApplications }: {
     useEffect(() => {
         localStorage.setItem('scheduled_interviews_custom', JSON.stringify(scheduledInterviews));
         // Dispatch storage event so other tabs/components sync instantly
-        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new StorageEvent('storage', { key: 'scheduled_interviews_custom' }));
     }, [scheduledInterviews]);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.location.hash === '#scheduled-interviews') {
+            setTimeout(() => {
+                const el = document.getElementById('scheduled-interviews');
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 300);
+        }
+    }, []);
 
     const [editingInterviewIndex, setEditingInterviewIndex] = useState<number | null>(null);
     const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
@@ -236,6 +249,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
         }
 
         const interviewData = {
+            id: selectedAppId || Date.now(),
             date: interviewDate,
             time: interviewTime,
             panelMembers,
@@ -243,7 +257,9 @@ export default function Applicants({ auth, applications: serverApplications }: {
             notifyApplicant,
             resultNotes,
             candidateName,
-            position
+            position,
+            applicationId: selectedAppId,
+            applicantEmail: selectedAppEmail
         };
 
         if (editingInterviewIndex !== null) {
@@ -256,6 +272,11 @@ export default function Applicants({ auth, applications: serverApplications }: {
             // Create new
             setScheduledInterviews([...scheduledInterviews, interviewData]);
             toast.success("Interview scheduled successfully!");
+        }
+
+        // Automatically update applicant status to 'Shortlisted'
+        if (selectedAppId) {
+            handleStatusUpdate(selectedAppId, 'Shortlisted');
         }
 
         // Reset and Close
@@ -273,6 +294,8 @@ export default function Applicants({ auth, applications: serverApplications }: {
         setEditingInterviewIndex(null);
         setCandidateName('');
         setPosition('');
+        setSelectedAppId(null);
+        setSelectedAppEmail('');
     };
 
     const handleEditInterview = (index: number) => {
@@ -285,30 +308,60 @@ export default function Applicants({ auth, applications: serverApplications }: {
         setResultNotes(interview.resultNotes);
         setCandidateName(interview.candidateName || '');
         setPosition(interview.position || '');
+        setSelectedAppId(interview.applicationId || null);
+        setSelectedAppEmail(interview.applicantEmail || '');
         setEditingInterviewIndex(index);
         setIsInterviewModalOpen(true);
     };
 
-    const handleStatusUpdate = (id: number, newStatus: string) => {
+    const handleStatusUpdate = (id: any, newStatus: string) => {
         // Optimistic update for UI feel
         const updatedApps = applications.map(app =>
-            app.id === id ? { ...app, status: newStatus } : app
+            String(app.id) === String(id) ? { ...app, status: newStatus } : app
         );
         setApplications(updatedApps);
 
-        // Actual backend call
-        router.post(`/admin/applications/${id}/status`, {
-            status: newStatus
-        }, {
-            onSuccess: () => {
-                toast.success(`Applicant status updated to: ${newStatus}`);
-            },
-            onError: (errors) => {
-                toast.error(`Failed to update status: ${Object.values(errors)[0]}`);
-                // Revert on error
-                setApplications(applications);
+        // Also update local storage if it's a mock/local application
+        if (typeof window !== 'undefined') {
+            const localApps = JSON.parse(localStorage.getItem('mock_applications_custom') || '[]');
+            const appInLocal = localApps.find((la: any) => String(la.id) === String(id));
+            
+            const originalApp = getApplications().find((a: any) => String(a.id) === String(id));
+            if (originalApp) {
+                let updatedLocalApps;
+                if (appInLocal) {
+                    updatedLocalApps = localApps.map((la: any) =>
+                        String(la.id) === String(id) ? { ...la, status: newStatus } : la
+                    );
+                } else {
+                    updatedLocalApps = [...localApps, { ...originalApp, status: newStatus }];
+                }
+                localStorage.setItem('mock_applications_custom', JSON.stringify(updatedLocalApps));
+                // Dispatch storage event
+                window.dispatchEvent(new Event('storage'));
             }
-        });
+        }
+
+        // Only hit backend router for real DB applications
+        const isDbApp = serverApplications && serverApplications.some((sa: any) => String(sa.id) === String(id));
+
+        if (isDbApp) {
+            // Actual backend call
+            router.post(`/admin/applications/${id}/status`, {
+                status: newStatus
+            }, {
+                onSuccess: () => {
+                    toast.success(`Applicant status updated to: ${newStatus}`);
+                },
+                onError: (errors) => {
+                    toast.error(`Failed to update status: ${Object.values(errors)[0]}`);
+                    // Revert on error
+                    setApplications(applications);
+                }
+            });
+        } else {
+            toast.success(`Applicant status updated to: ${newStatus} (Mock Local)`);
+        }
     };
 
     const handleDeleteInterview = (index: number) => {
@@ -603,7 +656,11 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex gap-2">
-                                                    <Dialog>
+                                                    <Dialog onOpenChange={(open) => {
+                                                         if (open && app.status === 'Submitted') {
+                                                             handleStatusUpdate(app.id, 'Under Review');
+                                                         }
+                                                     }}>
                                                         <DialogTrigger asChild>
                                                             <Button variant="outline" size="sm">View</Button>
                                                         </DialogTrigger>
@@ -889,6 +946,8 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                             onClick={() => {
                                                                                 setCandidateName(app.applicantName);
                                                                                 setPosition(app.jobTitle);
+                                                                                setSelectedAppId(app.id);
+                                                                                setSelectedAppEmail(app.email || app.applicantEmail || '');
                                                                                 setIsInterviewModalOpen(true);
                                                                             }}
                                                                         >
@@ -1041,7 +1100,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                     </DialogContent>
                 </Dialog>
                 {/* Scheduled Interviews Section */}
-                <Card className="mt-6">
+                <Card id="scheduled-interviews" className="mt-6">
                     <CardContent className="pt-6">
                         <div className="flex justify-between items-center mb-4 cursor-pointer" onClick={() => setShowInterviews(!showInterviews)}>
                             <h2 className="text-xl font-bold">Scheduled Interviews</h2>
