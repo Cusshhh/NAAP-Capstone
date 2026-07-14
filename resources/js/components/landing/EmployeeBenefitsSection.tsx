@@ -11,7 +11,7 @@ import {
     CheckCircle,
     ArrowRight
 } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { getLandingPageContent } from '@/data/mockData';
 
@@ -66,8 +66,19 @@ const BENEFITS = [
 ];
 
 export default function EmployeeBenefitsSection() {
-    const cmsContent = getLandingPageContent();
+    const [cmsContent, setCmsContent] = useState(getLandingPageContent());
     const additionalBenefits = cmsContent.perks.posts;
+
+    useEffect(() => {
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key === 'mock_cms_content') {
+                setCmsContent(getLandingPageContent());
+            }
+        };
+
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, []);
 
     return (
         <section id="employee-benefits" className="py-20 bg-white">

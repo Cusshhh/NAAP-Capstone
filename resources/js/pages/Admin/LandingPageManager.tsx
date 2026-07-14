@@ -110,6 +110,11 @@ export default function LandingPageManager({ auth }: { auth: any }) {
         setNewsImageUrl('');
     };
 
+    const handleRemoveNewsImage = () => {
+        setNewsFormData(prev => ({ ...prev, image: undefined }));
+        setNewsImageUrl('');
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'announcement' | 'news' | 'hired') => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -526,7 +531,15 @@ export default function LandingPageManager({ auth }: { auth: any }) {
                                         {newsFormData.image && (
                                             <div className="flex items-center gap-2 text-xs text-green-600 font-medium bg-green-50 px-3 py-1.5 rounded-full w-fit">
                                                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                                                Image Uploaded Successfully
+                                                <span>Image Uploaded Successfully</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleRemoveNewsImage}
+                                                    className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 focus:outline-none"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    Remove
+                                                </button>
                                             </div>
                                         )}
                                     </div>

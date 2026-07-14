@@ -579,8 +579,16 @@ export const getRecentlyHired = (): RecentlyHiredApplicant[] => {
 
 export const updateRecentlyHired = (updated: RecentlyHiredApplicant[]) => {
     if (typeof window === 'undefined') return;
-    localStorage.setItem('mock_recently_hired', JSON.stringify(updated));
-    window.dispatchEvent(new Event('storage'));
+    const newValue = JSON.stringify(updated);
+    localStorage.setItem('mock_recently_hired', newValue);
+    const storageEvent = new StorageEvent('storage', {
+        key: 'mock_recently_hired',
+        oldValue: null,
+        newValue,
+        url: window.location.href,
+        storageArea: localStorage,
+    });
+    window.dispatchEvent(storageEvent);
 };
 
 
@@ -1573,8 +1581,16 @@ export const getLandingPageContent = (): LandingPageContent => {
 
 export const updateLandingPageContent = (newContent: LandingPageContent) => {
     if (typeof window === 'undefined') return;
-    localStorage.setItem('mock_cms_content', JSON.stringify(newContent));
-    window.dispatchEvent(new Event('storage'));
+    const newValue = JSON.stringify(newContent);
+    localStorage.setItem('mock_cms_content', newValue);
+    const storageEvent = new StorageEvent('storage', {
+        key: 'mock_cms_content',
+        oldValue: null,
+        newValue,
+        url: window.location.href,
+        storageArea: localStorage,
+    });
+    window.dispatchEvent(storageEvent);
 };
 
 // --- HR NEWS DATA ---
@@ -1740,8 +1756,16 @@ export const getHRNews = (): HRNewsItem[] => {
 
 export const updateHRNews = (newsItems: HRNewsItem[]) => {
     if (typeof window === 'undefined') return;
-    localStorage.setItem('mock_hr_news', JSON.stringify(newsItems));
-    window.dispatchEvent(new Event('storage'));
+    const newValue = JSON.stringify(newsItems);
+    localStorage.setItem('mock_hr_news', newValue);
+    const storageEvent = new StorageEvent('storage', {
+        key: 'mock_hr_news',
+        oldValue: null,
+        newValue,
+        url: window.location.href,
+        storageArea: localStorage,
+    });
+    window.dispatchEvent(storageEvent);
 };
 
 // --- WELCOME PAGE ANNOUNCEMENTS ---
@@ -1785,6 +1809,14 @@ export const getAnnouncements = (): Announcement[] => {
 
 export const updateAnnouncements = (announcements: Announcement[]) => {
     if (typeof window === 'undefined') return;
-    localStorage.setItem('mock_announcements', JSON.stringify(announcements));
-    window.dispatchEvent(new Event('storage'));
+    const newValue = JSON.stringify(announcements);
+    localStorage.setItem('mock_announcements', newValue);
+    const storageEvent = new StorageEvent('storage', {
+        key: 'mock_announcements',
+        oldValue: null,
+        newValue,
+        url: window.location.href,
+        storageArea: localStorage,
+    });
+    window.dispatchEvent(storageEvent);
 };

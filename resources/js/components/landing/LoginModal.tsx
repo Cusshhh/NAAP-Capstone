@@ -37,7 +37,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-106.25">
                 <DialogHeader>
                     <DialogTitle>Log in to your account</DialogTitle>
                     <DialogDescription>
@@ -105,7 +105,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
                     Don't have an account?{' '}
                     <button
                         onClick={onSwitchToRegister}
-                        className="text-primary underline-offset-4 hover:underline font-medium text-blue-600"
+                        className="underline-offset-4 hover:underline font-medium text-blue-600"
                     >
                         Sign up
                     </button>

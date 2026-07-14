@@ -29,13 +29,14 @@ import {
     Ban,
     Camera,
     Eye,
-    Trash2
+    Trash2,
+    Newspaper
 } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from "@/components/ui/input";
-import { mockApplications, getApplications, getDynamicNotifications, getJobs } from '@/data/mockData';
+import { mockApplications, getApplications, getDynamicNotifications, getJobs, getHRNews, type HRNewsItem } from '@/data/mockData';
 
 // --- SHARED COMPONENTS ---
 
@@ -310,6 +311,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mechanicJob = [...jobs, ...getJobs()].find(j => j.title.toLowerCase().includes('mechanic'));
     const instructorJob = [...jobs, ...getJobs()].find(j => j.title.toLowerCase().includes('instructor') && !j.title.toLowerCase().includes('flight'));
+    const [hrNews, setHrNews] = useState<HRNewsItem[]>([]);
 
     // Profile Data State
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -364,6 +366,20 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             });
         }
     }, [dbProfileData]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        setHrNews(getHRNews());
+
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key === 'mock_hr_news') {
+                setHrNews(getHRNews());
+            }
+        };
+
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, []);
 
     const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -1070,7 +1086,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                         className={`px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 cursor-pointer transition-colors ${!n.isRead ? 'bg-blue-50/30' : ''}`}
                                                     >
                                                         <div className="flex gap-3">
-                                                            {!n.isRead && <div className="mt-1.5 w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>}
+                                                            {!n.isRead && <div className="mt-1.5 w-2 h-2 bg-blue-600 rounded-full shrink-0"></div>}
                                                             <div>
                                                                 <p className={`text-sm ${n.isRead ? 'text-gray-500' : 'text-gray-900 font-semibold'}`}>{n.text}</p>
                                                                 <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
@@ -1120,7 +1136,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 </nav>
 
                 {/* --- WELCOME BANNER --- */}
-                <div className="bg-gradient-to-r from-[#193153] to-blue-900 text-white relative overflow-hidden">
+                <div className="bg-linear-to-r from-[#193153] to-blue-900 text-white relative overflow-hidden">
                     {/* Background Pattern */}
                     <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '30px 30px' }}></div>
 
@@ -1191,7 +1207,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                         </button>
                     </div>
 
-                    <div className="bg-white rounded-b-xl shadow-sm min-h-[500px] p-6 border border-t-0 border-gray-100">
+<div className="bg-white rounded-b-xl shadow-sm min-h-125 p-6 border border-t-0 border-gray-100">
 
                         {activeTab === 'applications' ? (
                             <div className="flex flex-col lg:flex-row gap-8">
@@ -1370,7 +1386,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 Upcoming Events
                                             </h3>
                                         </div>
-                                        <div className="p-4 bg-gray-50 min-h-[150px] flex flex-col gap-3">
+                                        <div className="p-4 bg-gray-50 min-h-37.5 flex flex-col gap-3">
                                             {mockEvents.length > 0 ? (
                                                 mockEvents.map(event => {
                                                     const isInterview = event.type === 'Interview';
@@ -1384,7 +1400,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                             }}
                                                             className={`bg-white p-3 rounded-lg border border-gray-100 flex items-start gap-3 shadow-sm hover:border-[#193153] transition-colors text-left h-full ${isInterview ? 'cursor-pointer hover:border-purple-600' : ''}`}
                                                         >
-                                                            <div className={`p-2 rounded text-center min-w-[50px] ${isInterview ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-[#193153]'}`}>
+                                                            <div className={`p-2 rounded text-center min-w-12.5 ${isInterview ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-[#193153]'}`}>
                                                                 <span className="block text-xs font-bold uppercase">{String(event.date || '').split(' ')[0] || ''}</span>
                                                                 <span className="block text-lg font-bold leading-none">{String(event.date || '').split(' ')[1]?.replace(',', '') || ''}</span>
                                                             </div>
@@ -1423,6 +1439,41 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                         </div>
                                     </Card>
 
+                                    {/* Latest News Preview */}
+                                    <Card className="bg-white border-none shadow-lg overflow-hidden">
+                                        <div className="bg-[#193153] p-4 text-white">
+                                            <h3 className="font-bold flex items-center gap-2">
+                                                <Newspaper className="w-4 h-4 text-[#ffdd59]" />
+                                                Latest News
+                                            </h3>
+                                        </div>
+                                        <div className="p-4 bg-gray-50">
+                                            {hrNews.length > 0 ? (
+                                                <div className="rounded-xl overflow-hidden border border-gray-100 bg-white shadow-sm">
+                                                    {hrNews[0].image ? (
+                                                        <img src={hrNews[0].image} alt={hrNews[0].title} className="w-full h-40 object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-40 bg-gray-200 flex items-center justify-center text-sm text-gray-500">
+                                                            No image available
+                                                        </div>
+                                                    )}
+                                                    <div className="p-4">
+                                                        <h4 className="text-sm font-bold text-[#193153] line-clamp-2">{hrNews[0].title}</h4>
+                                                        <p className="text-xs text-gray-500 mt-2 line-clamp-3">{hrNews[0].summary}</p>
+                                                        <Link href={`/hr-news/${hrNews[0].id}`} className="mt-4 inline-flex text-xs font-bold text-[#193153] hover:text-[#ffdd59]">
+                                                            Read Article
+                                                            <ArrowRight className="w-3 h-3 ml-1" />
+                                                        </Link>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-sm text-gray-500">
+                                                    No news available right now.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Card>
+
                                     {/* Saved Jobs Card */}
                                     <Card className="bg-white border-none shadow-lg overflow-hidden mb-6">
                                         <div className="bg-[#193153] p-4 text-white flex justify-between items-center">
@@ -1434,7 +1485,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 {savedJobDetails.length}
                                             </span>
                                         </div>
-                                        <div className="p-4 bg-gray-50 max-h-[300px] overflow-y-auto space-y-3">
+                                        <div className="p-4 bg-gray-50 max-h-75 overflow-y-auto space-y-3">
                                             {savedJobDetails.length === 0 ? (
                                                 <div className="text-center py-6 text-gray-500">
                                                     <Bookmark className="w-8 h-8 mx-auto text-gray-300 mb-2" />
@@ -1738,7 +1789,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                         <div className="flex flex-col">
                                                             <span className="text-sm font-medium">{doc.name}</span>
                                                             {localStorage.getItem(`profile_file_${auth.user.id}_${doc.name}`) && (
-                                                                <span className="text-[10px] text-gray-500 truncate max-w-[150px]">
+                                                                <span className="text-[10px] text-gray-500 truncate max-w-37.5">
                                                                     {localStorage.getItem(`profile_file_${auth.user.id}_${doc.name}`)}
                                                                 </span>
                                                             )}
@@ -1859,7 +1910,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 {/* --- APPLICANT MESSAGING MODAL --- */}
                 <Dialog open={isMessageModalOpen} onOpenChange={setIsMessageModalOpen}>
                     <DialogContent className="max-w-xl h-[80vh] flex flex-col p-0 overflow-hidden bg-gray-50">
-                        <DialogHeader className="px-6 py-4 border-b bg-white flex-shrink-0">
+                        <DialogHeader className="px-6 py-4 border-b bg-white shrink-0">
                             <DialogTitle className="flex items-center gap-2 text-lg">
                                 <span className="bg-blue-100 text-blue-700 p-1.5 rounded-full">
                                     <MessageCircle className="h-4 w-4" />
@@ -1898,7 +1949,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                             )}
                         </div>
 
-                        <div className="p-4 bg-white border-t flex-shrink-0">
+                        <div className="p-4 bg-white border-t shrink-0">
                             <form
                                 onSubmit={(e: React.FormEvent) => { e.preventDefault(); sendMessage(); }}
                                 className="flex gap-2"
@@ -1923,7 +1974,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
                 <Dialog open={!!viewingDocument} onOpenChange={(open) => !open && setViewingDocument(null)}>
                     <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
-                        <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+                        <DialogHeader className="px-6 py-4 border-b shrink-0">
                             <DialogTitle className="flex items-center gap-2">
                                 <FileText className="h-5 w-5 text-blue-600" />
                                 {viewingDocument?.name || 'Document Viewer'}

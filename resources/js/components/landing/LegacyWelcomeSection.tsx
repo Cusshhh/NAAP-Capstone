@@ -4,7 +4,7 @@ import {
     Gift,
     TrendingUp,
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getAnalyticsData, getAnnouncements, getApplications } from '@/data/mockData';
 
 // Reusing Card components for internal use
@@ -53,7 +53,19 @@ export default function LegacyWelcomeSection() {
     const hiredCount = allApps.filter((a: any) => a.status === 'Hired').length;
     const displayHired = hiredCount;
 
-    const announcements = getAnnouncements() || [];
+    const [announcements, setAnnouncements] = useState(getAnnouncements() || []);
+
+    useEffect(() => {
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key === 'mock_announcements') {
+                setAnnouncements(getAnnouncements() || []);
+            }
+        };
+
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, []);
+
     const defaultAnnouncement = {
         id: 0,
         image: '/images/Dorm1.jpg',

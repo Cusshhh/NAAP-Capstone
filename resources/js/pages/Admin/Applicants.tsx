@@ -10,8 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { mockApplications, mockInterviews, getApplications } from '@/data/mockData';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { mockApplications, mockInterviews, getApplications } from '@/data/mockData';
 import AdminLayout from '@/layouts/AdminLayout';
 
 export default function Applicants({ auth, applications: serverApplications }: { auth: any, applications: any[] }) {
@@ -513,7 +513,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                 const totalScore = app.aiScore || 0;
                                                                 return (
                                                                     <>
-                                                                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                                                                        <div className="bg-linear-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                                                                             <div className="flex items-center justify-between mb-2">
                                                                                 <span className="text-sm font-medium text-gray-700">Overall Score</span>
                                                                                 <span className="text-2xl font-bold text-[#193153]">{scoreToPercentage(totalScore)}% <span className="text-sm text-gray-500">Match Score</span></span>
@@ -527,7 +527,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
                                                                             {/* Education */}
                                                                             <div className="flex items-center gap-3">
-                                                                                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                                                                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
                                                                                     <GraduationCap className="w-4 h-4 text-purple-600" />
                                                                                 </div>
                                                                                 <div className="flex-1">
@@ -559,7 +559,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
                                                                             {/* Experience */}
                                                                             <div className="flex items-center gap-3">
-                                                                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                                                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                                                                                     <Briefcase className="w-4 h-4 text-blue-600" />
                                                                                 </div>
                                                                                 <div className="flex-1">
@@ -582,7 +582,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
                                                                             {/* Awards */}
                                                                             <div className="flex items-center gap-3">
-                                                                                <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                                                                                <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
                                                                                     <Award className="w-4 h-4 text-yellow-600" />
                                                                                 </div>
                                                                                 <div className="flex-1">
@@ -610,7 +610,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
                                                                             {/* Training */}
                                                                             <div className="flex items-center gap-3">
-                                                                                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                                                                                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
                                                                                     <BookOpen className="w-4 h-4 text-green-600" />
                                                                                 </div>
                                                                                 <div className="flex-1">
@@ -831,10 +831,10 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                                         app.documents.map((doc: any, i: number) => (
                                                                                             <div key={i} className="flex items-center justify-between p-2 bg-white rounded border border-gray-100 shadow-sm animate-fade-in">
                                                                                                 <div className="flex items-center overflow-hidden mr-2">
-                                                                                                    <FileText className="flex-shrink-0 h-4 w-4 text-blue-500 mr-2" />
+                                                                                                    <FileText className="shrink-0 h-4 w-4 text-blue-500 mr-2" />
                                                                                                     <span className="text-sm text-gray-700 font-medium truncate">{doc.name}</span>
                                                                                                     {doc.fileName && (
-                                                                                                        <span className="text-xs text-gray-500 ml-2 italic truncate max-w-[150px]">({doc.fileName})</span>
+                                                                                                        <span className="text-xs text-gray-500 ml-2 italic truncate max-w-37.5">({doc.fileName})</span>
                                                                                                     )}
                                                                                                 </div>
                                                                                                 <Button
@@ -866,7 +866,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                                     <div className="grid grid-cols-1 gap-2">
                                                                                         {app.toFollowDocs.map((docName: string, i: number) => (
                                                                                             <div key={i} className="flex items-center p-2 bg-orange-50/20 rounded border border-orange-100">
-                                                                                                <FileText className="flex-shrink-0 h-4 w-4 text-orange-400 mr-2" />
+                                                                                                <FileText className="shrink-0 h-4 w-4 text-orange-400 mr-2" />
                                                                                                 <span className="text-sm text-gray-700 font-medium truncate">{docName}</span>
                                                                                             </div>
                                                                                         ))}
@@ -880,7 +880,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                                         {Object.entries(app.custom_file_responses).map(([label, path]: [string, any]) => (
                                                                                             <div key={label} className="flex items-center justify-between p-2 bg-white rounded border border-blue-100 shadow-sm">
                                                                                                 <div className="flex items-center overflow-hidden mr-2">
-                                                                                                    <FileText className="flex-shrink-0 h-4 w-4 text-blue-500 mr-2" />
+                                                                                                    <FileText className="shrink-0 h-4 w-4 text-blue-500 mr-2" />
                                                                                                     <span className="text-sm text-gray-700 font-medium truncate">{label}</span>
                                                                                                 </div>
                                                                                                 <Button
@@ -942,7 +942,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                             Archive
                                                                         </Button>
                                                                         <Button
-                                                                            className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white font-bold"
+                                                                            className="flex-2 bg-purple-600 hover:bg-purple-700 text-white font-bold"
                                                                             onClick={() => {
                                                                                 setCandidateName(app.applicantName);
                                                                                 setPosition(app.jobTitle);
@@ -1167,7 +1167,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
             {/* Document Viewer Modal */}
             <Dialog open={isDocViewerOpen} onOpenChange={setIsDocViewerOpen}>
                 <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
-                    <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+                    <DialogHeader className="px-6 py-4 border-b shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             <FileText className="h-5 w-5 text-blue-600" />
                             {viewingDocument?.name || 'Document Viewer'}
@@ -1177,7 +1177,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
                     {/* Dedicated Document Toolbar */}
                     {viewingDocument?.url && (
-                        <div className="bg-white border-b px-6 py-2 flex items-center justify-between flex-shrink-0 shadow-sm">
+                        <div className="bg-white border-b px-6 py-2 flex items-center justify-between shrink-0 shadow-sm">
                             <span className="text-xs text-gray-500 font-medium">
                                 {viewingDocument.url.startsWith('data:image') ? '💡 Click the document image below to zoom in/out' : '📄 Document preview'}
                             </span>
@@ -1240,7 +1240,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
             {/* Applicant Messaging Modal */}
             <Dialog open={isMessageModalOpen} onOpenChange={setIsMessageModalOpen}>
                 <DialogContent className="max-w-xl h-[80vh] flex flex-col p-0 overflow-hidden bg-gray-50">
-                    <DialogHeader className="px-6 py-4 border-b bg-white flex-shrink-0">
+                    <DialogHeader className="px-6 py-4 border-b bg-white shrink-0">
                         <DialogTitle className="flex items-center gap-2 text-lg">
                             <span className="bg-blue-100 text-blue-700 p-1.5 rounded-full">
                                 <Users className="h-4 w-4" />
@@ -1279,7 +1279,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                         )}
                     </div>
 
-                    <div className="p-4 bg-white border-t flex-shrink-0">
+                    <div className="p-4 bg-white border-t shrink-0">
                         <form
                             onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
                             className="flex gap-2"

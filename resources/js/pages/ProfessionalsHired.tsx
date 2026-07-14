@@ -20,7 +20,7 @@ import JobBoardSection from '@/components/landing/JobBoardSection';
 import LegacyWelcomeSection from '@/components/landing/LegacyWelcomeSection';
 import LoginModal from '@/components/landing/LoginModal';
 import RegisterModal from '@/components/landing/RegisterModal';
-import { getLandingPageContent, getApplications, getRecentlyHired, type RecentlyHiredApplicant } from '@/data/mockData';
+import { getLandingPageContent, getApplications, getRecentlyHired, getHRNews, type HRNewsItem, type RecentlyHiredApplicant } from '@/data/mockData';
 
 
 
@@ -53,17 +53,17 @@ const heroImages = [
 const heroSlideContent = [
     {
         badge: "Top Employer in Aviation Education",
-        title: <>The Premier Workplace <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ffdd59] to-yellow-200">For Aviation Leaders</span></>,
+        title: <>The Premier Workplace <span className="text-transparent bg-clip-text bg-linear-to-r from-[#ffdd59] to-yellow-200">For Aviation Leaders</span></>,
         description: "Recognized as the industry's employer of choice. At NAAP, we offer more than a job—we offer a legacy. Join the team that defines excellence in aviation schooling."
     },
     {
         badge: "Join Our Growing Team",
-        title: <>Shape the Future <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ffdd59] to-yellow-200">Of Philippine Aviation</span></>,
+        title: <>Shape the Future <span className="text-transparent bg-clip-text bg-linear-to-r from-[#ffdd59] to-yellow-200">Of Philippine Aviation</span></>,
         description: "We are actively hiring passionate instructors, administrators, and support staff. Be part of an institution that values innovation and dedication."
     },
     {
         badge: "Competitive Benefits",
-        title: <>A Rewarding Career <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ffdd59] to-yellow-200">Beyond the Hangar</span></>,
+        title: <>A Rewarding Career <span className="text-transparent bg-clip-text bg-linear-to-r from-[#ffdd59] to-yellow-200">Beyond the Hangar</span></>,
         description: "Experience a supportive work environment with competitive compensation, professional development opportunities, and excellent benefits."
     }
 ];
@@ -76,10 +76,10 @@ const ALUMNI_STORIES = [
 ];
 
 // UPDATED MOCK DATA FOR ANNOUNCEMENTS (Focused on NAAP as an Employer)
-const ANNOUNCEMENTS = [
-    { id: 1, title: "CSC Grants NAAP PRIME-HRM Level 2 Maturity", date: "Jan 28, 2026", type: "Award" },
-    { id: 2, title: "NAAP Launches Nationwide Hiring Drive for Senior Flight Instructors", date: "Feb 2, 2026", type: "Hiring Alert" },
-    { id: 3, title: "New Employee Wellness and Professional Development Program Unveiled", date: "Jan 20, 2026", type: "Internal News" },
+const ANNOUNCEMENTS: HRNewsItem[] = [
+    { id: 1, title: "CSC Grants NAAP PRIME-HRM Level 2 Maturity", date: "Jan 28, 2026", category: "Award", summary: "The National Aviation Academy of the Philippines has been officially recognized by the Civil Service Commission (CSC) for achieving Level 2 Maturity.", image: "" },
+    { id: 2, title: "NAAP Launches Nationwide Hiring Drive for Senior Flight Instructors", date: "Feb 2, 2026", category: "Hiring Alert", summary: "NAAP is expanding its team of instructors and support staff across the country to meet increasing aviation education demand.", image: "" },
+    { id: 3, title: "New Employee Wellness and Professional Development Program Unveiled", date: "Jan 20, 2026", category: "Internal News", summary: "A new wellness and development program has been launched to support employee growth, health, and job satisfaction.", image: "" },
 ];
 
 // --- PRIME-HRM PILLARS DATA ---
@@ -91,13 +91,40 @@ const PRIME_PILLARS = [
 ];
 
 export default function ProfessionalsHired() {
-    const cmsContent = getLandingPageContent();
+    const [cmsContent, setCmsContent] = useState(getLandingPageContent());
     const cmsHiredPosts = cmsContent.hired.posts;
     const allApps = getApplications();
     const [recentlyHired, setRecentlyHired] = useState<RecentlyHiredApplicant[]>([]);
+    const [announcements, setAnnouncements] = useState<HRNewsItem[]>([]);
 
     useEffect(() => {
         setRecentlyHired(getRecentlyHired());
+        setAnnouncements(getHRNews());
+        setCmsContent(getLandingPageContent());
+
+        const handleStorage = (event: StorageEvent) => {
+            switch (event.key) {
+                case 'mock_hr_news':
+                    setAnnouncements(getHRNews());
+                    break;
+                case 'mock_recently_hired':
+                    setRecentlyHired(getRecentlyHired());
+                    break;
+                case 'mock_cms_content':
+                    setCmsContent(getLandingPageContent());
+                    break;
+                default:
+                    if (!event.key) {
+                        setAnnouncements(getHRNews());
+                        setRecentlyHired(getRecentlyHired());
+                        setCmsContent(getLandingPageContent());
+                    }
+                    break;
+            }
+        };
+
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
     }, []);
 
     // --- DYNAMIC STATS STRIP CALCULATIONS ---
@@ -190,7 +217,7 @@ export default function ProfessionalsHired() {
                 </nav>
 
                 {/* --- DYNAMIC HERO SECTION --- */}
-                <div className="relative h-[550px] flex items-center justify-center overflow-hidden bg-[#193153]">
+                <div className="relative h-137.5 flex items-center justify-center overflow-hidden bg-[#193153]">
 
                     {/* Background Images Carousel Layer */}
                     {heroImages.map((imgSrc, index) => (
@@ -204,7 +231,7 @@ export default function ProfessionalsHired() {
                                 className="w-full h-full object-cover"
                             />
                             {/* Gradient Overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#193153]/95 via-[#193153]/70 to-[#193153]/30" />
+                            <div className="absolute inset-0 bg-linear-to-t from-[#193153]/95 via-[#193153]/70 to-[#193153]/30" />
                         </div>
                     ))}
 
@@ -227,7 +254,7 @@ export default function ProfessionalsHired() {
                         <div className="max-w-4xl mx-auto relative">
 
                             {/* Content Container */}
-                            <div className="relative min-h-[220px] flex items-center justify-center">
+                            <div className="relative min-h-55 flex items-center justify-center">
                                 {heroSlideContent.map((content, index) => (
                                     <div
                                         key={index}
@@ -339,21 +366,28 @@ export default function ProfessionalsHired() {
                         {/* RIGHT: NEWS LIST */}
                         <div className="w-full md:w-1/2 grid gap-4">
                             <h3 className="font-bold text-xl text-[#193153] mb-2">Latest News & Updates</h3>
-                            {ANNOUNCEMENTS.map((news) => (
+                            {(announcements.length ? announcements : ANNOUNCEMENTS).map((news) => (
                                 <Link 
                                     key={news.id} 
                                     href={news.id === 1 ? '/news/csc-prime-hrm-level-2' : `/hr-news/${news.id}`} 
-                                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-start gap-4 hover:border-[#ffdd59] transition-all cursor-pointer group block text-left"
+                                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-start gap-4 hover:border-[#ffdd59] transition-all cursor-pointer group text-left"
                                 >
-                                    <div className="bg-blue-50 p-3 rounded-lg text-[#193153] group-hover:bg-[#193153] group-hover:text-[#ffdd59] transition-colors">
-                                        <FileText className="w-6 h-6" />
-                                    </div>
-                                    <div>
+                                    {news.image ? (
+                                        <div className="w-full sm:w-32 h-28 overflow-hidden rounded-2xl border border-gray-200">
+                                            <img src={news.image} alt={news.title} className="w-full h-full object-cover" />
+                                        </div>
+                                    ) : (
+                                        <div className="bg-blue-50 p-3 rounded-lg text-[#193153] group-hover:bg-[#193153] group-hover:text-[#ffdd59] transition-colors flex items-center justify-center w-full sm:w-20 h-20">
+                                            <FileText className="w-6 h-6" />
+                                        </div>
+                                    )}
+                                    <div className="flex-1">
                                         <h4 className="font-bold text-gray-900 group-hover:text-[#193153] transition-colors">{news.title}</h4>
-                                        <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
+                                        <p className="text-sm text-gray-600 mt-2 line-clamp-2">{news.summary}</p>
+                                        <div className="flex items-center gap-3 mt-3 text-sm text-gray-500">
                                             <span>{news.date}</span>
                                             <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                            <span className="text-[#193153] font-medium">{news.type}</span>
+                                            <span className="text-[#193153] font-medium">{news.category || 'News'}</span>
                                         </div>
                                     </div>
                                 </Link>
