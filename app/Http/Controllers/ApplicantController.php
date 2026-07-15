@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\Application; 
 
 class ApplicantController extends Controller
@@ -14,41 +15,55 @@ class ApplicantController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'job_id' => 'required|exists:vacancies,id',
-            'job_title' => 'required|string',
-            'email' => 'required|email',
-            'applicant_name' => 'required|string',
-            'phone_number' => 'required|string',
-            'education' => 'required|string',
-            'to_follow_docs' => 'nullable|array',
-            'dynamic_responses' => 'nullable|array',
-        ]);
+        try {
+            $validated = $request->validate([
+                'job_id' => 'required|exists:vacancies,id',
+                'job_title' => 'required|string',
+                'email' => 'required|email',
+                'applicant_name' => 'required|string',
+                'phone_number' => 'required|string',
+                'education' => 'required|string',
+                'to_follow_docs' => 'nullable|array',
+                'dynamic_responses' => 'nullable|array',
+            ]);
 
-        $customFileResponses = [];
-        if ($request->has('custom_files')) {
-            foreach ($request->file('custom_files', []) as $label => $file) {
-                if ($file) {
-                    $path = $file->store('applications/custom', 'public');
-                    $customFileResponses[$label] = $path;
+            Log::info('Application validation passed', $validated);
+
+            $customFileResponses = [];
+            if ($request->has('custom_files')) {
+                foreach ($request->file('custom_files', []) as $label => $file) {
+                    if ($file) {
+                        $path = $file->store('applications/custom', 'public');
+                        $customFileResponses[$label] = $path;
+                        Log::info("File stored: {$label} => {$path}");
+                    }
                 }
             }
+
+            $application = Application::create([
+                'job_id' => $validated['job_id'],
+                'job_title' => $validated['job_title'],
+                'email' => $validated['email'],
+                'applicant_name' => $validated['applicant_name'],
+                'phone_number' => $validated['phone_number'],
+                'education' => $validated['education'],
+                'to_follow_docs' => $validated['to_follow_docs'],
+                'custom_file_responses' => $customFileResponses,
+                'dynamic_responses' => $validated['dynamic_responses'] ?? [],
+                'status' => 'Submitted',
+            ]);
+
+            Log::info("Application created successfully with ID: {$application->id}");
+
+            return redirect()->route('dashboard')->with('message', 'Application submitted successfully!');
+        } catch (\Exception $e) {
+            Log::error('Application creation failed: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request' => $request->all(),
+            ]);
+            
+            return redirect()->back()->withErrors(['error' => 'Failed to submit application: ' . $e->getMessage()])->withInput();
         }
-
-        $application = Application::create([
-            'job_id' => $validated['job_id'],
-            'job_title' => $validated['job_title'],
-            'email' => $validated['email'],
-            'applicant_name' => $validated['applicant_name'],
-            'phone_number' => $validated['phone_number'],
-            'education' => $validated['education'],
-            'to_follow_docs' => $validated['to_follow_docs'],
-            'custom_file_responses' => $customFileResponses,
-            'dynamic_responses' => $validated['dynamic_responses'] ?? [],
-            'status' => 'Submitted',
-        ]);
-
-        return redirect()->route('dashboard')->with('message', 'Application submitted successfully!');
     }
 
     // Render the Dashboard with data
@@ -110,42 +125,56 @@ class ApplicantController extends Controller
      */
     public function saveProfileData(Request $request)
     {
-        $user = Auth::user();
-        $profile = $request->input('profile_data');
-        
-        $user->profile_data = $profile;
-        $user->save();
+        try {
+            $user = Auth::user();
+            $profile = $request->input('profile_data');
+            
+            Log::info("Saving profile data for user: {$user->email}");
+            
+            $user->profile_data = $profile;
+            $user->save();
 
-        // Sync with existing applications
-        $applications = Application::where('email', $user->email)->get();
-        foreach ($applications as $app) {
-            $dyn = $app->dynamic_responses ?? [];
-            
-            // Merge profile fields into dynamic_responses
-            foreach ($profile as $key => $value) {
-                $dyn[$key] = $value;
-            }
-            
-            if (isset($profile['phone'])) {
-                $app->phone_number = $profile['phone'];
-                $dyn['phone_number'] = $profile['phone'];
-            }
-            
-            if (isset($profile['firstName']) || isset($profile['lastName'])) {
-                $first = $profile['firstName'] ?? '';
-                $middle = $profile['middleName'] ?? '';
-                $last = $profile['lastName'] ?? '';
-                $ext = $profile['extensionName'] ?? '';
-                $fullName = trim("{$first} " . ($middle ? "{$middle} " : "") . $last . ($ext ? " {$ext}" : ""));
-                if ($fullName) {
-                    $app->applicant_name = $fullName;
+            Log::info("User profile saved successfully");
+
+            // Sync with existing applications
+            $applications = Application::where('email', $user->email)->get();
+            foreach ($applications as $app) {
+                $dyn = $app->dynamic_responses ?? [];
+                
+                // Merge profile fields into dynamic_responses
+                foreach ($profile as $key => $value) {
+                    $dyn[$key] = $value;
                 }
+                
+                if (isset($profile['phone'])) {
+                    $app->phone_number = $profile['phone'];
+                    $dyn['phone_number'] = $profile['phone'];
+                }
+                
+                if (isset($profile['firstName']) || isset($profile['lastName'])) {
+                    $first = $profile['firstName'] ?? '';
+                    $middle = $profile['middleName'] ?? '';
+                    $last = $profile['lastName'] ?? '';
+                    $ext = $profile['extensionName'] ?? '';
+                    $fullName = trim("{$first} " . ($middle ? "{$middle} " : "") . $last . ($ext ? " {$ext}" : ""));
+                    if ($fullName) {
+                        $app->applicant_name = $fullName;
+                    }
+                }
+
+                $app->dynamic_responses = $dyn;
+                $app->save();
             }
 
-            $app->dynamic_responses = $dyn;
-            $app->save();
-        }
+            Log::info("All applications updated with profile data");
 
-        return redirect()->back()->with('message', 'Profile updated successfully!');
+            return redirect()->back()->with('message', 'Profile updated successfully!');
+        } catch (\Exception $e) {
+            Log::error('Profile data save failed: ' . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+            
+            return redirect()->back()->withErrors(['error' => 'Failed to update profile: ' . $e->getMessage()]);
+        }
     }
 }
