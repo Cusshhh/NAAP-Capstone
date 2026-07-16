@@ -1,5 +1,5 @@
 import { Shield, Users, LogOut, Briefcase, Edit2, Save, X, Image as ImageIcon, Eye, Newspaper, Upload, Trash2 } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,7 @@ export default function LandingPageManager({ auth }: { auth: any }) {
     const [editingNewsId, setEditingNewsId] = useState<number | null>(null);
     const [newsFormData, setNewsFormData] = useState<Partial<HRNewsItem>>({});
     const [newsImageUrl, setNewsImageUrl] = useState<string>('');
+    const newsImageInputRef = useRef<HTMLInputElement | null>(null);
 
     // Recently Hired State
     const [recentlyHired, setRecentlyHired] = useState<RecentlyHiredApplicant[]>([]);
@@ -81,18 +82,18 @@ export default function LandingPageManager({ auth }: { auth: any }) {
     const handleEditNews = (newsItem: HRNewsItem) => {
         setEditingNewsId(newsItem.id);
         setNewsFormData({ ...newsItem });
-        setNewsImageUrl('');
+        setNewsImageUrl(newsItem.image || '');
     };
 
     const handleSaveNews = () => {
-        if (!editingNewsId || !newsFormData.title || !newsFormData.date || !newsFormData.category || !newsFormData.summary) {
+        if (!editingNewsId || !newsFormData.title || !newsFormData.date || !newsFormData.category || !newsFormData.summary || !newsImage) {
             toast.error('Please fill in all required fields');
             return;
         }
 
         const updatedNews = newsItems.map(item =>
             item.id === editingNewsId
-                ? { ...item, ...newsFormData }
+                ? { ...item, ...newsFormData, image: newsImage }
                 : item
         );
 
@@ -113,10 +114,16 @@ export default function LandingPageManager({ auth }: { auth: any }) {
     const handleRemoveNewsImage = () => {
         setNewsFormData(prev => ({ ...prev, image: undefined }));
         setNewsImageUrl('');
+        if (newsImageInputRef.current) {
+            newsImageInputRef.current.value = '';
+        }
     };
 
+    const newsImage = newsFormData.image || newsImageUrl;
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'announcement' | 'news' | 'hired') => {
-        const file = e.target.files?.[0];
+        const input = e.target;
+        const file = input.files?.[0];
         if (!file) return;
 
         const reader = new FileReader();
@@ -131,6 +138,8 @@ export default function LandingPageManager({ auth }: { auth: any }) {
             } else if (type === 'hired') {
                 setHiredFormData(prev => ({ ...prev, image: base64String }));
             }
+
+            input.value = '';
         };
         reader.readAsDataURL(file);
     };
@@ -283,7 +292,7 @@ export default function LandingPageManager({ auth }: { auth: any }) {
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                             {/* Add New Button Card */}
                             <Card
-                                className="overflow-hidden border-2 border-dashed border-gray-200 bg-gray-50/50 hover:bg-gray-50 hover:border-[#193153]/30 transition-all cursor-pointer flex flex-col items-center justify-center p-8 group min-h-[350px]"
+                                className="overflow-hidden border-2 border-dashed border-gray-200 bg-gray-50/50 hover:bg-gray-50 hover:border-[#193153]/30 transition-all cursor-pointer flex flex-col items-center justify-center p-8 group min-h-87.5"
                                 onClick={handleAddHired}
                             >
                                 <div className="w-16 h-16 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -457,6 +466,23 @@ export default function LandingPageManager({ auth }: { auth: any }) {
                                     />
                                 </div>
 
+                                {/* News Image Preview */}
+                                {(newsFormData.image || newsImageUrl) && (
+                                    <div className="space-y-2">
+                                        <Label>Current Article Image</Label>
+                                        <div className="h-64 rounded-lg overflow-hidden bg-gray-100 border-2 border-gray-200">
+                                            <img
+                                                src={newsFormData.image || newsImageUrl}
+                                                alt="Article preview"
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    e.currentTarget.src = '/images/Dorm1.jpg';
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Date and Category Row */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -522,24 +548,36 @@ export default function LandingPageManager({ auth }: { auth: any }) {
                                                 <input
                                                     id="news-image-upload"
                                                     type="file"
+                                                    ref={newsImageInputRef}
                                                     className="hidden"
                                                     accept="image/*"
                                                     onChange={(e) => handleFileChange(e, 'news')}
                                                 />
                                             </label>
                                         </div>
-                                        {newsFormData.image && (
-                                            <div className="flex items-center gap-2 text-xs text-green-600 font-medium bg-green-50 px-3 py-1.5 rounded-full w-fit">
-                                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                                                <span>Image Uploaded Successfully</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={handleRemoveNewsImage}
-                                                    className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 focus:outline-none"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                    Remove
-                                                </button>
+
+                                        {newsImage && (
+                                            <div className="space-y-3">
+                                                <div className="rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm">
+                                                    <img
+                                                        src={newsImage}
+                                                        alt="Uploaded article"
+                                                        className="w-full h-40 object-cover"
+                                                        onError={(e) => { e.currentTarget.src = '/images/Dorm1.jpg'; }}
+                                                    />
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2 text-xs text-green-600 font-medium bg-green-50 px-3 py-1.5 rounded-full w-fit">
+                                                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                                                    <span>Image Uploaded Successfully</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleRemoveNewsImage}
+                                                        className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 focus:outline-none"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                        Remove
+                                                    </button>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -626,6 +664,7 @@ export default function LandingPageManager({ auth }: { auth: any }) {
                                                 <input
                                                     id="hired-image-upload"
                                                     type="file"
+                                                    ref={hiredImageInputRef}
                                                     className="hidden"
                                                     accept="image/*"
                                                     onChange={(e) => handleFileChange(e, 'hired')}
