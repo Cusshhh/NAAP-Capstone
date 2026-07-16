@@ -336,7 +336,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mechanicJob = [...jobs, ...getJobs()].find(j => j.title.toLowerCase().includes('mechanic'));
     const instructorJob = [...jobs, ...getJobs()].find(j => j.title.toLowerCase().includes('instructor') && !j.title.toLowerCase().includes('flight'));
-    const [hrNews, setHrNews] = useState<HRNewsItem[]>([]);
+    const [hrNews, setHrNews] = useState<HRNewsItem[]>(() => getHRNews());
 
     // Profile Data State
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -398,10 +398,11 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         const loadNews = async () => {
             try {
                 const response = await axios.get('/cms-content/mock_hr_news');
-                setHrNews(response.data || getHRNews());
+                if (response.data && Array.isArray(response.data)) {
+                    setHrNews(response.data);
+                }
             } catch (e) {
                 console.error("Failed to load dashboard news from database", e);
-                setHrNews(getHRNews());
             }
         };
         loadNews();

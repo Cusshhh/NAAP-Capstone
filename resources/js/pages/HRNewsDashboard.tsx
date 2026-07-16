@@ -5,7 +5,7 @@ import axios from 'axios';
 import { getHRNews, updateHRNews, type HRNewsItem } from '@/data/mockData';
 
 export default function HRNewsDashboard({ auth }: { auth: any }) {
-    const [hrNews, setHrNews] = useState<HRNewsItem[]>([]);
+    const [hrNews, setHrNews] = useState<HRNewsItem[]>(() => getHRNews());
     const [editMode, setEditMode] = useState(false);
     const [editingItem, setEditingItem] = useState<HRNewsItem | null>(null);
     const [formData, setFormData] = useState<Partial<HRNewsItem>>({});
@@ -16,10 +16,11 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
         const loadNews = async () => {
             try {
                 const response = await axios.get('/cms-content/mock_hr_news');
-                setHrNews(response.data || getHRNews());
+                if (response.data && Array.isArray(response.data)) {
+                    setHrNews(response.data);
+                }
             } catch (e) {
                 console.error("Failed to load news from database", e);
-                setHrNews(getHRNews());
             }
         };
         loadNews();

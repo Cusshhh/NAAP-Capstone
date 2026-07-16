@@ -92,11 +92,11 @@ const PRIME_PILLARS = [
 ];
 
 export default function ProfessionalsHired() {
-    const [cmsContent, setCmsContent] = useState(getLandingPageContent());
-    const cmsHiredPosts = cmsContent.hired.posts;
+    const [cmsContent, setCmsContent] = useState<any>(() => getLandingPageContent());
+    const cmsHiredPosts = cmsContent?.hired?.posts || [];
     const allApps = getApplications();
-    const [recentlyHired, setRecentlyHired] = useState<RecentlyHiredApplicant[]>([]);
-    const [announcements, setAnnouncements] = useState<HRNewsItem[]>([]);
+    const [recentlyHired, setRecentlyHired] = useState<RecentlyHiredApplicant[]>(() => getRecentlyHired());
+    const [announcements, setAnnouncements] = useState<HRNewsItem[]>(() => getHRNews());
 
     useEffect(() => {
         const loadDbData = async () => {
@@ -106,14 +106,17 @@ export default function ProfessionalsHired() {
                     axios.get('/cms-content/mock_hr_news'),
                     axios.get('/cms-content/mock_recently_hired')
                 ]);
-                if (cmsRes.data) setCmsContent(cmsRes.data);
-                if (hiredRes.data) setRecentlyHired(hiredRes.data);
-                if (newsRes.data) setAnnouncements(newsRes.data);
+                if (cmsRes.data && typeof cmsRes.data === 'object' && cmsRes.data.hired) {
+                    setCmsContent(cmsRes.data);
+                }
+                if (hiredRes.data && Array.isArray(hiredRes.data)) {
+                    setRecentlyHired(hiredRes.data);
+                }
+                if (newsRes.data && Array.isArray(newsRes.data)) {
+                    setAnnouncements(newsRes.data);
+                }
             } catch (e) {
                 console.error("Failed to load CMS content from database", e);
-                setRecentlyHired(getRecentlyHired());
-                setAnnouncements(getHRNews());
-                setCmsContent(getLandingPageContent());
             }
         };
         loadDbData();
