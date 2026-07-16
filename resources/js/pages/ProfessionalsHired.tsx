@@ -15,6 +15,7 @@ import {
     Clock
 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import EmployeeBenefitsSection from '@/components/landing/EmployeeBenefitsSection';
 import JobBoardSection from '@/components/landing/JobBoardSection';
 import LegacyWelcomeSection from '@/components/landing/LegacyWelcomeSection';
@@ -98,28 +99,38 @@ export default function ProfessionalsHired() {
     const [announcements, setAnnouncements] = useState<HRNewsItem[]>([]);
 
     useEffect(() => {
-        setRecentlyHired(getRecentlyHired());
-        setAnnouncements(getHRNews());
-        setCmsContent(getLandingPageContent());
+        const loadDbData = async () => {
+            try {
+                const [cmsRes, newsRes, hiredRes] = await Promise.all([
+                    axios.get('/cms-content/mock_cms_content'),
+                    axios.get('/cms-content/mock_hr_news'),
+                    axios.get('/cms-content/mock_recently_hired')
+                ]);
+                if (cmsRes.data) setCmsContent(cmsRes.data);
+                if (hiredRes.data) setRecentlyHired(hiredRes.data);
+                if (newsRes.data) setAnnouncements(newsRes.data);
+            } catch (e) {
+                console.error("Failed to load CMS content from database", e);
+                setRecentlyHired(getRecentlyHired());
+                setAnnouncements(getHRNews());
+                setCmsContent(getLandingPageContent());
+            }
+        };
+        loadDbData();
 
         const handleStorage = (event: StorageEvent) => {
-            switch (event.key) {
-                case 'mock_hr_news':
-                    setAnnouncements(getHRNews());
-                    break;
-                case 'mock_recently_hired':
-                    setRecentlyHired(getRecentlyHired());
-                    break;
-                case 'mock_cms_content':
-                    setCmsContent(getLandingPageContent());
-                    break;
-                default:
-                    if (!event.key) {
-                        setAnnouncements(getHRNews());
-                        setRecentlyHired(getRecentlyHired());
-                        setCmsContent(getLandingPageContent());
-                    }
-                    break;
+            if (event.key === 'mock_hr_news') {
+                try {
+                    setAnnouncements(JSON.parse(event.newValue || '[]'));
+                } catch (e) {}
+            } else if (event.key === 'mock_recently_hired') {
+                try {
+                    setRecentlyHired(JSON.parse(event.newValue || '[]'));
+                } catch (e) {}
+            } else if (event.key === 'mock_cms_content') {
+                try {
+                    setCmsContent(JSON.parse(event.newValue || '{}'));
+                } catch (e) {}
             }
         };
 

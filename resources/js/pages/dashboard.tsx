@@ -126,6 +126,7 @@ interface DashboardProps {
     applications: Application[];
     jobs?: any[];
     dbProfileData?: any;
+    dbInterviews?: any[];
 }
 
 // --- CHATBOT COMPONENT ---
@@ -299,7 +300,7 @@ const ChatBot = () => {
 
 // --- MAIN COMPONENT ---
 
-export default function ApplicantDashboard({ auth, applications: propApplications, jobs = [], dbProfileData }: DashboardProps) {
+export default function ApplicantDashboard({ auth, applications: propApplications, jobs = [], dbProfileData, dbInterviews = [] }: DashboardProps) {
     // Profile Image State
     const [profileImage, setProfileImage] = useState<string | null>(() => {
         if (typeof window !== 'undefined') {
@@ -307,6 +308,30 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         }
         return null;
     });
+
+    const getCombinedInterviews = () => {
+        if (typeof window === 'undefined') return dbInterviews;
+        try {
+            const localSaved = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+            const formattedDb = dbInterviews.map((int: any) => ({
+                ...int,
+                applicationId: int.applicationId,
+                applicantEmail: int.applicantEmail,
+                candidateName: int.candidateName,
+                panelMembers: int.panelMembers,
+                resultNotes: int.resultNotes,
+            }));
+            return [...formattedDb, ...localSaved].reduce((acc: any[], item: any) => {
+                const idKey = item.applicationId || item.application_id || item.id;
+                if (!acc.some(x => (x.applicationId || x.application_id || x.id) === idKey)) {
+                    acc.push(item);
+                }
+                return acc;
+            }, []);
+        } catch (e) {
+            return dbInterviews;
+        }
+    };
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mechanicJob = [...jobs, ...getJobs()].find(j => j.title.toLowerCase().includes('mechanic'));
@@ -369,11 +394,25 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        setHrNews(getHRNews());
+        
+        const loadNews = async () => {
+            try {
+                const response = await axios.get('/cms-content/mock_hr_news');
+                setHrNews(response.data || getHRNews());
+            } catch (e) {
+                console.error("Failed to load dashboard news from database", e);
+                setHrNews(getHRNews());
+            }
+        };
+        loadNews();
 
         const handleStorage = (event: StorageEvent) => {
             if (event.key === 'mock_hr_news') {
-                setHrNews(getHRNews());
+                try {
+                    setHrNews(JSON.parse(event.newValue || '[]'));
+                } catch (e) {
+                    setHrNews(getHRNews());
+                }
             }
         };
 
@@ -621,7 +660,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
         // 4. Real Scheduled Interviews notifications
         try {
-            const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+            const savedInterviews = getCombinedInterviews();
             savedInterviews.forEach((interview: any) => {
                 if (checkInterviewMatch(interview)) {
                     const notifyId = `interview_notify_${interview.date}_${interview.time}`;
@@ -761,7 +800,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
             // 4. Real Scheduled Interviews from admin
             try {
-                const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+                const savedInterviews = getCombinedInterviews();
                 savedInterviews.forEach((interview: any) => {
                     if (checkInterviewMatch(interview)) {
                         let formattedDate = interview.date;
@@ -821,24 +860,36 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     const scheduledInterviewsCount = (() => {
         if (typeof window === 'undefined') return 0;
         try {
-            const saved = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+            const saved = getCombinedInterviews();
             return saved.filter((interview: any) => checkInterviewMatch(interview)).length;
         } catch (e) {
             return 0;
         }
     })();
 
-    const handleWithdraw = (id: number) => {
+    const handleWithdraw = async (id: any) => {
         if (confirm("Are you sure you want to withdraw this application?")) {
+            const isMock = typeof id === 'string' && id.startsWith('mock_');
+            if (!isMock) {
+                try {
+                    await axios.post(`/applications/${id}/withdraw`);
+                } catch (e: any) {
+                    console.error(e);
+                    toast.error(e.response?.data?.error || "Failed to withdraw application.");
+                    return;
+                }
+            }
+
             const updatedApps = myApplications.map(app =>
                 app.id === id ? { ...app, status: 'Withdrawn' as any } : app
             );
             setMyApplications(updatedApps);
 
             // Persist to localStorage if it's a custom application
+            const rawId = typeof id === 'string' && id.startsWith('mock_') ? id.replace('mock_', '') : id;
             const localApps = JSON.parse(localStorage.getItem('mock_applications_custom') || '[]');
             const updatedLocalApps = localApps.map((app: any) =>
-                app.id === id ? { ...app, status: 'Withdrawn' } : app
+                String(app.id) === String(rawId) ? { ...app, status: 'Withdrawn' } : app
             );
             localStorage.setItem('mock_applications_custom', JSON.stringify(updatedLocalApps));
 
@@ -846,15 +897,27 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         }
     };
 
-    const handleDelete = (id: number) => {
+    const handleDelete = async (id: any) => {
         if (confirm("Are you sure you want to permanently delete this application? This action cannot be undone.")) {
+            const isMock = typeof id === 'string' && id.startsWith('mock_');
+            if (!isMock) {
+                try {
+                    await axios.delete(`/applications/${id}`);
+                } catch (e: any) {
+                    console.error(e);
+                    toast.error(e.response?.data?.error || "Failed to delete application permanently.");
+                    return;
+                }
+            }
+
             // Remove from state
             const updatedApps = myApplications.filter(app => app.id !== id);
             setMyApplications(updatedApps);
 
             // Remove from localStorage
+            const rawId = typeof id === 'string' && id.startsWith('mock_') ? id.replace('mock_', '') : id;
             const localApps = JSON.parse(localStorage.getItem('mock_applications_custom') || '[]');
-            const updatedLocalApps = localApps.filter((app: any) => app.id !== id);
+            const updatedLocalApps = localApps.filter((app: any) => String(app.id) !== String(rawId));
             localStorage.setItem('mock_applications_custom', JSON.stringify(updatedLocalApps));
 
             // Trigger sync event
@@ -925,7 +988,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         // If jobTitle is provided, check if there is an active scheduled interview for this job
         if (jobTitle && typeof window !== 'undefined') {
             try {
-                const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+                const savedInterviews = getCombinedInterviews();
                 const hasInterview = savedInterviews.some((interview: any) => {
                     if (!interview) return false;
                     const isMatchingJob = (interview.position || '').toLowerCase() === jobTitle.toLowerCase();
@@ -1242,7 +1305,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                         const activeApp = myApplications[0];
                                         let activeInterview = null;
                                         try {
-                                            const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+                                            const savedInterviews = getCombinedInterviews();
                                             activeInterview = savedInterviews.find((interview: any) => {
                                                 if (!interview) return false;
                                                 const candidateJob = (interview.position || '').toLowerCase();

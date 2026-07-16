@@ -26,6 +26,28 @@ Route::get('/', function () {
     return Inertia::render('ProfessionalsHired'); 
 })->name('home');
 
+Route::get('/cms-content/{key}', [\App\Http\Controllers\CmsContentController::class, 'show'])->name('cms-content.show');
+
+Route::get('/api/open-jobs', function() {
+    return response()->json(
+        \App\Models\Vacancy::where('status', 'Open')->latest()->get()->map(function ($vacancy) {
+            return [
+                'id' => $vacancy->id,
+                'title' => $vacancy->title,
+                'department' => $vacancy->department,
+                'employmentType' => $vacancy->employment_type,
+                'location' => $vacancy->location,
+                'salaryGrade' => $vacancy->salary_grade,
+                'description' => $vacancy->description,
+                'postedDate' => $vacancy->created_at->toDateString(),
+                'deadline' => $vacancy->deadline ? $vacancy->deadline->toDateString() : null,
+                'applicantCount' => $vacancy->applications()->count(),
+                'status' => $vacancy->status,
+            ];
+        })
+    );
+});
+
 Route::get('/dashboard', [\App\Http\Controllers\ApplicantController::class, 'dashboard'])->middleware(['auth', 'verified'])->name('dashboard');
 Route::post('/profile/save', [\App\Http\Controllers\ApplicantController::class, 'saveProfileData'])->middleware(['auth', 'verified'])->name('profile.saveData');
 
@@ -145,6 +167,16 @@ Route::post('/logout', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/messages/{application}', [\App\Http\Controllers\MessageController::class, 'index'])->name('messages.index');
     Route::post('/messages/{application}', [\App\Http\Controllers\MessageController::class, 'store'])->name('messages.store');
+
+    Route::post('/applications/{application}/withdraw', [\App\Http\Controllers\ApplicantController::class, 'withdraw'])->name('applications.withdraw');
+    Route::delete('/applications/{application}', [\App\Http\Controllers\ApplicantController::class, 'destroy'])->name('applications.destroy');
+
+    // Calendar Event Routes
+    Route::get('/calendar/events', [\App\Http\Controllers\CalendarEventController::class, 'index'])->name('calendar.events.index');
+    Route::post('/calendar/events', [\App\Http\Controllers\CalendarEventController::class, 'store'])->name('calendar.events.store');
+    Route::delete('/calendar/events/{calendarEvent}', [\App\Http\Controllers\CalendarEventController::class, 'destroy'])->name('calendar.events.destroy');
+
+    Route::post('/cms-content', [\App\Http\Controllers\CmsContentController::class, 'store'])->name('cms-content.store');
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', function () {
@@ -325,6 +357,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/landing-page', function () {
             return Inertia::render('Admin/LandingPageManager');
         })->name('landing-page');
+
+        // Interview routes
+        Route::get('/interviews', [\App\Http\Controllers\Admin\InterviewController::class, 'index'])->name('interviews.index');
+        Route::post('/interviews', [\App\Http\Controllers\Admin\InterviewController::class, 'store'])->name('interviews.store');
+        Route::put('/interviews/{interview}', [\App\Http\Controllers\Admin\InterviewController::class, 'update'])->name('interviews.update');
+        Route::delete('/interviews/{interview}', [\App\Http\Controllers\Admin\InterviewController::class, 'destroy'])->name('interviews.destroy');
+
+        // Activity log routes
+        Route::get('/activity-logs', [\App\Http\Controllers\Admin\ActivityLogController::class, 'index'])->name('activity-logs.index');
     });
 });
 

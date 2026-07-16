@@ -51,16 +51,41 @@ export default function Applicants({ auth, applications: serverApplications }: {
     const [selectedAppId, setSelectedAppId] = useState<number | null>(null);
     const [selectedAppEmail, setSelectedAppEmail] = useState<string>('');
 
-    // State to hold scheduled interviews - Initialize from LocalStorage
-    const [scheduledInterviews, setScheduledInterviews] = useState<any[]>(() => {
-        if (typeof window === 'undefined') return [];
-        try {
-            const saved = localStorage.getItem('scheduled_interviews_custom');
-            return saved ? JSON.parse(saved) : [];
-        } catch (e) {
-            return [];
-        }
-    });
+    // State to hold scheduled interviews
+    const [scheduledInterviews, setScheduledInterviews] = useState<any[]>([]);
+
+    useEffect(() => {
+        const loadInterviews = async () => {
+            try {
+                const response = await axios.get('/admin/interviews');
+                // Format the backend data to match the UI expectation
+                const dbInterviews = response.data.map((int: any) => ({
+                    ...int,
+                    applicationId: int.application_id,
+                    applicantEmail: int.applicant_email,
+                    candidateName: int.candidate_name,
+                    panelMembers: int.panel_members,
+                    resultNotes: int.result_notes,
+                }));
+                // Merge/fallback with custom localstorage if needed
+                const localSaved = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+                const combined = [...dbInterviews, ...localSaved].reduce((acc: any[], item: any) => {
+                    const idKey = item.applicationId || item.application_id || item.id;
+                    if (!acc.some(x => (x.applicationId || x.application_id || x.id) === idKey)) {
+                        acc.push(item);
+                    }
+                    return acc;
+                }, []);
+                setScheduledInterviews(combined);
+            } catch (e) {
+                console.error("Failed to fetch interviews", e);
+                // Fallback to local storage if API fails
+                const localSaved = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+                setScheduledInterviews(localSaved);
+            }
+        };
+        loadInterviews();
+    }, []);
 
     useEffect(() => {
         localStorage.setItem('scheduled_interviews_custom', JSON.stringify(scheduledInterviews));
@@ -242,13 +267,72 @@ export default function Applicants({ auth, applications: serverApplications }: {
         return 0;
     });
 
-    const handleScheduleInterview = () => {
+    const handleScheduleInterview = async () => {
         if (!interviewDate || !interviewTime || !venue) {
             toast.error("Please fill in Date, Time, and Venue.");
             return;
         }
 
-        const interviewData = {
+        const isMock = typeof selectedAppId === 'string' && selectedAppId.startsWith('mock_');
+        let dbInterview: any = null;
+
+        if (!isMock && selectedAppId) {
+            try {
+                const payload = {
+                    application_id: selectedAppId,
+                    date: interviewDate,
+                    time: interviewTime,
+                    panel_members: panelMembers,
+                    venue: venue,
+                    notify_applicant: notifyApplicant,
+                    result_notes: resultNotes,
+                    candidate_name: candidateName,
+                    position: position,
+                    applicant_email: selectedAppEmail
+                };
+
+                if (editingInterviewIndex !== null) {
+                    const existing = scheduledInterviews[editingInterviewIndex];
+                    if (existing && existing.id && !String(existing.id).startsWith('mock_') && typeof existing.id === 'number') {
+                        const response = await axios.put(`/admin/interviews/${existing.id}`, payload);
+                        dbInterview = {
+                            ...response.data,
+                            applicationId: response.data.application_id,
+                            applicantEmail: response.data.applicant_email,
+                            candidateName: response.data.candidate_name,
+                            panelMembers: response.data.panel_members,
+                            resultNotes: response.data.result_notes,
+                        };
+                    } else {
+                        const response = await axios.post('/admin/interviews', payload);
+                        dbInterview = {
+                            ...response.data,
+                            applicationId: response.data.application_id,
+                            applicantEmail: response.data.applicant_email,
+                            candidateName: response.data.candidate_name,
+                            panelMembers: response.data.panel_members,
+                            resultNotes: response.data.result_notes,
+                        };
+                    }
+                } else {
+                    const response = await axios.post('/admin/interviews', payload);
+                    dbInterview = {
+                        ...response.data,
+                        applicationId: response.data.application_id,
+                        applicantEmail: response.data.applicant_email,
+                        candidateName: response.data.candidate_name,
+                        panelMembers: response.data.panel_members,
+                        resultNotes: response.data.result_notes,
+                    };
+                }
+            } catch (e: any) {
+                console.error(e);
+                toast.error(e.response?.data?.error || "Failed to save interview in the database.");
+                return;
+            }
+        }
+
+        const interviewData = dbInterview || {
             id: selectedAppId || Date.now(),
             date: interviewDate,
             time: interviewTime,
@@ -300,18 +384,44 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
     const handleEditInterview = (index: number) => {
         const interview = scheduledInterviews[index];
-        setInterviewDate(interview.date);
+        let formattedDate = '';
+        if (interview.date) {
+            try {
+                formattedDate = new Date(interview.date).toISOString().split('T')[0];
+            } catch (e) {
+                formattedDate = interview.date;
+            }
+        }
+        setInterviewDate(formattedDate);
         setInterviewTime(interview.time);
-        setPanelMembers(interview.panelMembers);
+        setPanelMembers(interview.panelMembers || '');
         setVenue(interview.venue);
-        setNotifyApplicant(interview.notifyApplicant);
-        setResultNotes(interview.resultNotes);
+        setNotifyApplicant(!!interview.notifyApplicant);
+        setResultNotes(interview.resultNotes || '');
         setCandidateName(interview.candidateName || '');
         setPosition(interview.position || '');
-        setSelectedAppId(interview.applicationId || null);
-        setSelectedAppEmail(interview.applicantEmail || '');
+        setSelectedAppId(interview.applicationId || interview.application_id || null);
+        setSelectedAppEmail(interview.applicantEmail || interview.applicant_email || '');
         setEditingInterviewIndex(index);
         setIsInterviewModalOpen(true);
+    };
+
+    const handleDeleteInterview = async (index: number) => {
+        if (confirm("Are you sure you want to cancel this interview?")) {
+            const interview = scheduledInterviews[index];
+            if (interview && interview.id && !String(interview.id).startsWith('mock_') && typeof interview.id === 'number') {
+                try {
+                    await axios.delete(`/admin/interviews/${interview.id}`);
+                } catch (e: any) {
+                    console.error(e);
+                    toast.error(e.response?.data?.error || "Failed to cancel interview in the database.");
+                    return;
+                }
+            }
+            const updatedInterviews = scheduledInterviews.filter((_, i) => i !== index);
+            setScheduledInterviews(updatedInterviews);
+            toast.success("Interview cancelled.");
+        }
     };
 
     const handleStatusUpdate = (id: any, newStatus: string) => {
@@ -362,11 +472,6 @@ export default function Applicants({ auth, applications: serverApplications }: {
         } else {
             toast.success(`Applicant status updated to: ${newStatus} (Mock Local)`);
         }
-    };
-
-    const handleDeleteInterview = (index: number) => {
-        const updatedInterviews = scheduledInterviews.filter((_, i) => i !== index);
-        setScheduledInterviews(updatedInterviews);
     };
 
     const handleViewInterview = (index) => {

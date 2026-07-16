@@ -37,6 +37,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             VacancySeeder::class,
+            StaffingPositionSeeder::class,
         ]);
     }
 }

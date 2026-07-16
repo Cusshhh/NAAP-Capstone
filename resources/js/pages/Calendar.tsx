@@ -20,8 +20,11 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
     const { auth } = usePage().props as any;
     const user = auth.user;
 
+    const [dbCustomEvents, setDbCustomEvents] = useState<any[]>([]);
+    const [dbInterviews, setDbInterviews] = useState<any[]>([]);
+
     // Helper to build dynamic and custom user events
-    const buildEvents = () => {
+    const buildEvents = (customEventsList: any[] = [], interviewsList: any[] = []) => {
         const eventsList: any[] = [];
         
         // 1. General Events (webinars, school events)
@@ -68,50 +71,78 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
         });
 
         // Load real Scheduled Interviews from admin
-        try {
-            const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
-            savedInterviews.forEach((interview: any) => {
-                if (!interview) return;
-                const candidateName = (interview.candidateName || '').toLowerCase();
-                const applicantEmail = (interview.applicantEmail || '').toLowerCase();
-                const userName = (user?.name || '').toLowerCase();
-                const userEmail = (user?.email || '').toLowerCase();
-                const userId = String(user?.id || '').toLowerCase();
+        const localSavedInterviews = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]') : [];
+        const allInterviews = [...interviewsList, ...localSavedInterviews].reduce((acc: any[], item: any) => {
+            const idKey = item.applicationId || item.application_id || item.id;
+            if (!acc.some(x => (x.applicationId || x.application_id || x.id) === idKey)) {
+                acc.push(item);
+            }
+            return acc;
+        }, []);
 
-                const nameMatches = candidateName && (
-                    candidateName.includes(userName) ||
-                    userName.includes(candidateName)
-                );
-                const emailMatches = applicantEmail && (
-                    applicantEmail === userEmail ||
-                    applicantEmail === userId
-                );
+        allInterviews.forEach((interview: any) => {
+            if (!interview) return;
+            const candidateName = (interview.candidateName || interview.candidate_name || '').toLowerCase();
+            const applicantEmail = (interview.applicantEmail || interview.applicant_email || '').toLowerCase();
+            const userName = (user?.name || '').toLowerCase();
+            const userEmail = (user?.email || '').toLowerCase();
+            const userId = String(user?.id || '').toLowerCase();
 
-                if (nameMatches || emailMatches) {
-                    let formattedDate = interview.date;
-                    try {
-                        const dateObj = new Date(interview.date);
-                        formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                    } catch (e) {}
+            const nameMatches = candidateName && (
+                candidateName.includes(userName) ||
+                userName.includes(candidateName)
+            );
+            const emailMatches = applicantEmail && (
+                applicantEmail === userEmail ||
+                applicantEmail === userId
+            );
 
-                    eventsList.push({
-                        id: `real_interview_${interview.date}_${interview.time}`,
-                        title: `Interview: ${interview.position || 'School Nurse'}`,
-                        date: formattedDate,
-                        time: interview.time,
-                        venue: interview.venue,
-                        panelMembers: interview.panelMembers,
-                        type: 'Interview'
-                    });
-                }
-            });
-        } catch (e) {}
+            if (nameMatches || emailMatches) {
+                let formattedDate = interview.date;
+                try {
+                    const dateObj = new Date(interview.date);
+                    formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                } catch (e) {}
 
-        // Load custom events from LocalStorage
+                eventsList.push({
+                    id: `real_interview_${interview.id || interview.date + '_' + interview.time}`,
+                    title: `Interview: ${interview.position || 'School Nurse'}`,
+                    date: formattedDate,
+                    time: interview.time,
+                    venue: interview.venue,
+                    panelMembers: interview.panelMembers || interview.panel_members,
+                    type: 'Interview'
+                });
+            }
+        });
+
+        // Load custom events from database & LocalStorage
         const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('custom_calendar_events') || '[]') : [];
+        const formattedDbEvents = customEventsList.map((e: any) => {
+            let formattedDate = e.date;
+            try {
+                const dateObj = new Date(e.date);
+                formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            } catch (err) {}
+            return {
+                id: e.id,
+                title: e.title,
+                date: formattedDate,
+                time: e.time,
+                type: e.type,
+                venue: e.venue,
+            };
+        });
+
+        const allCustomEvents = [...formattedDbEvents, ...localCustom].reduce((acc: any[], item: any) => {
+            if (!acc.some(x => String(x.id) === String(item.id))) {
+                acc.push(item);
+            }
+            return acc;
+        }, []);
         
         // Sort events by date descending (newest/most recent first)
-        return [...eventsList, ...localCustom].sort((a, b) => {
+        return [...eventsList, ...allCustomEvents].sort((a, b) => {
             const dateA = a.date ? new Date(a.date).getTime() : 0;
             const dateB = b.date ? new Date(b.date).getTime() : 0;
             return dateB - dateA;
@@ -119,20 +150,37 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
     };
 
     // Local state for interactive events
-    const [events, setEvents] = useState(() => buildEvents());
+    const [events, setEvents] = useState<any[]>([]);
 
-    // Sync state if applications or jobs update, or storage changes
+    // Fetch DB calendar events and interviews on mount
     React.useEffect(() => {
-        setEvents(buildEvents());
+        const fetchDbData = async () => {
+            try {
+                const [eventsRes, interviewsRes] = await Promise.all([
+                    axios.get('/calendar/events'),
+                    axios.get('/admin/interviews')
+                ]);
+                setDbCustomEvents(eventsRes.data);
+                setDbInterviews(interviewsRes.data);
+            } catch (e) {
+                console.error("Failed to load DB calendar events/interviews", e);
+            }
+        };
+        fetchDbData();
+    }, []);
+
+    // Sync state if applications, jobs, or database events change
+    React.useEffect(() => {
+        setEvents(buildEvents(dbCustomEvents, dbInterviews));
 
         const handleStorage = (e: StorageEvent) => {
             if (e.key === 'custom_calendar_events' || e.key === 'scheduled_interviews_custom') {
-                setEvents(buildEvents());
+                setEvents(buildEvents(dbCustomEvents, dbInterviews));
             }
         };
         window.addEventListener('storage', handleStorage);
         return () => window.removeEventListener('storage', handleStorage);
-    }, [applications, jobs]);
+    }, [dbCustomEvents, dbInterviews, applications, jobs]);
 
     // Form state
     const [newEvent, setNewEvent] = useState({
@@ -143,7 +191,7 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
     });
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-    const handleAddEvent = () => {
+    const handleAddEvent = async () => {
         if (!newEvent.title || !newEvent.date || !newEvent.time) {
             toast.error("Please fill in all fields.");
             return;
@@ -155,7 +203,26 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
 
         const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-        const eventToAdd = {
+        let dbEvent: any = null;
+        try {
+            const response = await axios.post('/calendar/events', {
+                title: newEvent.title,
+                date: newEvent.date,
+                time: newEvent.time,
+                type: newEvent.type
+            });
+            dbEvent = response.data;
+        } catch (e) {
+            console.error("Failed to save event to database", e);
+        }
+
+        const eventToAdd = dbEvent ? {
+            id: dbEvent.id,
+            title: dbEvent.title,
+            date: formattedDate,
+            time: dbEvent.time,
+            type: dbEvent.type
+        } : {
             id: Date.now().toString(), // simple unique ID
             title: newEvent.title,
             date: formattedDate,
@@ -163,24 +230,37 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
             type: newEvent.type
         };
 
-        const updated = [...events, eventToAdd];
-        setEvents(updated);
-
-        // Save only numeric ID events as user custom-added ones
-        const customOnly = updated.filter(e => String(e.id).match(/^\d+$/));
-        localStorage.setItem('custom_calendar_events', JSON.stringify(customOnly));
+        if (dbEvent) {
+            setDbCustomEvents([dbEvent, ...dbCustomEvents]);
+        } else {
+            const localCustom = JSON.parse(localStorage.getItem('custom_calendar_events') || '[]');
+            const updated = [...localCustom, eventToAdd];
+            localStorage.setItem('custom_calendar_events', JSON.stringify(updated));
+            setEvents(buildEvents(dbCustomEvents, dbInterviews));
+        }
 
         setNewEvent({ title: '', date: '', time: '', type: 'Personal' });
         setIsDialogOpen(false);
         toast.success("Event added successfully!");
     };
 
-    const handleDeleteEvent = (id: any) => {
-        const updated = events.filter(e => String(e.id) !== String(id));
-        setEvents(updated);
-
-        const customOnly = updated.filter(e => String(e.id).match(/^\d+$/));
-        localStorage.setItem('custom_calendar_events', JSON.stringify(customOnly));
+    const handleDeleteEvent = async (id: any) => {
+        const isDbEvent = dbCustomEvents.some(e => String(e.id) === String(id));
+        if (isDbEvent) {
+            try {
+                await axios.delete(`/calendar/events/${id}`);
+                setDbCustomEvents(dbCustomEvents.filter(e => String(e.id) !== String(id)));
+            } catch (e: any) {
+                console.error(e);
+                toast.error(e.response?.data?.error || "Failed to delete event from database.");
+                return;
+            }
+        } else {
+            const localCustom = JSON.parse(localStorage.getItem('custom_calendar_events') || '[]');
+            const updated = localCustom.filter((e: any) => String(e.id) !== String(id));
+            localStorage.setItem('custom_calendar_events', JSON.stringify(updated));
+            setEvents(buildEvents(dbCustomEvents, dbInterviews));
+        }
 
         toast.success("Event removed.");
     };

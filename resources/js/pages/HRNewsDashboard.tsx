@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { ChevronLeft, Calendar, Tag, Edit2, Save, X } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { getHRNews, updateHRNews, type HRNewsItem } from '@/data/mockData';
 
 export default function HRNewsDashboard({ auth }: { auth: any }) {
@@ -12,7 +13,16 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
     const isAdmin = auth?.user && ['admin@naap.edu.ph', 'admin@admin.com'].includes(auth.user.email);
 
     useEffect(() => {
-        setHrNews(getHRNews());
+        const loadNews = async () => {
+            try {
+                const response = await axios.get('/cms-content/mock_hr_news');
+                setHrNews(response.data || getHRNews());
+            } catch (e) {
+                console.error("Failed to load news from database", e);
+                setHrNews(getHRNews());
+            }
+        };
+        loadNews();
     }, []);
 
     const handleEdit = (item: HRNewsItem) => {
@@ -20,7 +30,7 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
         setFormData({ ...item });
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!editingItem || !formData.title || !formData.date || !formData.category || !formData.summary) {
             return;
         }
@@ -31,10 +41,18 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
                 : item
         );
 
-        updateHRNews(updatedNews);
-        setHrNews(updatedNews);
-        setEditingItem(null);
-        setFormData({});
+        try {
+            await axios.post('/cms-content', {
+                key: 'mock_hr_news',
+                value: updatedNews
+            });
+            updateHRNews(updatedNews);
+            setHrNews(updatedNews);
+            setEditingItem(null);
+            setFormData({});
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const handleCancel = () => {

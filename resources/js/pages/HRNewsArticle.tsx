@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { ChevronLeft, Calendar, User, Share2, Tag, Search, Menu, Facebook, Twitter, Linkedin, Link as LinkIcon, Check } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import axios from 'axios';
 import { getHRNews, type HRNewsItem } from '@/data/mockData';
 
 interface ArticleProps {
@@ -89,9 +90,20 @@ const HRNewsArticle = ({ id }: ArticleProps) => {
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        const articles = getHRNews();
-        const found = articles.find(a => a.id === parseInt(id));
-        setArticle(found || null);
+        const loadArticle = async () => {
+            try {
+                const response = await axios.get('/cms-content/mock_hr_news');
+                const articles = response.data || getHRNews();
+                const found = articles.find((a: any) => String(a.id) === String(id));
+                setArticle(found || null);
+            } catch (e) {
+                console.error("Failed to load news article from database", e);
+                const articles = getHRNews();
+                const found = articles.find(a => String(a.id) === String(id));
+                setArticle(found || null);
+            }
+        };
+        loadArticle();
     }, [id]);
 
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';

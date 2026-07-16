@@ -1,6 +1,7 @@
 import { Shield, Users, LogOut, Briefcase, Edit2, Save, X, Image as ImageIcon, Eye, Newspaper, Upload, Trash2 } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,9 +35,24 @@ export default function LandingPageManager({ auth }: { auth: any }) {
     const [hiredImageUrl, setHiredImageUrl] = useState<string>('');
 
     useEffect(() => {
-        setAnnouncements(getAnnouncements());
-        setNewsItems(getHRNews());
-        setRecentlyHired(getRecentlyHired());
+        const loadDbData = async () => {
+            try {
+                const [annRes, newsRes, hiredRes] = await Promise.all([
+                    axios.get('/cms-content/mock_announcements'),
+                    axios.get('/cms-content/mock_hr_news'),
+                    axios.get('/cms-content/mock_recently_hired')
+                ]);
+                setAnnouncements(annRes.data || getAnnouncements());
+                setNewsItems(newsRes.data || getHRNews());
+                setRecentlyHired(hiredRes.data || getRecentlyHired());
+            } catch (e) {
+                console.error("Failed to load CMS data from database", e);
+                setAnnouncements(getAnnouncements());
+                setNewsItems(getHRNews());
+                setRecentlyHired(getRecentlyHired());
+            }
+        };
+        loadDbData();
     }, []);
 
 
@@ -47,7 +63,7 @@ export default function LandingPageManager({ auth }: { auth: any }) {
         setPreviewAnnouncementImage(announcement.image);
     };
 
-    const handleSaveAnnouncement = () => {
+    const handleSaveAnnouncement = async () => {
         if (!editingAnnouncementId || !announcementFormData.title || !announcementFormData.description || !announcementFormData.image) {
             toast.error('Please fill in all fields');
             return;
@@ -59,12 +75,21 @@ export default function LandingPageManager({ auth }: { auth: any }) {
                 : item
         );
 
-        updateAnnouncements(updatedAnnouncements);
-        setAnnouncements(updatedAnnouncements);
-        setEditingAnnouncementId(null);
-        setAnnouncementFormData({});
-        setPreviewAnnouncementImage('');
-        toast.success('Announcement updated successfully!');
+        try {
+            await axios.post('/cms-content', {
+                key: 'mock_announcements',
+                value: updatedAnnouncements
+            });
+            updateAnnouncements(updatedAnnouncements);
+            setAnnouncements(updatedAnnouncements);
+            setEditingAnnouncementId(null);
+            setAnnouncementFormData({});
+            setPreviewAnnouncementImage('');
+            toast.success('Announcement updated successfully!');
+        } catch (e) {
+            console.error(e);
+            toast.error("Failed to save announcement to database.");
+        }
     };
 
     const handleCancelAnnouncement = () => {
@@ -85,7 +110,7 @@ export default function LandingPageManager({ auth }: { auth: any }) {
         setNewsImageUrl(newsItem.image || '');
     };
 
-    const handleSaveNews = () => {
+    const handleSaveNews = async () => {
         if (!editingNewsId || !newsFormData.title || !newsFormData.date || !newsFormData.category || !newsFormData.summary || !newsImage) {
             toast.error('Please fill in all required fields');
             return;
@@ -97,12 +122,21 @@ export default function LandingPageManager({ auth }: { auth: any }) {
                 : item
         );
 
-        updateHRNews(updatedNews);
-        setNewsItems(updatedNews);
-        setEditingNewsId(null);
-        setNewsFormData({});
-        setNewsImageUrl('');
-        toast.success('News article updated successfully!');
+        try {
+            await axios.post('/cms-content', {
+                key: 'mock_hr_news',
+                value: updatedNews
+            });
+            updateHRNews(updatedNews);
+            setNewsItems(updatedNews);
+            setEditingNewsId(null);
+            setNewsFormData({});
+            setNewsImageUrl('');
+            toast.success('News article updated successfully!');
+        } catch (e) {
+            console.error(e);
+            toast.error("Failed to save news article to database.");
+        }
     };
 
     const handleCancelNews = () => {
@@ -166,7 +200,7 @@ export default function LandingPageManager({ auth }: { auth: any }) {
         setHiredImageUrl(hired.image);
     };
 
-    const handleSaveHired = () => {
+    const handleSaveHired = async () => {
         if (!hiredFormData.name || !hiredFormData.position || !hiredFormData.image) {
             toast.error('Please fill in all fields');
             return;
@@ -185,13 +219,22 @@ export default function LandingPageManager({ auth }: { auth: any }) {
             );
         }
 
-        updateRecentlyHired(updatedHired);
-        setRecentlyHired(updatedHired);
-        setEditingHiredId(null);
-        setIsAddingHired(false);
-        setHiredFormData({});
-        setHiredImageUrl('');
-        toast.success(isAddingHired ? 'New professional added successfully!' : 'Hired professional updated successfully!');
+        try {
+            await axios.post('/cms-content', {
+                key: 'mock_recently_hired',
+                value: updatedHired
+            });
+            updateRecentlyHired(updatedHired);
+            setRecentlyHired(updatedHired);
+            setEditingHiredId(null);
+            setIsAddingHired(false);
+            setHiredFormData({});
+            setHiredImageUrl('');
+            toast.success(isAddingHired ? 'New professional added successfully!' : 'Hired professional updated successfully!');
+        } catch (e) {
+            console.error(e);
+            toast.error("Failed to save recently hired professional to database.");
+        }
     };
 
     const handleCancelHired = () => {
@@ -201,12 +244,21 @@ export default function LandingPageManager({ auth }: { auth: any }) {
         setHiredImageUrl('');
     };
 
-    const handleDeleteHired = (id: number) => {
+    const handleDeleteHired = async (id: number) => {
         if (window.confirm('Are you sure you want to remove this applicant from the recently hired list?')) {
             const updatedHired = recentlyHired.filter(h => h.id !== id);
-            updateRecentlyHired(updatedHired);
-            setRecentlyHired(updatedHired);
-            toast.success('Applicant removed successfully');
+            try {
+                await axios.post('/cms-content', {
+                    key: 'mock_recently_hired',
+                    value: updatedHired
+                });
+                updateRecentlyHired(updatedHired);
+                setRecentlyHired(updatedHired);
+                toast.success('Applicant removed successfully');
+            } catch (e) {
+                console.error(e);
+                toast.error("Failed to remove applicant from database.");
+            }
         }
     };
 

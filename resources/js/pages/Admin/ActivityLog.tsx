@@ -27,12 +27,33 @@ export default function ActivityLog({ auth, dbApplications = [], dbJobs = [] }: 
     const admin = auth?.user || { name: 'Admin' };
     const [searchTerm, setSearchTerm] = useState('');
     const [typeFilter, setTypeFilter] = useState('all');
-    const [activities, setActivities] = useState(() => getActivities(dbApplications, dbJobs));
+    const [activities, setActivities] = useState<any[]>([]);
 
     React.useEffect(() => {
-        const handleSync = () => setActivities(getActivities(dbApplications, dbJobs));
-        window.addEventListener('storage', handleSync);
-        return () => window.removeEventListener('storage', handleSync);
+        const loadLogs = async () => {
+            try {
+                const response = await axios.get('/admin/activity-logs');
+                const dbLogs = response.data;
+                const mockLogs = getActivities(dbApplications, dbJobs);
+                // Combine and de-duplicate by action & details & date
+                const combined = [...dbLogs, ...mockLogs].reduce((acc: any[], item: any) => {
+                    const duplicate = acc.some(x => 
+                        x.action === item.action && 
+                        x.details === item.details &&
+                        x.date === item.date
+                    );
+                    if (!duplicate) {
+                        acc.push(item);
+                    }
+                    return acc;
+                }, []);
+                setActivities(combined);
+            } catch (e) {
+                console.error("Failed to load DB activity logs", e);
+                setActivities(getActivities(dbApplications, dbJobs));
+            }
+        };
+        loadLogs();
     }, [dbApplications, dbJobs]);
 
     const getIcon = (iconName: string) => {

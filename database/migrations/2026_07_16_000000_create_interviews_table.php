@@ -11,16 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('messages', function (Blueprint $table) {
+        Schema::create('interviews', function (Blueprint $table) {
             $table->id();
             $table->unsignedInteger('application_id');
             $table->foreign('application_id')->references('id')->on('applications')->onDelete('cascade');
-            $table->unsignedInteger('sender_id');
-            $table->foreign('sender_id')->references('id')->on('users')->onDelete('cascade');
-            $table->unsignedInteger('receiver_id');
-            $table->foreign('receiver_id')->references('id')->on('users')->onDelete('cascade');
-            $table->text('content');
-            $table->boolean('is_read')->default(false);
+            $table->date('date');
+            $table->string('time');
+            $table->text('panel_members')->nullable();
+            $table->string('venue');
+            $table->boolean('notify_applicant')->default(false);
+            $table->text('result_notes')->nullable();
+            $table->string('candidate_name');
+            $table->string('position');
+            $table->string('applicant_email');
             $table->timestamps();
         });
     }
@@ -30,6 +33,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('messages');
+        Schema::dropIfExists('interviews');
     }
 };

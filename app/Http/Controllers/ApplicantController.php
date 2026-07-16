@@ -112,11 +112,30 @@ class ApplicantController extends Controller
                 'status' => $vacancy->status,
             ];
         });
+        $dbInterviews = \App\Models\Interview::where('applicant_email', $user->email)
+            ->latest()
+            ->get()
+            ->map(function ($int) {
+                return [
+                    'id' => $int->id,
+                    'applicationId' => $int->application_id,
+                    'date' => $int->date->toDateString(),
+                    'time' => $int->time,
+                    'panelMembers' => $int->panel_members,
+                    'venue' => $int->venue,
+                    'notifyApplicant' => $int->notify_applicant,
+                    'resultNotes' => $int->result_notes,
+                    'candidateName' => $int->candidate_name,
+                    'position' => $int->position,
+                    'applicantEmail' => $int->applicant_email,
+                ];
+            });
             
         return Inertia::render('dashboard', [
             'applications' => $applications,
             'jobs' => $jobs,
             'dbProfileData' => $user->profile_data,
+            'dbInterviews' => $dbInterviews,
         ]);
     }
 
@@ -176,5 +195,39 @@ class ApplicantController extends Controller
             
             return redirect()->back()->withErrors(['error' => 'Failed to update profile: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Withdraw an application.
+     */
+    public function withdraw(Application $application)
+    {
+        if ($application->email !== Auth::user()->email) {
+            return response()->json(['error' => 'Unauthorized action.'], 403);
+        }
+
+        $application->update(['status' => 'Withdrawn']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Application withdrawn successfully.'
+        ]);
+    }
+
+    /**
+     * Permanently delete an application.
+     */
+    public function destroy(Application $application)
+    {
+        if ($application->email !== Auth::user()->email) {
+            return response()->json(['error' => 'Unauthorized action.'], 403);
+        }
+
+        $application->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Application deleted permanently.'
+        ]);
     }
 }

@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,9 +19,30 @@ export default function CMS({ auth }: { auth: any }) {
     const admin = auth?.user || { name: 'Admin' };
     const [content, setContent] = useState<LandingPageContent>(getLandingPageContent());
 
-    const handleSave = () => {
-        updateLandingPageContent(content);
-        toast.success("Landing page content updated successfully!");
+    useEffect(() => {
+        const loadDbContent = async () => {
+            try {
+                const response = await axios.get('/cms-content/mock_cms_content');
+                if (response.data) setContent(response.data);
+            } catch (e) {
+                console.error("Failed to load CMS content from database", e);
+            }
+        };
+        loadDbContent();
+    }, []);
+
+    const handleSave = async () => {
+        try {
+            await axios.post('/cms-content', {
+                key: 'mock_cms_content',
+                value: content
+            });
+            updateLandingPageContent(content);
+            toast.success("Landing page content updated successfully!");
+        } catch (e) {
+            console.error(e);
+            toast.error("Failed to save landing page content to database.");
+        }
     };
 
     const updateSection = (key: keyof LandingPageContent, field: keyof CMSSection, value: any) => {

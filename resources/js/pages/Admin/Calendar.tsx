@@ -16,41 +16,71 @@ export default function AdminCalendar() {
     const { auth } = usePage().props as any;
     const admin = auth?.user || { name: 'Admin' };
 
+    const [dbCustomEvents, setDbCustomEvents] = useState<any[]>([]);
+    const [dbInterviews, setDbInterviews] = useState<any[]>([]);
+
     // Helper to build dynamic and custom events
-    const buildEvents = () => {
+    const buildEvents = (customEventsList: any[] = [], interviewsList: any[] = []) => {
         const eventsList = [...mockEvents];
 
-        // Load custom events from LocalStorage
-        try {
-            const localCustom = JSON.parse(localStorage.getItem('custom_calendar_events') || '[]');
-            localCustom.forEach((e: any) => {
-                if (!eventsList.some(item => String(item.id) === String(e.id))) {
-                    eventsList.push(e);
-                }
-            });
-        } catch (e) {}
+        // Load scheduled interviews
+        const localSavedInterviews = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]') : [];
+        const allInterviews = [...interviewsList, ...localSavedInterviews].reduce((acc: any[], item: any) => {
+            const idKey = item.applicationId || item.application_id || item.id;
+            if (!acc.some(x => (x.applicationId || x.application_id || x.id) === idKey)) {
+                acc.push(item);
+            }
+            return acc;
+        }, []);
 
-        // Load scheduled interviews from admin
-        try {
-            const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
-            savedInterviews.forEach((interview: any) => {
-                let formattedDate = interview.date;
-                try {
-                    const dateObj = new Date(interview.date);
-                    formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                } catch (e) {}
+        allInterviews.forEach((interview: any) => {
+            let formattedDate = interview.date;
+            try {
+                const dateObj = new Date(interview.date);
+                formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            } catch (e) {}
 
-                eventsList.push({
-                    id: `real_interview_${interview.date}_${interview.time}`,
-                    title: `Interview: ${interview.candidateName} - ${interview.position}`,
-                    date: formattedDate,
-                    time: interview.time,
-                    venue: interview.venue,
-                    panelMembers: interview.panelMembers,
-                    type: 'Interview'
-                });
+            eventsList.push({
+                id: `real_interview_${interview.id || interview.date + '_' + interview.time}`,
+                title: `Interview: ${interview.candidateName || interview.candidate_name} - ${interview.position}`,
+                date: formattedDate,
+                time: interview.time,
+                venue: interview.venue,
+                panelMembers: interview.panelMembers || interview.panel_members,
+                type: 'Interview'
             });
-        } catch (e) {}
+        });
+
+        // Load custom events from database & LocalStorage
+        const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('custom_calendar_events') || '[]') : [];
+        const formattedDbEvents = customEventsList.map((e: any) => {
+            let formattedDate = e.date;
+            try {
+                const dateObj = new Date(e.date);
+                formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            } catch (err) {}
+            return {
+                id: e.id,
+                title: e.title,
+                date: formattedDate,
+                time: e.time,
+                type: e.type,
+                venue: e.venue,
+            };
+        });
+
+        const allCustomEvents = [...formattedDbEvents, ...localCustom].reduce((acc: any[], item: any) => {
+            if (!acc.some(x => String(x.id) === String(item.id))) {
+                acc.push(item);
+            }
+            return acc;
+        }, []);
+
+        allCustomEvents.forEach((e: any) => {
+            if (!eventsList.some(item => String(item.id) === String(e.id))) {
+                eventsList.push(e);
+            }
+        });
 
         // Sort events by date descending (newest/most recent first)
         return eventsList.sort((a, b) => {
@@ -61,20 +91,37 @@ export default function AdminCalendar() {
     };
 
     // Local state for interactive events
-    const [events, setEvents] = useState(() => buildEvents());
+    const [events, setEvents] = useState<any[]>([]);
 
-    // Sync state if localStorage changes
+    // Fetch DB calendar events and interviews on mount
     React.useEffect(() => {
-        setEvents(buildEvents());
+        const fetchDbData = async () => {
+            try {
+                const [eventsRes, interviewsRes] = await Promise.all([
+                    axios.get('/calendar/events'),
+                    axios.get('/admin/interviews')
+                ]);
+                setDbCustomEvents(eventsRes.data);
+                setDbInterviews(interviewsRes.data);
+            } catch (e) {
+                console.error("Failed to load DB calendar events/interviews", e);
+            }
+        };
+        fetchDbData();
+    }, []);
+
+    // Sync state if database events change
+    React.useEffect(() => {
+        setEvents(buildEvents(dbCustomEvents, dbInterviews));
 
         const handleStorage = (e: StorageEvent) => {
             if (e.key === 'custom_calendar_events' || e.key === 'scheduled_interviews_custom') {
-                setEvents(buildEvents());
+                setEvents(buildEvents(dbCustomEvents, dbInterviews));
             }
         };
         window.addEventListener('storage', handleStorage);
         return () => window.removeEventListener('storage', handleStorage);
-    }, []);
+    }, [dbCustomEvents, dbInterviews]);
 
     // Form state
     const [newEvent, setNewEvent] = useState({
@@ -85,7 +132,7 @@ export default function AdminCalendar() {
     });
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-    const handleAddEvent = () => {
+    const handleAddEvent = async () => {
         if (!newEvent.title || !newEvent.date || !newEvent.time) {
             toast.error("Please fill in all fields.");
             return;
@@ -96,7 +143,26 @@ export default function AdminCalendar() {
 
         const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-        const eventToAdd = {
+        let dbEvent: any = null;
+        try {
+            const response = await axios.post('/calendar/events', {
+                title: newEvent.title,
+                date: newEvent.date,
+                time: newEvent.time,
+                type: newEvent.type
+            });
+            dbEvent = response.data;
+        } catch (e) {
+            console.error("Failed to save event to database", e);
+        }
+
+        const eventToAdd = dbEvent ? {
+            id: dbEvent.id,
+            title: dbEvent.title,
+            date: formattedDate,
+            time: dbEvent.time,
+            type: dbEvent.type
+        } : {
             id: Date.now(),
             title: newEvent.title,
             date: formattedDate,
@@ -104,32 +170,52 @@ export default function AdminCalendar() {
             type: newEvent.type
         };
 
-        setEvents([...events, eventToAdd]);
+        if (dbEvent) {
+            setDbCustomEvents([dbEvent, ...dbCustomEvents]);
+        } else {
+            const localCustom = JSON.parse(localStorage.getItem('custom_calendar_events') || '[]');
+            const updated = [...localCustom, eventToAdd];
+            localStorage.setItem('custom_calendar_events', JSON.stringify(updated));
+            setEvents(buildEvents(dbCustomEvents, dbInterviews));
+        }
+
         setNewEvent({ title: '', date: '', time: '', type: 'Personal' });
         setIsDialogOpen(false);
         toast.success("Event added successfully!");
     };
 
-    const handleDeleteEvent = (id: any) => {
-        const updated = events.filter(e => String(e.id) !== String(id));
-        setEvents(updated);
-
-        // Update custom events in LocalStorage if it's custom
-        const customOnly = updated.filter(e => String(e.id).match(/^\d+$/));
-        localStorage.setItem('custom_calendar_events', JSON.stringify(customOnly));
-
-        // If it is a scheduled interview, remove it from scheduled_interviews_custom
-        if (String(id).startsWith('real_interview_')) {
+    const handleDeleteEvent = async (id: any) => {
+        const isDbEvent = dbCustomEvents.some(e => String(e.id) === String(id));
+        if (isDbEvent) {
             try {
-                const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
-                const updatedInterviews = savedInterviews.filter((interview: any) => {
-                    const eventId = `real_interview_${interview.date}_${interview.time}`;
-                    return String(eventId) !== String(id);
-                });
-                localStorage.setItem('scheduled_interviews_custom', JSON.stringify(updatedInterviews));
-                window.dispatchEvent(new Event('storage'));
-            } catch (e) {
-                console.error("Failed to delete interview", e);
+                await axios.delete(`/calendar/events/${id}`);
+                setDbCustomEvents(dbCustomEvents.filter(e => String(e.id) !== String(id)));
+            } catch (e: any) {
+                console.error(e);
+                toast.error(e.response?.data?.error || "Failed to delete event from database.");
+                return;
+            }
+        } else {
+            const updated = events.filter(e => String(e.id) !== String(id));
+            setEvents(updated);
+
+            // Update custom events in LocalStorage if it's custom
+            const customOnly = updated.filter(e => String(e.id).match(/^\d+$/));
+            localStorage.setItem('custom_calendar_events', JSON.stringify(customOnly));
+
+            // If it is a scheduled interview, remove it from scheduled_interviews_custom
+            if (String(id).startsWith('real_interview_')) {
+                try {
+                    const savedInterviews = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+                    const updatedInterviews = savedInterviews.filter((interview: any) => {
+                        const eventId = `real_interview_${interview.date}_${interview.time}`;
+                        return String(eventId) !== String(id);
+                    });
+                    localStorage.setItem('scheduled_interviews_custom', JSON.stringify(updatedInterviews));
+                    window.dispatchEvent(new Event('storage'));
+                } catch (e) {
+                    console.error("Failed to delete interview", e);
+                }
             }
         }
 

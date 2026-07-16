@@ -2,6 +2,7 @@ import { Link, usePage, router } from '@inertiajs/react';
 import { Search, Filter, MapPin, Briefcase, Clock, Bookmark, ArrowRight } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import axios from 'axios';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,7 +16,20 @@ export default function JobBoardSection() {
     const [jobs, setJobs] = useState<any[]>([]);
 
     useEffect(() => {
-        setJobs(getJobs());
+        const fetchJobs = async () => {
+            try {
+                const response = await axios.get('/api/open-jobs');
+                if (response.data && response.data.length > 0) {
+                    setJobs(response.data);
+                } else {
+                    setJobs(getJobs());
+                }
+            } catch (e) {
+                console.error("Failed to load open jobs from database", e);
+                setJobs(getJobs());
+            }
+        };
+        fetchJobs();
 
         const handleSync = (e: StorageEvent) => {
             if (e.key === 'mock_jobs_custom') {
