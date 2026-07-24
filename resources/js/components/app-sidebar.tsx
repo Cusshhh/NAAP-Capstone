@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { BookOpen, Folder, LayoutGrid, Briefcase, Users, PieChart, Layout, History } from 'lucide-react';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -63,13 +63,36 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+    const { auth } = usePage<any>().props;
+    const isAdmin = !!(user && (user.is_admin || user.email === 'admin@naap.edu.ph'));
+
+    const applicantNavItems: NavItem[] = [
+        {
+            title: 'Dashboard',
+            href: '/dashboard',
+            icon: LayoutGrid,
+        },
+        {
+            title: 'Find Jobs',
+            href: '/jobs',
+            icon: Briefcase,
+        },
+        {
+            title: 'HR Newsroom',
+            href: '/hr-news',
+            icon: BookOpen,
+        }
+    ];
+
+    const mainItems = isAdmin ? mainNavItems : applicantNavItems;
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
+                            <Link href={isAdmin ? "/admin/dashboard" : "/dashboard"} prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -78,7 +101,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain items={mainItems} />
             </SidebarContent>
 
             <SidebarFooter>

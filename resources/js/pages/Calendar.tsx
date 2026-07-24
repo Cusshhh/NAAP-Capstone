@@ -36,39 +36,7 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
             type: 'Meeting'
         });
 
-        // 2. Deadlines for applications
-        applications.forEach((app: any) => {
-            const job = jobs.find((j: any) => String(j.id) === String(app.jobId)) || getJobs().find((j: any) => String(j.id) === String(app.jobId));
-            if (job && job.deadline) {
-                const dateObj = new Date(job.deadline);
-                const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                eventsList.push({
-                    id: `dl_${app.id}`,
-                    jobId: job.id,
-                    title: `Application Deadline: ${app.jobTitle}`,
-                    date: formattedDate,
-                    time: '11:59 PM',
-                    type: 'Deadline'
-                });
-            }
 
-            // 3. Interview events if application is in "Interview" or "Under Review" status
-            if (app.status === 'Interview' || app.status === 'Under Review') {
-                const baseDate = app.submittedDate ? new Date(app.submittedDate) : new Date();
-                const eventDate = new Date(baseDate);
-                eventDate.setDate(baseDate.getDate() + 5);
-                const formattedDate = eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                
-                eventsList.push({
-                    id: `interview_${app.id}`,
-                    jobId: app.jobId,
-                    title: app.status === 'Interview' ? `Initial Interview - ${app.jobTitle}` : `Technical Assessment - ${app.jobTitle}`,
-                    date: formattedDate,
-                    time: '10:00 AM',
-                    type: app.status === 'Interview' ? 'Interview' : 'Deadline'
-                });
-            }
-        });
 
         // Load real Scheduled Interviews from admin
         const localSavedInterviews = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]') : [];
@@ -104,6 +72,9 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                     formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                 } catch (e) {}
 
+                // Find matching application to get jobId
+                const matchingApp = applications.find((a: any) => (a.jobTitle || '').toLowerCase() === (interview.position || '').toLowerCase());
+
                 eventsList.push({
                     id: `real_interview_${interview.id || interview.date + '_' + interview.time}`,
                     title: `Interview: ${interview.position || 'School Nurse'}`,
@@ -111,7 +82,8 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                     time: interview.time,
                     venue: interview.venue,
                     panelMembers: interview.panelMembers || interview.panel_members,
-                    type: 'Interview'
+                    type: 'Interview',
+                    jobId: matchingApp ? matchingApp.jobId : null
                 });
             }
         });
@@ -266,8 +238,33 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
     };
 
     // State for current view (Month/Year)
-    // Default to current Date()
-    const [currentDate, setCurrentDate] = useState(new Date());
+    // Default to current Date() or URL date query parameter if present
+    const [currentDate, setCurrentDate] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const dateParam = params.get('date');
+            if (dateParam) {
+                const parsed = new Date(dateParam);
+                if (!isNaN(parsed.getTime())) {
+                    return parsed;
+                }
+            }
+        }
+        return new Date();
+    });
+
+    React.useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const dateParam = params.get('date');
+            if (dateParam) {
+                const parsed = new Date(dateParam);
+                if (!isNaN(parsed.getTime())) {
+                    setCurrentDate(parsed);
+                }
+            }
+        }
+    }, []);
 
     const handlePrevMonth = () => {
         setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -328,12 +325,12 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
             <div className="bg-[#193153] text-white py-8">
                 <div className="container mx-auto px-4">
                     <div className="flex items-center gap-4 mb-6">
-                        <Link href="/dashboard">
+                        <a href="/dashboard">
                             <Button variant="ghost" className="text-white hover:bg-white/10 hover:text-[#ffdd59]">
                                 <ChevronLeft className="mr-2 h-4 w-4" />
                                 Back to Dashboard
                             </Button>
-                        </Link>
+                        </a>
                     </div>
                     <div className="flex justify-between items-end">
                         <div>
@@ -392,9 +389,9 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent className="max-h-[300px]">
-                                                {Array.from({ length: 100 }, (_, i) => (
-                                                    <SelectItem key={i} value={(2026 + i).toString()}>
-                                                        {2026 + i}
+                                                {Array.from({ length: 20 }, (_, i) => (
+                                                    <SelectItem key={i} value={(2020 + i).toString()}>
+                                                        {2020 + i}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -547,7 +544,7 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                     <div className="space-y-6">
                         <Card className="border-none shadow-md">
                             <CardHeader className="bg-gray-50 border-b pb-3">
-                                <CardTitle className="text-lg font-bold text-[#193153]">Upcoming Agenda</CardTitle>
+                                <CardTitle className="text-lg font-bold text-[#193153]">Interviews & Events</CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
                                 {events.length === 0 ? (
@@ -562,8 +559,8 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                                     event.type === 'Interview' ? 'bg-blue-100 text-blue-700' :
                                                         'bg-gray-100 text-gray-700'
                                                     }`}>
-                                                    <span className="block text-xs font-bold uppercase">{event.date.split(' ')[0]}</span>
-                                                    <span className="block text-lg font-bold leading-none">{event.date.split(' ')[1].replace(',', '')}</span>
+                                                    <span className="block text-xs font-bold uppercase">{event.date.split(' ')[0] || ''}</span>
+                                                    <span className="block text-lg font-bold leading-none">{event.date.split(' ')[1]?.replace(',', '') || ''}</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex justify-between items-start">
@@ -593,7 +590,15 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                                         {innerContent}
                                                     </Link>
                                                 ) : (
-                                                    <div className="flex items-start gap-4 flex-1">
+                                                    <div 
+                                                        onClick={() => {
+                                                            const d = new Date(event.date);
+                                                            if (!isNaN(d.getTime())) {
+                                                                setCurrentDate(d);
+                                                            }
+                                                        }}
+                                                        className="flex items-start gap-4 flex-1 cursor-pointer"
+                                                    >
                                                         {innerContent}
                                                     </div>
                                                 )}

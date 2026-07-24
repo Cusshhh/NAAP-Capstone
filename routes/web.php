@@ -17,8 +17,8 @@ use App\Http\Controllers\AuthSecond\RegisterUserController;
 // Landing Page (The Welcome.tsx we created)
 Route::get('/', function () {
     if (Auth::check()) {
-        $adminEmails = ['admin@naap.edu.ph', 'admin@admin.com'];
-        if (in_array(Auth::user()->email, $adminEmails)) {
+        $user = Auth::user();
+        if ($user->isAdmin() || in_array($user->email, ['admin@naap.edu.ph', 'admin@admin.com'])) {
             return redirect()->route('admin.dashboard');
         }
         return redirect()->route('dashboard');
@@ -28,9 +28,19 @@ Route::get('/', function () {
 
 Route::get('/cms-content/{key}', [\App\Http\Controllers\CmsContentController::class, 'show'])->name('cms-content.show');
 
+Route::post('/select-campus', [\App\Http\Controllers\PublicJobController::class, 'selectCampus'])->name('select-campus');
+
 Route::get('/api/open-jobs', function() {
+    $selectedCampusId = session('selected_campus_id');
+    $query = \App\Models\Vacancy::where('status', 'Open')->latest();
+    if ($selectedCampusId) {
+        $query->where('campus_id', $selectedCampusId);
+    } else {
+        $query->whereRaw('1 = 0');
+    }
+    
     return response()->json(
-        \App\Models\Vacancy::where('status', 'Open')->latest()->get()->map(function ($vacancy) {
+        $query->get()->map(function ($vacancy) {
             return [
                 'id' => $vacancy->id,
                 'title' => $vacancy->title,
@@ -129,11 +139,11 @@ Route::get('/news/csc-prime-hrm-level-2', function () {
 })->name('news.csc-level-2');
 
 Route::get('/hr-news', function () {
-    return Inertia::render('HRNewsDashboard');
+    return Inertia::render('HRNewsDashboard', ['auth' => ['user' => Auth::user()]]);
 })->name('hr.news');
 
 Route::get('/hr-news/{id}', function ($id) {
-    return Inertia::render('HRNewsArticle', ['id' => $id]);
+    return Inertia::render('HRNewsArticle', ['id' => $id, 'auth' => ['user' => Auth::user()]]);
 })->name('hr.news.show');
 
 // routes/web.php
@@ -180,8 +190,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', function () {
+            $user = auth()->user();
+            $appQuery = \App\Models\Application::query();
+            $jobQuery = \App\Models\Vacancy::query();
+            $staffingQuery = \App\Models\StaffingPosition::where('status', 'Unfilled');
+
+            if (!$user->isSuperAdmin() && $user->email !== 'admin@naap.edu.ph') {
+                $appQuery->whereHas('vacancy', function ($q) use ($user) {
+                    $q->where('campus_id', $user->campus_id);
+                });
+                $jobQuery->where('campus_id', $user->campus_id);
+                $staffingQuery->where('campus', $user->campus ? $user->campus->campus_name : '');
+            }
+
             return Inertia::render('Admin/Dashboard', [
-                'dbApplications' => \App\Models\Application::latest()->get()->map(function ($app) {
+                'dbApplications' => $appQuery->latest()->get()->map(function ($app) {
                     return [
                         'id' => $app->id,
                         'applicantName' => $app->applicant_name,
@@ -191,7 +214,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         'campus' => $app->campus,
                     ];
                 }),
-                'dbJobs' => \App\Models\Vacancy::latest()->get()->map(function ($vacancy) {
+                'dbJobs' => $jobQuery->latest()->get()->map(function ($vacancy) {
                     return [
                         'id' => $vacancy->id,
                         'title' => $vacancy->title,
@@ -201,7 +224,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         'status' => $vacancy->status,
                     ];
                 }),
-                'unfilledStaffingCount' => \App\Models\StaffingPosition::where('status', 'Unfilled')->count(),
+                'unfilledStaffingCount' => $staffingQuery->count(),
             ]);
         })->name('dashboard');
 
@@ -211,10 +234,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/jobs/{vacancy}', [\App\Http\Controllers\Admin\JobController::class, 'destroy'])->name('jobs.destroy');
 
         Route::post('/applications/{application}/status', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'updateStatus'])->name('applications.status');
+        Route::get('/reports/export', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'exportReport'])->name('reports.export');
 
         Route::get('/applicants', function () {
+            $user = auth()->user();
+            $query = \App\Models\Application::query();
+            
+            if (!$user->isSuperAdmin() && $user->email !== 'admin@naap.edu.ph') {
+                $query->whereHas('vacancy', function ($q) use ($user) {
+                    $q->where('campus_id', $user->campus_id);
+                });
+            }
+
             return Inertia::render('Admin/Applicants', [
-                'applications' => \App\Models\Application::latest()->get()->map(function ($app) {
+                'applications' => $query->latest()->get()->map(function ($app) {
                     return [
                         'id' => $app->id,
                         'applicantName' => $app->applicant_name,
@@ -263,6 +296,38 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             ],
                         // Stable & Data-Driven Score Percentage (0-100)
                         'aiScore' => (function($app) {
+                            if (isset($app->dynamic_responses['educationLevel'])) {
+                                $edu = 0;
+                                $lvl = $app->dynamic_responses['educationLevel'];
+                                if (in_array($lvl, ['doctoral_graduate', 'doctoral_27+'])) $edu = 5;
+                                elseif ($lvl === 'doctoral_18-24') $edu = 4;
+                                elseif (in_array($lvl, ['doctoral_15-18', 'doctoral_9-15'])) $edu = 3;
+                                elseif ($lvl === 'masters') $edu = 3;
+                                
+                                $exp = min(25, max(0, ((int)($app->dynamic_responses['yearsOfExperience'] ?? 0) - 2) * 2));
+                                
+                                $awds = $app->dynamic_responses['awards'] ?? [];
+                                $awdPoints = 0;
+                                if (!empty($awds)) {
+                                    $pointsMap = ['national' => 5, 'csc' => 4, 'president' => 3, 'ngo' => 2];
+                                    foreach ($awds as $a) {
+                                        if (isset($pointsMap[$a])) {
+                                            $awdPoints = max($awdPoints, $pointsMap[$a]);
+                                        }
+                                    }
+                                }
+                                
+                                $tr = 0;
+                                $hrs = (int)($app->dynamic_responses['trainingHours'] ?? 0);
+                                if ($hrs >= 300) $tr = 10;
+                                elseif ($hrs >= 200) $tr = 8;
+                                elseif ($hrs >= 100) $tr = 4;
+                                elseif ($hrs >= 50) $tr = 2;
+
+                                $total = $edu + $exp + $awdPoints + $tr;
+                                return (int) round(($total / 45) * 100);
+                            }
+                            
                             $base = (crc32($app->applicant_name . $app->job_title) % 30) + 50; 
                             $eduBonus = $app->education ? 10 : 0;
                             $docBonus = count($app->custom_file_responses ?? []) * 5;
@@ -270,11 +335,61 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             return min(100, max(0, $base + $eduBonus + $docBonus - $missingPenalty));
                         })($app),
                         'aiScoreBreakdown' => [
-                            'education' => $app->education ? 5 : 0, // Using 0-5 scale for sub-scores as UI expects
-                            'experience' => (crc32($app->applicant_name) % 15) + 10, // 10-25 scale
-                            'accomplishments' => (crc32($app->job_title) % 5), // 0-5 scale
-                            'training' => count($app->custom_file_responses ?? []) * 2, // 0-10 scale
+                            'education' => (function($app) {
+                                if (isset($app->dynamic_responses['educationLevel'])) {
+                                    $lvl = $app->dynamic_responses['educationLevel'];
+                                    if (in_array($lvl, ['doctoral_graduate', 'doctoral_27+'])) return 5;
+                                    if ($lvl === 'doctoral_18-24') return 4;
+                                    if (in_array($lvl, ['doctoral_15-18', 'doctoral_9-15'])) return 3;
+                                    if ($lvl === 'masters') return 3;
+                                    return 0;
+                                }
+                                return $app->education ? 5 : 0;
+                            })($app),
+                            'experience' => (function($app) {
+                                if (isset($app->dynamic_responses['yearsOfExperience'])) {
+                                    return min(25, max(0, ((int)$app->dynamic_responses['yearsOfExperience'] - 2) * 2));
+                                }
+                                return (crc32($app->applicant_name) % 15) + 10;
+                            })($app),
+                            'accomplishments' => (function($app) {
+                                if (isset($app->dynamic_responses['awards'])) {
+                                    $awds = $app->dynamic_responses['awards'];
+                                    $pointsMap = ['national' => 5, 'csc' => 4, 'president' => 3, 'ngo' => 2];
+                                    $max = 0;
+                                    foreach ($awds as $a) {
+                                        if (isset($pointsMap[$a])) {
+                                            $max = max($max, $pointsMap[$a]);
+                                        }
+                                    }
+                                    return $max;
+                                }
+                                return (crc32($app->job_title) % 5);
+                            })($app),
+                            'training' => (function($app) {
+                                if (isset($app->dynamic_responses['trainingHours'])) {
+                                    $hrs = (int)$app->dynamic_responses['trainingHours'];
+                                    if ($hrs >= 300) return 10;
+                                    if ($hrs >= 200) return 8;
+                                    if ($hrs >= 100) return 4;
+                                    if ($hrs >= 50) return 2;
+                                    return 0;
+                                }
+                                return count($app->custom_file_responses ?? []) * 2;
+                            })($app),
                         ],
+                        'educationLevel' => isset($app->dynamic_responses['educationLevel'])
+                            ? $app->dynamic_responses['educationLevel']
+                            : ($app->education === 'Post-Graduate' ? 'masters' : 'bachelor'),
+                        'yearsOfExperience' => isset($app->dynamic_responses['yearsOfExperience'])
+                            ? (int) $app->dynamic_responses['yearsOfExperience']
+                            : (crc32($app->applicant_name) % 8) + 2,
+                        'awards' => isset($app->dynamic_responses['awards'])
+                            ? $app->dynamic_responses['awards']
+                            : [],
+                        'trainingHours' => isset($app->dynamic_responses['trainingHours'])
+                            ? (int) $app->dynamic_responses['trainingHours']
+                            : 0,
                         'toFollowDocs' => $app->to_follow_docs ?? [],
                         'custom_file_responses' => $app->custom_file_responses ?? [],
                         'dynamic_responses' => (function($app) {
@@ -319,6 +434,46 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ]);
         })->name('applicants');
 
+        Route::get('/messages', function () {
+            $applications = \App\Models\Application::latest()->get()->map(function ($app) {
+                // Get last message in this application
+                $lastMsg = \App\Models\Message::where('application_id', $app->id)
+                    ->latest()
+                    ->first();
+
+                return [
+                    'id' => $app->id,
+                    'applicantName' => $app->applicant_name,
+                    'email' => $app->email,
+                    'jobTitle' => $app->job_title,
+                    'status' => $app->status,
+                    'submittedDate' => $app->created_at ? $app->created_at->toIso8601String() : null,
+                    'campus' => 'Villamor Air Base, Pasay City',
+                    'education' => $app->education ?: 'N/A',
+                    'experience' => isset($app->dynamic_responses['experience'])
+                        ? $app->dynamic_responses['experience']
+                        : (isset($app->dynamic_responses['yearsOfExperience'])
+                            ? $app->dynamic_responses['yearsOfExperience'] . ' years of relevant experience'
+                            : "3+ years of relevant experience in {$app->job_title}"),
+                    'skills' => isset($app->dynamic_responses['skills'])
+                        ? (is_array($app->dynamic_responses['skills']) ? $app->dynamic_responses['skills'] : explode(',', $app->dynamic_responses['skills']))
+                        : ['Aviation Operations', 'Communication', 'Technical Proficiency'],
+                    'resume_path' => $app->resume_path,
+                    'pds_document' => $app->pds_document,
+                    'hasUnreadMessages' => \App\Models\Message::where('application_id', $app->id)
+                        ->where('sender_id', '!=', auth()->id())
+                        ->where('is_read', false)
+                        ->exists(),
+                    'lastMessage' => $lastMsg ? $lastMsg->content : null,
+                    'lastMessageTime' => $lastMsg ? $lastMsg->created_at->toISOString() : null,
+                ];
+            });
+
+            return Inertia::render('Admin/Messages', [
+                'applications' => $applications->values()->all(),
+            ]);
+        })->name('messages');
+
         Route::get('/staffing', [\App\Http\Controllers\Admin\StaffingController::class, 'index'])->name('staffing');
 
         Route::get('/activity-log', function () {
@@ -330,7 +485,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         'jobTitle' => $app->job_title,
                         'status' => $app->status,
                         'submittedDate' => $app->created_at->toISOString(),
-                        'campus' => $app->campus,
+                        'campus' => 'Villamor Air Base, Pasay City',
                     ];
                 }),
                 'dbJobs' => \App\Models\Vacancy::latest()->get()->map(function ($vacancy) {
@@ -355,6 +510,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         })->name('calendar');
 
         Route::get('/landing-page', function () {
+            $user = auth()->user();
+            if (!$user->isSuperAdmin() && $user->email !== 'admin@naap.edu.ph') {
+                abort(403, 'Unauthorized. Only Super Administrators can manage the landing page.');
+            }
             return Inertia::render('Admin/LandingPageManager');
         })->name('landing-page');
 
@@ -374,4 +533,50 @@ require __DIR__.'/settings.php';
 
 Route::get('/_boost/browser-logs', function () {
     return response()->noContent();
+});
+
+Route::get('/clear-data', function () {
+    return '
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Clearing Local Storage...</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    text-align: center;
+                    padding-top: 100px;
+                    background: #f5f5f5;
+                }
+                .box {
+                    display: inline-block;
+                    background: white;
+                    padding: 40px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                }
+                h2 { color: #193153; }
+            </style>
+        </head>
+        <body>
+            <div class="box">
+                <h2>🔄 Wiping Local Storage Cache...</h2>
+                <p>Clearing application state on origin...</p>
+                <div id="status" style="font-weight: bold; color: green; margin-top: 20px;">Wiping...</div>
+            </div>
+            <script>
+                try {
+                    localStorage.clear();
+                    document.getElementById("status").innerText = "✅ Success! Local storage wiped clean.";
+                    setTimeout(() => {
+                        window.location.href = "/admin/dashboard";
+                    }, 1500);
+                } catch (e) {
+                    document.getElementById("status").innerText = "❌ Error: " + e.message;
+                    document.getElementById("status").style.color = "red";
+                }
+            </script>
+        </body>
+        </html>
+    ';
 });

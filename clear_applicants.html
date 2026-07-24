@@ -71,21 +71,19 @@
 
     <script>
         function clearData() {
-            localStorage.removeItem('mock_applications_custom');
+            localStorage.clear();
             document.getElementById('success').style.display = 'block';
             setTimeout(() => {
-                window.location.href = '/admin/applicants';
-            }, 2000);
+                window.location.href = '/admin/dashboard';
+            }, 1500);
         }
 
         function clearAll() {
-            localStorage.removeItem('mock_applications_custom');
-            localStorage.removeItem('mock_jobs_custom');
-            localStorage.removeItem('mock_jobs_archived');
+            localStorage.clear();
             document.getElementById('success').style.display = 'block';
             setTimeout(() => {
-                window.location.href = '/admin/applicants';
-            }, 2000);
+                window.location.href = '/admin/dashboard';
+            }, 1500);
         }
     </script>
 </body>

@@ -1,5 +1,5 @@
-import { Head, Link } from '@inertiajs/react';
-import { ChevronLeft, Calendar, User, Share2, Tag, Search, Menu, Facebook, Twitter, Linkedin, Link as LinkIcon, Check } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { ChevronLeft, Calendar, User, Share2, Tag, Search, Menu, Facebook, Twitter, Linkedin, Link as LinkIcon, Check, Settings, LogOut } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -7,6 +7,7 @@ import { getHRNews, type HRNewsItem } from '@/data/mockData';
 
 interface ArticleProps {
     id: string;
+    auth?: any;
 }
 
 // Convert plain text to formatted HTML
@@ -84,23 +85,29 @@ const formatTextToHTML = (text: string): string => {
     return html;
 };
 
-const HRNewsArticle = ({ id }: ArticleProps) => {
+const HRNewsArticle = ({ id, auth }: ArticleProps) => {
     const [article, setArticle] = useState<HRNewsItem | null>(null);
     const [showShareMenu, setShowShareMenu] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadArticle = async () => {
+            setLoading(true);
             try {
                 const response = await axios.get('/cms-content/mock_hr_news');
                 const articles = response.data || getHRNews();
-                const found = articles.find((a: any) => String(a.id) === String(id));
+                const articlesList = Array.isArray(articles) ? articles : Object.values(articles || {});
+                const found = articlesList.find((a: any) => a && String(a.id) === String(id));
                 setArticle(found || null);
             } catch (e) {
                 console.error("Failed to load news article from database", e);
                 const articles = getHRNews();
-                const found = articles.find(a => String(a.id) === String(id));
+                const articlesList = Array.isArray(articles) ? articles : Object.values(articles || {});
+                const found = articlesList.find((a: any) => a && String(a.id) === String(id));
                 setArticle(found || null);
+            } finally {
+                setLoading(false);
             }
         };
         loadArticle();
@@ -144,6 +151,17 @@ const HRNewsArticle = ({ id }: ArticleProps) => {
         setShowShareMenu(false);
     };
 
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="flex flex-col items-center">
+                    <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#193153] border-t-transparent mb-4"></div>
+                    <p className="text-gray-500 text-sm font-medium">Loading article...</p>
+                </div>
+            </div>
+        );
+    }
+
     if (!article) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -159,46 +177,108 @@ const HRNewsArticle = ({ id }: ArticleProps) => {
         <div className="min-h-screen bg-gray-100 font-sans text-slate-800">
             <Head title={`${article.title} - NAAP News`} />
 
-            {/* --- TOP BAR (Dashboard Style) --- */}
-            <header className="bg-[#193153] border-b border-[#193153] sticky top-0 z-50 shadow-md">
-                <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-                    <Link href="/" className="flex items-center space-x-3">
-                        <div className="bg-white/10 p-2 rounded-full h-12 w-12 flex items-center justify-center overflow-hidden">
-                            <img src="/images/PhilSCA_Logo.png" alt="NAAP Logo" className="h-full w-full object-contain" />
-                        </div>
-                        <div>
-                            <span className="font-bold text-lg block leading-none text-white">NAAP HR</span>
-                            <span className="text-[10px] text-blue-200 uppercase tracking-widest">Newsroom</span>
-                        </div>
-                    </Link>
+            {/* --- TOP BAR --- */}
+            {auth?.user ? (
+                <nav className="bg-[#193153] text-white shadow-lg sticky top-0 z-50">
+                    <div className="container mx-auto px-6 py-4">
+                        <div className="flex justify-between items-center">
+                            {/* Logo Area */}
+                            <Link href={['admin@naap.edu.ph', 'admin@admin.com'].includes(auth.user.email) ? "/admin/dashboard" : "/dashboard"} className="flex items-center space-x-4">
+                                <img
+                                    src="/images/PhilSCA_Logo.png"
+                                    alt="NAAP Logo"
+                                    className="h-10 w-auto object-contain bg-white/10 rounded-full p-1"
+                                />
+                                <div>
+                                    <span className="font-bold text-lg tracking-tight block leading-none text-white">NAAP Careers</span>
+                                    <span className="text-[10px] text-blue-200 uppercase tracking-widest block mt-0.5">
+                                        {['admin@naap.edu.ph', 'admin@admin.com'].includes(auth.user.email) ? "Admin Portal" : "Applicant Portal"}
+                                    </span>
+                                </div>
+                            </Link>
 
-                    <nav className="hidden md:flex items-center space-x-6">
-                        <Link href="/" className="text-white hover:text-[#ffdd59] transition-colors text-sm font-medium">
-                            Home
-                        </Link>
-                        <Link href="/hr-news" className="text-[#ffdd59] font-semibold text-sm">
-                            HR News
-                        </Link>
-                        <Link href="/jobs" className="text-white hover:text-[#ffdd59] transition-colors text-sm font-medium">
-                            Browse Jobs
-                        </Link>
-                    </nav>
+                            {/* Right Menu */}
+                            <div className="flex items-center space-x-4">
+                                <Link href={['admin@naap.edu.ph', 'admin@admin.com'].includes(auth.user.email) ? "/admin/dashboard" : "/dashboard"}>
+                                    <button className="text-xs font-semibold bg-[#ffdd59] text-[#193153] hover:bg-[#eac545] px-3.5 py-2 rounded-lg transition-colors cursor-pointer">
+                                        Back to Dashboard
+                                    </button>
+                                </Link>
 
-                    <button className="md:hidden text-white">
-                        <Menu className="h-6 w-6" />
-                    </button>
-                </div>
-            </header>
+                                <div className="h-6 w-px bg-white/20"></div>
+
+                                {/* User Avatar */}
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden border border-white">
+                                        {auth.user.name ? auth.user.name.charAt(0) : 'U'}
+                                    </div>
+                                    <span className="text-sm font-medium hidden sm:block text-white">
+                                        {auth.user.name}
+                                    </span>
+
+                                    <button
+                                        onClick={() => router.get('/settings/profile')}
+                                        className="p-2 hover:bg-white/10 rounded-full text-white transition-colors cursor-pointer"
+                                        title="Settings"
+                                    >
+                                        <Settings className="w-4 h-4" />
+                                    </button>
+
+                                    <button
+                                        onClick={() => router.post('/logout')}
+                                        className="p-2 hover:bg-white/10 rounded-full text-white transition-colors cursor-pointer"
+                                        title="Logout"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            ) : (
+                <header className="bg-[#193153] border-b border-[#193153] sticky top-0 z-50 shadow-md">
+                    <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+                        <Link href="/" className="flex items-center space-x-3">
+                            <div className="bg-white/10 p-2 rounded-full h-12 w-12 flex items-center justify-center overflow-hidden">
+                                <img src="/images/PhilSCA_Logo.png" alt="NAAP Logo" className="h-full w-full object-contain" />
+                            </div>
+                            <div>
+                                <span className="font-bold text-lg block leading-none text-white">NAAP HR</span>
+                                <span className="text-[10px] text-blue-200 uppercase tracking-widest">Newsroom</span>
+                            </div>
+                        </Link>
+
+                        <nav className="hidden md:flex items-center space-x-6">
+                            <Link href="/" className="text-white hover:text-[#ffdd59] transition-colors text-sm font-medium">
+                                Home
+                            </Link>
+                            <Link href="/hr-news" className="text-white hover:text-[#ffdd59] font-medium text-sm">
+                                HR News
+                            </Link>
+                            <Link href="/jobs" className="text-white hover:text-[#ffdd59] transition-colors text-sm font-medium">
+                                Browse Jobs
+                            </Link>
+                        </nav>
+
+                        <button className="md:hidden text-white">
+                            <Menu className="h-6 w-6" />
+                        </button>
+                    </div>
+                </header>
+            )}
 
             <main className="container mx-auto px-4 py-12">
                 {/* Breadcrumb */}
-                <div className="flex items-center text-sm text-gray-500 mb-8 space-x-2">
-                    <Link href="/" className="hover:text-[#193153]">Home</Link>
-                    <span>/</span>
-                    <Link href="/hr-news" className="hover:text-[#193153]">HR News</Link>
-                    <span>/</span>
-                    <span className="text-gray-900 font-medium truncate max-w-md">{article.title}</span>
-                </div>
+                {!auth?.user && (
+                    <div className="flex items-center text-sm text-gray-500 mb-8 space-x-2">
+                        <Link href="/" className="hover:text-[#193153] font-medium">Home</Link>
+                        <span>/</span>
+                        <Link href="/hr-news" className="hover:text-[#193153]">HR News</Link>
+                        <span>/</span>
+                        <span className="text-gray-900 font-medium truncate max-w-md">{article.title}</span>
+                    </div>
+                )}
 
                 <article className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden max-w-4xl mx-auto">
                     {/* Header Banner */}

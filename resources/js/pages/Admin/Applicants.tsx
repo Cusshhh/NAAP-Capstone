@@ -1,12 +1,12 @@
 import { Link, router } from '@inertiajs/react';
 import axios from 'axios';
-import { Shield, Users, LogOut, Search, Download, Star, Calendar, Eye, Edit, Trash, Plus, ChevronDown, ChevronUp, Briefcase, Layout, TrendingUp, GraduationCap, Award, BookOpen, FileText, ExternalLink } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import { Shield, Users, LogOut, Search, Download, Star, Calendar, Eye, Edit, Trash, Plus, ChevronDown, ChevronUp, Briefcase, Layout, TrendingUp, GraduationCap, Award, BookOpen, FileText, ExternalLink, X, Send } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -111,12 +111,27 @@ export default function Applicants({ auth, applications: serverApplications }: {
     const [viewingInterview, setViewingInterview] = useState<any>(null);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
+    // Rejection State
+    const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
+    const [rejectionAppId, setRejectionAppId] = useState<any>(null);
+    const [rejectionReason, setRejectionReason] = useState('Minimum educational requirements not met');
+    const [customRejectionReason, setCustomRejectionReason] = useState('');
+
     // Messaging State
     const [messages, setMessages] = useState<any[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+    const [isChatMinimized, setIsChatMinimized] = useState(false);
     const [activeMessageAppId, setActiveMessageAppId] = useState<number | null>(null);
     const [activeMessageAppName, setActiveMessageAppName] = useState('');
+
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages, isMessageModalOpen, isChatMinimized]);
 
     const openMessages = async (appId: number, applicantName: string) => {
         setActiveMessageAppId(appId);
@@ -424,10 +439,17 @@ export default function Applicants({ auth, applications: serverApplications }: {
         }
     };
 
-    const handleStatusUpdate = (id: any, newStatus: string) => {
+    const handleStatusUpdate = (id: any, newStatus: string, reason?: string) => {
         // Optimistic update for UI feel
         const updatedApps = applications.map(app =>
-            String(app.id) === String(id) ? { ...app, status: newStatus } : app
+            String(app.id) === String(id) ? { 
+                ...app, 
+                status: newStatus,
+                dynamic_responses: {
+                    ...(app.dynamic_responses || {}),
+                    rejection_reason: reason
+                }
+            } : app
         );
         setApplications(updatedApps);
 
@@ -439,12 +461,19 @@ export default function Applicants({ auth, applications: serverApplications }: {
             const originalApp = getApplications().find((a: any) => String(a.id) === String(id));
             if (originalApp) {
                 let updatedLocalApps;
+                const updatedObj = { 
+                    status: newStatus,
+                    dynamic_responses: {
+                        ...(appInLocal?.dynamic_responses || originalApp.dynamic_responses || {}),
+                        rejection_reason: reason
+                    }
+                };
                 if (appInLocal) {
                     updatedLocalApps = localApps.map((la: any) =>
-                        String(la.id) === String(id) ? { ...la, status: newStatus } : la
+                        String(la.id) === String(id) ? { ...la, ...updatedObj } : la
                     );
                 } else {
-                    updatedLocalApps = [...localApps, { ...originalApp, status: newStatus }];
+                    updatedLocalApps = [...localApps, { ...originalApp, ...updatedObj }];
                 }
                 localStorage.setItem('mock_applications_custom', JSON.stringify(updatedLocalApps));
                 // Dispatch storage event
@@ -458,7 +487,8 @@ export default function Applicants({ auth, applications: serverApplications }: {
         if (isDbApp) {
             // Actual backend call
             router.post(`/admin/applications/${id}/status`, {
-                status: newStatus
+                status: newStatus,
+                rejection_reason: reason
             }, {
                 onSuccess: () => {
                     toast.success(`Applicant status updated to: ${newStatus}`);
@@ -952,6 +982,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                                                         e.stopPropagation();
                                                                                                         handleViewDocument(doc.name, doc.url || '#', doc.fileName);
                                                                                                     }}
+                                                                                                    title="View Document"
                                                                                                 >
                                                                                                     <Eye className="h-3 w-3 text-blue-600" />
                                                                                                 </Button>
@@ -998,6 +1029,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                                                         e.stopPropagation();
                                                                                                         window.open(`/storage/${path}`, '_blank');
                                                                                                     }}
+                                                                                                    title="View Document"
                                                                                                 >
                                                                                                     <Eye className="h-3 w-3 text-blue-600" />
                                                                                                 </Button>
@@ -1030,7 +1062,12 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                         size="sm"
                                                                         variant="destructive"
                                                                         className="flex-1"
-                                                                        onClick={() => handleStatusUpdate(app.id, 'Rejected')}
+                                                                        onClick={() => {
+                                                                            setRejectionAppId(app.id);
+                                                                            setRejectionReason('Minimum educational requirements not met');
+                                                                            setCustomRejectionReason('');
+                                                                            setIsRejectionModalOpen(true);
+                                                                        }}
                                                                     >
                                                                         Reject
                                                                     </Button>
@@ -1064,15 +1101,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                             </div>
                                                         </DialogContent>
                                                     </Dialog>
-                                                    <div className="relative inline-block">
-                                                        <Button variant="outline" size="sm" onClick={() => openMessages(app.id, app.applicantName)}>Message</Button>
-                                                        {app.hasUnreadMessages && (
-                                                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                                                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-white"></span>
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -1342,49 +1371,77 @@ export default function Applicants({ auth, applications: serverApplications }: {
                 </DialogContent>
             </Dialog>
 
-            {/* Applicant Messaging Modal */}
-            <Dialog open={isMessageModalOpen} onOpenChange={setIsMessageModalOpen}>
-                <DialogContent className="max-w-xl h-[80vh] flex flex-col p-0 overflow-hidden bg-gray-50">
-                    <DialogHeader className="px-6 py-4 border-b bg-white shrink-0">
-                        <DialogTitle className="flex items-center gap-2 text-lg">
-                            <span className="bg-blue-100 text-blue-700 p-1.5 rounded-full">
+            {/* --- FLOATING CHAT BOX (FACEBOOK-STYLE) --- */}
+            {isMessageModalOpen && (
+                <div className="fixed bottom-0 right-4 md:right-10 z-50 flex flex-col w-[320px] h-[400px] bg-white border border-gray-200 shadow-2xl rounded-t-2xl overflow-hidden transition-all duration-300">
+                    {/* Header */}
+                    <div className="bg-[#193153] text-white px-4 py-3 flex items-center justify-between select-none shrink-0">
+                        <div className="flex items-center gap-2 max-w-[85%]">
+                            <span className="bg-blue-600 text-[#ffdd59] p-1 rounded-full shrink-0">
                                 <Users className="h-4 w-4" />
                             </span>
-                            Messages with {activeMessageAppName}
-                        </DialogTitle>
-                    </DialogHeader>
+                            <span className="font-bold text-sm truncate" title={activeMessageAppName}>
+                                Messages with {activeMessageAppName}
+                            </span>
+                        </div>
+                        <div className="flex items-center">
+                            {/* Close Button */}
+                            <button 
+                                className="text-gray-300 hover:text-white transition-colors p-1"
+                                onClick={() => setIsMessageModalOpen(false)}
+                                title="Close"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
 
-                    <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
+                    {/* Messages Body */}
+                    <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3 bg-gray-50">
                         {messages.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2">
-                                <div className="p-4 bg-gray-100 rounded-full">
-                                    <FileText className="h-8 w-8" />
+                                <div className="p-3 bg-gray-100 rounded-full">
+                                    <FileText className="h-6 w-6" />
                                 </div>
-                                <p>No messages yet. Send the first message!</p>
+                                <p className="text-xs">No messages yet. Send the first message!</p>
                             </div>
                         ) : (
                             messages.map((msg, idx) => {
                                 const isSenderAdmin = msg.sender?.email === admin.email || ['admin@naap.edu.ph', 'admin@admin.com'].includes(msg.sender?.email);
+                                const formatTime = (timeStr?: string) => {
+                                    if (!timeStr) return '';
+                                    try {
+                                        const date = new Date(timeStr);
+                                        return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' • ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                                    } catch {
+                                        return '';
+                                    }
+                                };
                                 return (
-                                    <div key={idx} className={`flex max-w-[80%] ${isSenderAdmin ? 'ml-auto' : 'mr-auto'}`}>
-                                        <div className={`p-3 rounded-2xl ${isSenderAdmin
+                                    <div key={idx} className={`flex flex-col max-w-[85%] ${isSenderAdmin ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+                                        <div className={`p-2.5 rounded-2xl ${isSenderAdmin
                                             ? 'bg-blue-600 text-white rounded-tr-sm'
                                             : 'bg-white border text-gray-800 rounded-tl-sm shadow-sm'
                                             }`}>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className={`text-[10px] font-bold uppercase tracking-wider ${isSenderAdmin ? 'text-blue-200' : 'text-gray-500'}`}>
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                                <span className={`text-[9px] font-bold uppercase tracking-wider ${isSenderAdmin ? 'text-blue-200' : 'text-gray-500'}`}>
                                                     {isSenderAdmin ? 'You' : msg.sender?.name}
                                                 </span>
                                             </div>
-                                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                            <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                                         </div>
+                                        <span className="text-[8px] text-gray-400 mt-0.5 px-1">
+                                            {formatTime(msg.created_at || new Date().toISOString())}
+                                        </span>
                                     </div>
                                 );
                             })
                         )}
+                        <div ref={messagesEndRef} />
                     </div>
 
-                    <div className="p-4 bg-white border-t shrink-0">
+                    {/* Message Input Footer */}
+                    <div className="p-3 bg-white border-t shrink-0">
                         <form
                             onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
                             className="flex gap-2"
@@ -1392,18 +1449,83 @@ export default function Applicants({ auth, applications: serverApplications }: {
                             <Input
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder="Type your message to the applicant..."
-                                className="flex-1"
+                                placeholder="Type a message..."
+                                className="flex-1 h-9 text-xs"
                             />
                             <Button
                                 type="submit"
                                 disabled={!newMessage.trim()}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6"
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 h-9 text-xs"
                             >
-                                Send
+                                <Send className="h-3.5 w-3.5" />
                             </Button>
                         </form>
                     </div>
+                </div>
+            )}
+
+            {/* Rejection Reason Modal */}
+            <Dialog open={isRejectionModalOpen} onOpenChange={setIsRejectionModalOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-red-600 flex items-center gap-2">
+                            ❌ Reason for Rejection
+                        </DialogTitle>
+                        <DialogDescription>
+                            Please select or input the reason why this applicant is being rejected. This reason will be visible to the applicant.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700">Select a standard reason</label>
+                            <Select value={rejectionReason} onValueChange={setRejectionReason}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select reason" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Minimum educational requirements not met">Minimum educational requirements not met</SelectItem>
+                                    <SelectItem value="Lacks sufficient professional experience in the field">Lacks sufficient professional experience in the field</SelectItem>
+                                    <SelectItem value="Incomplete application documents/credentials">Incomplete application documents/credentials</SelectItem>
+                                    <SelectItem value="Unsatisfactory technical assessment or interview performance">Unsatisfactory technical assessment or interview performance</SelectItem>
+                                    <SelectItem value="Position filled by another candidate">Position filled by another candidate</SelectItem>
+                                    <SelectItem value="Other">Other (Type custom reason below)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {rejectionReason === 'Other' && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-700">Custom Rejection Reason</label>
+                                <textarea
+                                    className="w-full min-h-[80px] p-2 border border-gray-300 rounded-md text-sm focus:ring-[#193153] focus:border-[#193153]"
+                                    placeholder="Type specific details for the rejection..."
+                                    value={customRejectionReason}
+                                    onChange={(e) => setCustomRejectionReason(e.target.value)}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter className="mt-4 border-t pt-4 flex gap-2">
+                        <Button variant="outline" onClick={() => setIsRejectionModalOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold"
+                            onClick={() => {
+                                const finalReason = rejectionReason === 'Other' ? customRejectionReason.trim() : rejectionReason;
+                                if (!finalReason) {
+                                    toast.error("Please provide a rejection reason.");
+                                    return;
+                                }
+                                handleStatusUpdate(rejectionAppId, 'Rejected', finalReason);
+                                setIsRejectionModalOpen(false);
+                            }}
+                        >
+                            Confirm Rejection
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 

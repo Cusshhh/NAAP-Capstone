@@ -23,7 +23,7 @@ class VacancySeeder extends Seeder
                 'responsibilities' => ['Manage flight training department.'],
                 'requirements' => ['CAAP License', '10+ years experience'],
                 'salary_grade' => 24,
-                'deadline' => '2026-03-01',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-01-15 08:00:00',
             ],
@@ -47,7 +47,7 @@ class VacancySeeder extends Seeder
                     'Class 1 Medical.'
                 ],
                 'salary_grade' => 23,
-                'deadline' => '2026-03-01',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-01-20 09:00:00',
             ],
@@ -95,7 +95,7 @@ class VacancySeeder extends Seeder
                     'Multi-engine teaching experience.'
                 ],
                 'salary_grade' => 24,
-                'deadline' => '2026-03-20',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-02-02 11:00:00',
             ],
@@ -119,7 +119,7 @@ class VacancySeeder extends Seeder
                     'Physical fitness.'
                 ],
                 'salary_grade' => 15,
-                'deadline' => '2026-02-28',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-01-25 12:00:00',
             ],
@@ -143,7 +143,7 @@ class VacancySeeder extends Seeder
                     'Troubleshooting skills.'
                 ],
                 'salary_grade' => 15,
-                'deadline' => '2026-03-05',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-01-28 13:00:00',
             ],
@@ -167,7 +167,7 @@ class VacancySeeder extends Seeder
                     'Detail oriented.'
                 ],
                 'salary_grade' => 15,
-                'deadline' => '2026-03-10',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-02-03 14:00:00',
             ],
@@ -191,7 +191,7 @@ class VacancySeeder extends Seeder
                     'Knowledge of CAAP airworthiness regs.'
                 ],
                 'salary_grade' => 18,
-                'deadline' => '2026-03-01',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-01-30 15:00:00',
             ],
@@ -239,7 +239,7 @@ class VacancySeeder extends Seeder
                     'Communication skills.'
                 ],
                 'salary_grade' => 16,
-                'deadline' => '2026-03-20',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-02-05 17:00:00',
             ],
@@ -263,7 +263,7 @@ class VacancySeeder extends Seeder
                     'Shift work required.'
                 ],
                 'salary_grade' => 15,
-                'deadline' => '2026-02-28',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-01-18 18:00:00',
             ],
@@ -287,7 +287,7 @@ class VacancySeeder extends Seeder
                     'Experience in flight ops.'
                 ],
                 'salary_grade' => 18,
-                'deadline' => '2026-03-10',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-02-01 19:00:00',
             ],
@@ -311,7 +311,7 @@ class VacancySeeder extends Seeder
                     'Ability to work under pressure.'
                 ],
                 'salary_grade' => 14,
-                'deadline' => '2026-02-25',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-01-22 20:00:00',
             ],
@@ -335,7 +335,7 @@ class VacancySeeder extends Seeder
                     'Communication skills.'
                 ],
                 'salary_grade' => 11,
-                'deadline' => '2026-03-05',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-02-03 21:00:00',
             ],
@@ -359,7 +359,7 @@ class VacancySeeder extends Seeder
                     'Integrity.'
                 ],
                 'salary_grade' => 14,
-                'deadline' => '2026-02-28',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-01-15 22:00:00',
             ],
@@ -383,7 +383,7 @@ class VacancySeeder extends Seeder
                     'Caring attitude.'
                 ],
                 'salary_grade' => 11,
-                'deadline' => '2026-03-10',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-02-01 23:00:00',
             ],
@@ -431,7 +431,7 @@ class VacancySeeder extends Seeder
                     'Interest in aviation.'
                 ],
                 'salary_grade' => 11,
-                'deadline' => '2026-03-05',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-02-02 01:00:00',
             ],
@@ -455,7 +455,7 @@ class VacancySeeder extends Seeder
                     'Customer service oriented.'
                 ],
                 'salary_grade' => 11,
-                'deadline' => '2026-02-28',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-01-20 02:00:00',
             ],
@@ -479,7 +479,7 @@ class VacancySeeder extends Seeder
                     'Creativity.'
                 ],
                 'salary_grade' => 15,
-                'deadline' => '2026-03-20',
+                'deadline' => '2026-03-15',
                 'status' => 'Open',
                 'created_at' => '2026-02-05 03:00:00',
             ],
@@ -534,6 +534,7 @@ class VacancySeeder extends Seeder
         ];
 
         foreach ($jobs as $job) {
+            $job['location'] = 'Villamor Air Base, Pasay City';
             Vacancy::updateOrCreate(['id' => $job['id']], $job);
         }
     }

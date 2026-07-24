@@ -9,8 +9,11 @@ class PublicJobController extends Controller
 {
     public function index()
     {
+        $query = Vacancy::latest();
+
         return Inertia::render('Jobs/Index', [
-            'jobs' => Vacancy::where('status', 'Open')->latest()->get()->map(function ($vacancy) {
+            'jobs' => $query->get()->map(function ($vacancy) {
+                $isExpired = $vacancy->deadline && $vacancy->deadline->isPast() && !$vacancy->deadline->isToday();
                 return [
                     'id' => $vacancy->id,
                     'title' => $vacancy->title,
@@ -22,7 +25,7 @@ class PublicJobController extends Controller
                     'postedDate' => $vacancy->created_at->toDateString(),
                     'deadline' => $vacancy->deadline ? $vacancy->deadline->toDateString() : null,
                     'applicantCount' => $vacancy->applications()->count(),
-                    'status' => $vacancy->status,
+                    'status' => $isExpired ? 'Closed' : $vacancy->status,
                 ];
             })
         ]);
@@ -34,6 +37,19 @@ class PublicJobController extends Controller
         
         if (!$vacancy) {
             return redirect()->route('welcome')->with('error', 'The requested job posting was not found or has been closed.');
+        }
+        
+        $isExpired = $vacancy->deadline && $vacancy->deadline->isPast() && !$vacancy->deadline->isToday();
+        
+        $application = null;
+        $interview = null;
+        if (auth()->check()) {
+            $application = \App\Models\Application::where('job_id', $vacancy->id)
+                ->where('email', auth()->user()->email)
+                ->first();
+            if ($application) {
+                $interview = \App\Models\Interview::where('application_id', $application->id)->first();
+            }
         }
         
         return Inertia::render('Jobs/Show', [
@@ -51,8 +67,23 @@ class PublicJobController extends Controller
                 'postedDate' => $vacancy->created_at->toDateString(),
                 'deadline' => $vacancy->deadline ? $vacancy->deadline->toDateString() : null,
                 'applicantCount' => $vacancy->applications()->count(),
-                'status' => $vacancy->status,
-            ]
+                'status' => $isExpired ? 'Closed' : $vacancy->status,
+                'campus_id' => $vacancy->campus_id,
+            ],
+            'application' => $application ? [
+                'id' => $application->id,
+                'status' => $application->status,
+                'submittedDate' => $application->created_at->toDateString(),
+                'dynamic_responses' => $application->dynamic_responses,
+                'toFollowDocs' => $application->to_follow_docs ?? [],
+            ] : null,
+            'interview' => $interview ? [
+                'date' => $interview->date,
+                'time' => $interview->time,
+                'venue' => $interview->venue,
+                'panel_members' => $interview->panel_members,
+                'result_notes' => $interview->result_notes,
+            ] : null
         ]);
     }
 }

@@ -38,6 +38,60 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { mockApplications, getApplications, getDynamicNotifications, getJobs, getHRNews, type HRNewsItem } from '@/data/mockData';
 
+// --- HELPERS ---
+const getEventDateParam = (dateStr?: string) => {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    } catch {
+        return '';
+    }
+};
+
+const safeFormatDate = (dateStr?: any) => {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+    } catch {
+        return '';
+    }
+};
+
+// --- CUSTOM TOOLTIP COMPONENT (Navy background with gold text) ---
+interface TooltipProps {
+    children: React.ReactNode;
+    content: string;
+    side?: 'top' | 'bottom';
+}
+
+const CustomTooltip = ({ children, content, side = 'top' }: TooltipProps) => {
+    const isTop = side === 'top';
+    return (
+        <div className="relative group/tooltip inline-block">
+            {children}
+            <div className={`absolute left-1/2 -translate-x-1/2 hidden group-hover/tooltip:flex flex-col items-center z-50 pointer-events-none transition-all duration-200 ${
+                isTop ? 'bottom-full mb-2' : 'top-full mt-2'
+            }`}>
+                {!isTop && (
+                    <div className="w-2.5 h-2.5 bg-[#193153] rotate-45 -mb-1.5 border-t border-l border-blue-900/30"></div>
+                )}
+                <div className="bg-[#193153] text-[#ffdd59] text-[10px] font-bold py-1.5 px-3 rounded shadow-xl whitespace-nowrap border border-blue-900/30">
+                    {content}
+                </div>
+                {isTop && (
+                    <div className="w-2.5 h-2.5 bg-[#193153] rotate-45 -mt-1.5 border-r border-b border-blue-900/30"></div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 // --- SHARED COMPONENTS ---
 
 const Button = ({ className, variant = "default", size = "default", children, ...props }: any) => {
@@ -169,7 +223,7 @@ const ChatBot = () => {
             }
             // Interviews
             else if (lowerInput.includes('interview') || lowerInput.includes('schedule')) {
-                botResponse = "If shortlisted, you'll receive an email with your interview schedule. Confirmed interviews will also appear in the 'Upcoming Events' section on your dashboard.";
+                botResponse = "If shortlisted, you'll receive an email with your interview schedule. Confirmed interviews will also appear in the 'Interviews & Events' section on your dashboard.";
             }
             // Documents/Resume
             else if (lowerInput.includes('document') || lowerInput.includes('resume') || lowerInput.includes('cv') || lowerInput.includes('file')) {
@@ -216,7 +270,7 @@ const ChatBot = () => {
             if (lowerInput.includes('status') || lowerInput.includes('application') || lowerInput.includes('track')) {
                 botResponse = "You can track your application status directly on your dashboard under 'My Applications'. Use the 'Check Status' button above for a quick view!";
             } else if (lowerInput.includes('interview') || lowerInput.includes('schedule')) {
-                botResponse = "If shortlisted, you'll receive an email with your interview schedule. Confirmed interviews will also appear in the 'Upcoming Events' section on your dashboard.";
+                botResponse = "If shortlisted, you'll receive an email with your interview schedule. Confirmed interviews will also appear in the 'Interviews & Events' section on your dashboard.";
             } else if (lowerInput.includes('benefits') || lowerInput.includes('salary')) {
                 botResponse = "We offer competitive compensation packages! You can view our general benefits on the 'Employee Benefits' page.";
             } else if (lowerInput.includes('withdraw') || lowerInput.includes('cancel')) {
@@ -231,7 +285,7 @@ const ChatBot = () => {
     return (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
             {isOpen && (
-                <div className="mb-4 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 fade-in duration-300">
+                <div className="mb-4 w-[320px] h-[400px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 fade-in duration-300">
                     {/* Header */}
                     <div className="bg-[#193153] p-4 flex justify-between items-center text-white">
                         <div className="flex items-center gap-2">
@@ -244,10 +298,10 @@ const ChatBot = () => {
                     </div>
 
                     {/* Messages */}
-                    <div className="h-80 overflow-y-auto p-4 bg-gray-50 flex flex-col gap-3">
+                    <div className="flex-1 overflow-y-auto p-4 bg-gray-50 flex flex-col gap-3">
                         {messages.map((msg) => (
                             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.sender === 'user'
+                                <div className={`max-w-[80%] p-3 rounded-2xl text-xs ${msg.sender === 'user'
                                     ? 'bg-[#193153] text-white rounded-br-none'
                                     : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none shadow-sm'
                                     }`}>
@@ -618,9 +672,10 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             notifications.push({
                 id: `${prefix}_sub_${app.id}`,
                 text: `Your application for ${app.jobTitle} was successfully submitted.`,
-                time: app.submittedDate ? app.submittedDate.split('T')[0] : '',
+                time: app.submittedDate || new Date().toISOString(),
                 isRead: readNotifications.includes(`${prefix}_sub_${app.id}`),
-                type: 'success'
+                type: 'success',
+                jobId: app.jobId
             });
 
             // Application Status Changes
@@ -628,9 +683,10 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 notifications.push({
                     id: `${prefix}_status_${app.id}_${app.status}`,
                     text: `Update: Your application for ${app.jobTitle} is now "${app.status}".`,
-                    time: new Date().toISOString().split('T')[0],
+                    time: app.updatedAt || app.submittedDate || new Date().toISOString(),
                     isRead: readNotifications.includes(`${prefix}_status_${app.id}_${app.status}`),
-                    type: 'info'
+                    type: 'info',
+                    jobId: app.jobId
                 });
             }
 
@@ -641,7 +697,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                     text: `New message from NAAP HR Admin regarding your application for ${app.jobTitle}.`,
                     time: new Date().toISOString().split('T')[0],
                     isRead: false,
-                    type: 'message'
+                    type: 'message',
+                    jobId: app.jobId
                 });
             }
         });
@@ -655,7 +712,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 text: `New career opportunity: ${job.title} in ${job.department}.`,
                 time: job.postedDate,
                 isRead: readNotifications.includes(`job_${job.id}`),
-                type: 'new'
+                type: 'new',
+                jobId: job.id
             });
         });
 
@@ -665,16 +723,30 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             savedInterviews.forEach((interview: any) => {
                 if (checkInterviewMatch(interview)) {
                     const notifyId = `interview_notify_${interview.date}_${interview.time}`;
+                    const matchingApp = (appsToUse || []).find((a: any) => (a.jobTitle || '').toLowerCase() === (interview.position || '').toLowerCase());
                     notifications.push({
                         id: notifyId,
-                        text: `Interview Scheduled: For ${interview.position || 'School Nurse'} on ${new Date(interview.date).toLocaleDateString()} at ${interview.time}. Venue: ${interview.venue}.`,
+                        text: `Interview Scheduled: For ${interview.position || 'School Nurse'} on ${safeFormatDate(interview.date)} at ${interview.time}. Venue: ${interview.venue}.`,
                         time: new Date().toISOString().split('T')[0],
                         isRead: readNotifications.includes(notifyId),
-                        type: 'info'
+                        type: 'info',
+                        jobId: matchingApp ? matchingApp.jobId : null
                     });
                 }
             });
         } catch (e) {}
+
+        // 5. HR News announcements
+        (hrNews || []).slice(0, 2).forEach((newsItem: any) => {
+            const newsNotifyId = `news_notify_${newsItem.id}`;
+            notifications.push({
+                id: newsNotifyId,
+                text: `Latest NAAP HR News: "${newsItem.title}"`,
+                time: newsItem.date || new Date().toISOString().split('T')[0],
+                isRead: readNotifications.includes(newsNotifyId),
+                type: 'info'
+            });
+        });
 
         // Sort by date (newest first), then by id as tie-breaker
         return notifications.sort((a, b) => {
@@ -716,7 +788,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         };
         window.addEventListener('storage', handleStorage);
         return () => window.removeEventListener('storage', handleStorage);
-    }, [myApplications, jobs]);
+    }, [myApplications, jobs, hrNews]);
 
     const [savedJobDetails, setSavedJobDetails] = useState<any[]>([]);
 
@@ -765,39 +837,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 type: 'Meeting'
             });
 
-            // 2. Deadlines for applications
-            myApplications.forEach((app: any) => {
-                const job = jobs.find((j: any) => String(j.id) === String(app.jobId)) || getJobs().find((j: any) => String(j.id) === String(app.jobId));
-                if (job && job.deadline) {
-                    const dateObj = new Date(job.deadline);
-                    const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                    eventsList.push({
-                        id: `dl_${app.id}`,
-                        jobId: job.id,
-                        title: `Application Deadline: ${app.jobTitle}`,
-                        date: formattedDate,
-                        time: '11:59 PM',
-                        type: 'Deadline'
-                    });
-                }
 
-                // 3. Interview events if application is in "Interview" or "Under Review" status
-                if (app.status === 'Interview' || app.status === 'Under Review') {
-                    const baseDate = app.submittedDate ? new Date(app.submittedDate) : new Date();
-                    const eventDate = new Date(baseDate);
-                    eventDate.setDate(baseDate.getDate() + 5);
-                    const formattedDate = eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                    
-                    eventsList.push({
-                        id: `interview_${app.id}`,
-                        jobId: app.jobId,
-                        title: app.status === 'Interview' ? `Initial Interview - ${app.jobTitle}` : `Technical Assessment - ${app.jobTitle}`,
-                        date: formattedDate,
-                        time: '10:00 AM',
-                        type: app.status === 'Interview' ? 'Interview' : 'Deadline'
-                    });
-                }
-            });
 
             // 4. Real Scheduled Interviews from admin
             try {
@@ -810,6 +850,9 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                             formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                         } catch (e) {}
 
+                        // Find matching application to get jobId
+                        const matchingApp = myApplications.find((a: any) => (a.jobTitle || '').toLowerCase() === (interview.position || '').toLowerCase());
+
                         eventsList.push({
                             id: `real_interview_${interview.date}_${interview.time}`,
                             title: `Interview: ${interview.position || 'School Nurse'}`,
@@ -818,7 +861,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                             venue: interview.venue,
                             panelMembers: interview.panelMembers,
                             resultNotes: interview.resultNotes,
-                            type: 'Interview'
+                            type: 'Interview',
+                            jobId: matchingApp ? matchingApp.jobId : null
                         });
                     }
                 });
@@ -940,8 +984,17 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     const [messages, setMessages] = useState<any[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+    const [isChatMinimized, setIsChatMinimized] = useState(false);
     const [activeMessageAppId, setActiveMessageAppId] = useState<number | null>(null);
     const [activeMessageJobTitle, setActiveMessageJobTitle] = useState('');
+
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages, isMessageModalOpen, isChatMinimized]);
 
     const openMessages = async (appId: number, jobTitle: string) => {
         setActiveMessageAppId(appId);
@@ -1128,33 +1181,42 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
                                 {/* Notification Bell */}
                                 <div className="relative">
-                                    <button
-                                        onClick={handleViewNotifications}
-                                        className="p-2 hover:bg-white/10 rounded-full transition-colors relative"
-                                    >
-                                        <Bell className="w-5 h-5 text-white" />
-                                        {notifications.some(n => !n.isRead) && (
-                                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-[#193153]"></span>
-                                        )}
-                                    </button>
+                                    <CustomTooltip content="Notifications" side="bottom">
+                                        <button
+                                            onClick={handleViewNotifications}
+                                            className="p-2 hover:bg-white/10 rounded-full transition-colors relative"
+                                        >
+                                            <Bell className="w-5 h-5 text-white" />
+                                            {notifications.some(n => !n.isRead) && (
+                                                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-[#193153]"></span>
+                                            )}
+                                        </button>
+                                    </CustomTooltip>
 
                                     {notificationsOpen && (
-                                        <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 text-gray-800 animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="absolute right-0 mt-2 w-80 max-h-[350px] overflow-y-auto bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 text-gray-800 animate-in fade-in zoom-in-95 duration-200 shadow-2xl">
                                             {notifications.length === 0 ? (
                                                 <div className="px-4 py-8 text-center text-gray-400 text-sm">No notifications yet</div>
                                             ) : (
                                                 notifications.map(n => (
                                                     <div
                                                         key={n.id}
-                                                        onClick={() => handleMarkAsRead(n.id)}
-                                                        className={`px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 cursor-pointer transition-colors ${!n.isRead ? 'bg-blue-50/30' : ''}`}
+                                                        onClick={() => {
+                                                            handleMarkAsRead(n.id);
+                                                            if (n.jobId) {
+                                                                router.visit(`/jobs/${n.jobId}`);
+                                                            } else {
+                                                                router.visit(`/jobs`);
+                                                            }
+                                                        }}
+                                                        className={`px-4 py-3 border-b border-gray-100 last:border-0 cursor-pointer transition-all duration-200 ${n.isRead ? 'bg-gray-50/80 hover:bg-gray-100/60' : 'bg-white hover:bg-blue-50/10'}`}
                                                     >
                                                         <div className="flex gap-3">
                                                             {!n.isRead && <div className="mt-1.5 w-2 h-2 bg-blue-600 rounded-full shrink-0"></div>}
                                                             <div>
-                                                                <p className={`text-sm ${n.isRead ? 'text-gray-500' : 'text-gray-900 font-semibold'}`}>{n.text}</p>
+                                                                <p className={`text-sm leading-snug ${n.isRead ? 'text-gray-400 font-normal' : 'text-gray-900 font-semibold hover:text-blue-700'}`}>{n.text}</p>
                                                                 <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                                                                    <Clock className="w-3 h-3" /> {new Date(n.time).toLocaleDateString()}
+                                                                    <Clock className="w-3 h-3" /> {safeFormatDate(n.time)}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -1182,17 +1244,26 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                             {user.name}
                                         </span>
                                     </button>
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="text-white hover:bg-white/10 hover:text-[#ffdd59]"
-                                        onClick={() => router.get('/settings/password')}
-                                    >
-                                        <Settings className="w-4 h-4" />
-                                    </Button>
-                                    <Button onClick={handleLogout} size="sm" variant="ghost" className="text-white hover:bg-white/10 hover:text-[#ffdd59]">
-                                        <LogOut className="w-4 h-4" />
-                                    </Button>
+                                    <CustomTooltip content="Settings" side="bottom">
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="text-white hover:bg-white/10 hover:text-[#ffdd59]"
+                                            onClick={() => router.get('/settings/profile')}
+                                        >
+                                            <Settings className="w-4 h-4" />
+                                        </Button>
+                                    </CustomTooltip>
+                                    <CustomTooltip content="Logout" side="bottom">
+                                        <Button 
+                                            onClick={handleLogout} 
+                                            size="sm" 
+                                            variant="ghost" 
+                                            className="text-white hover:bg-white/10 hover:text-[#ffdd59]" 
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                        </Button>
+                                    </CustomTooltip>
                                 </div>
                             </div>
                         </div>
@@ -1209,16 +1280,18 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                             <div>
                                 <h1 className="text-3xl font-bold">{getGreeting()}, {user.name}!</h1>
                                 {(() => {
+                                    const activeCount = myApplications.filter(a => !['Hired', 'Rejected', 'Withdrawn', 'Archived'].includes(a.status)).length;
+
                                     if (scheduledInterviewsCount > 0) {
                                         return (
                                             <p className="text-blue-200 mt-2 max-w-xl">
                                                 You have <span className="text-[#ffdd59] font-bold">{scheduledInterviewsCount} scheduled {scheduledInterviewsCount === 1 ? 'interview' : 'interviews'}</span> upcoming! Best of luck with your preparation.
                                             </p>
                                         );
-                                    } else if (statusCounts.total > 0) {
+                                    } else if (activeCount > 0) {
                                         return (
                                             <p className="text-blue-200 mt-2 max-w-xl">
-                                                You have <span className="text-[#ffdd59] font-bold">{statusCounts.total} active {statusCounts.total === 1 ? 'application' : 'applications'}</span> in progress. Keep checking here for updates!
+                                                You have <span className="text-[#ffdd59] font-bold">{activeCount} active {activeCount === 1 ? 'application' : 'applications'}</span> in progress. Keep checking here for updates!
                                             </p>
                                         );
                                     } else {
@@ -1301,62 +1374,6 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                         ))}
                                     </div>
 
-                                    {/* Recent Application Timeline Feature */}
-                                    {myApplications.length > 0 && (() => {
-                                        const activeApp = myApplications[0];
-                                        let activeInterview = null;
-                                        try {
-                                            const savedInterviews = getCombinedInterviews();
-                                            activeInterview = savedInterviews.find((interview: any) => {
-                                                if (!interview) return false;
-                                                const candidateJob = (interview.position || '').toLowerCase();
-                                                const isMatchingJob = candidateJob === (activeApp.jobTitle || '').toLowerCase();
-                                                return isMatchingJob && checkInterviewMatch(interview);
-                                            });
-                                        } catch (e) {}
-
-                                        return (
-                                            <div ref={timelineRef} className="bg-white border border-gray-200 rounded-xl p-6">
-                                                <h3 className="font-bold text-[#193153] flex items-center gap-2 mb-6">
-                                                    <Clock className="w-5 h-5 text-[#ffdd59]" />
-                                                    Latest Application Timeline
-                                                </h3>
-                                                <div className="relative">
-                                                    <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-100 -translate-y-1/2 rounded-full"></div>
-                                                    <div className="relative flex justify-between">
-                                                        {/* Step 1 */}
-                                                        <div className="flex flex-col items-center gap-2 bg-white px-2">
-                                                            <div className="w-8 h-8 rounded-full bg-[#193153] text-white flex items-center justify-center text-xs font-bold ring-4 ring-white">1</div>
-                                                            <span className="text-xs font-bold text-[#193153]">Applied</span>
-                                                        </div>
-                                                        {/* Step 2 */}
-                                                        <div className="flex flex-col items-center gap-2 bg-white px-2">
-                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-white ${activeApp.status !== 'Submitted' ? 'bg-[#193153] text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
-                                                            <span className={`text-xs ${activeApp.status !== 'Submitted' ? 'font-bold text-[#193153]' : 'font-semibold text-gray-500'}`}>Review</span>
-                                                        </div>
-                                                        {/* Step 3 */}
-                                                        <div className="flex flex-col items-center gap-2 bg-white px-2">
-                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-white ${['Shortlisted', 'Hired'].includes(activeApp.status) ? 'bg-[#193153] text-white' : 'bg-gray-200 text-gray-500'}`}>3</div>
-                                                            <span className={`text-xs ${['Shortlisted', 'Hired'].includes(activeApp.status) ? 'font-bold text-[#193153]' : 'font-semibold text-gray-500'}`}>Interview</span>
-                                                        </div>
-                                                        {/* Step 4 */}
-                                                        <div className="flex flex-col items-center gap-2 bg-white px-2">
-                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-white ${['Hired', 'Rejected'].includes(activeApp.status) ? (activeApp.status === 'Hired' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white') : 'bg-gray-200 text-gray-500'}`}>4</div>
-                                                            <span className={`text-xs ${['Hired', 'Rejected'].includes(activeApp.status) ? (activeApp.status === 'Hired' ? 'font-bold text-emerald-600' : 'font-bold text-red-600') : 'font-semibold text-gray-500'}`}>Result</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-6 p-3 bg-blue-50 rounded-lg text-sm text-blue-800 flex items-start gap-3">
-                                                    <AlertCircle className="w-5 h-5 shrink-0" />
-                                                    {activeInterview ? (
-                                                        <p>Your interview for <strong>{activeApp.jobTitle}</strong> is scheduled on <strong>{new Date(activeInterview.date).toLocaleDateString()} at {activeInterview.time}</strong>. Venue: <strong>{activeInterview.venue}</strong>. {activeInterview.panelMembers ? `Panel: ${activeInterview.panelMembers}.` : ''}</p>
-                                                    ) : (
-                                                        <p>Your application for <strong>{activeApp.jobTitle}</strong> is currently <strong>{activeApp.status}</strong>. We will notify you via email for the next steps.</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
 
                                     {/* Application List */}
                                     <div>
@@ -1388,27 +1405,30 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                             <h3 className="font-bold text-gray-900">{app.jobTitle}</h3>
                                                             <div className="flex items-center justify-center md:justify-start gap-4 text-sm text-gray-500 mt-1">
                                                                 <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {app.location || 'Pasay City'}</span>
-                                                                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(app.submittedDate).toLocaleDateString()}</span>
+                                                                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {safeFormatDate(app.submittedDate)}</span>
                                                             </div>
                                                         </div>
 
                                                         <div className="flex items-center gap-4">
                                                             {getStatusBadge(app.status, app.jobTitle)}
-                                                            <Link href={`/jobs/${app.jobId}`}>
-                                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
-                                                                    <ChevronRight className="w-5 h-5" />
-                                                                </Button>
-                                                            </Link>
+                                                            <CustomTooltip content="View Details">
+                                                                <Link href={`/jobs/${app.jobId}`}>
+                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
+                                                                        <ChevronRight className="w-5 h-5" />
+                                                                    </Button>
+                                                                </Link>
+                                                            </CustomTooltip>
                                                             <div className="relative inline-block">
-                                                                 <Button
-                                                                     variant="ghost"
-                                                                     size="sm"
-                                                                     className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                                                                     onClick={() => openMessages(app.id, app.jobTitle)}
-                                                                     title="Messages"
-                                                                 >
-                                                                     <MessageCircle className="w-4 h-4" />
-                                                                 </Button>
+                                                                 <CustomTooltip content="Message">
+                                                                     <Button
+                                                                         variant="ghost"
+                                                                         size="sm"
+                                                                         className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                                                         onClick={() => openMessages(app.id, app.jobTitle)}
+                                                                     >
+                                                                         <MessageCircle className="w-4 h-4" />
+                                                                     </Button>
+                                                                 </CustomTooltip>
                                                                  {app.hasUnreadMessages && (
                                                                      <span className="absolute top-0 right-0 flex h-2 w-2">
                                                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -1417,19 +1437,23 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                  )}
                                                              </div>
                                                             {app.status === 'Withdrawn' ? (
-                                                                <Trash2
-                                                                    className="w-4 h-4 text-red-500 hover:text-red-700 cursor-pointer transition-colors"
-                                                                    onClick={() => handleDelete(app.id)}
-                                                                />
+                                                                <CustomTooltip content="Delete">
+                                                                    <Trash2
+                                                                        className="w-4 h-4 text-red-500 hover:text-red-700 cursor-pointer transition-colors"
+                                                                        onClick={() => handleDelete(app.id)}
+                                                                    />
+                                                                </CustomTooltip>
                                                             ) : (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                                    onClick={() => handleWithdraw(app.id)}
-                                                                >
-                                                                    <LogOut className="w-4 h-4" />
-                                                                </Button>
+                                                                <CustomTooltip content="Withdraw">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                                        onClick={() => handleWithdraw(app.id)}
+                                                                    >
+                                                                        <LogOut className="w-4 h-4" />
+                                                                    </Button>
+                                                                </CustomTooltip>
                                                             )}
                                                         </div>
                                                     </div>
@@ -1447,7 +1471,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                         <div className="bg-[#193153] p-4 text-white">
                                             <h3 className="font-bold flex items-center gap-2">
                                                 <Calendar className="w-4 h-4 text-[#ffdd59]" />
-                                                Upcoming Events
+                                                Interviews & Events
                                             </h3>
                                         </div>
                                         <div className="p-4 bg-gray-50 min-h-37.5 flex flex-col gap-3">
@@ -1456,13 +1480,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                     const isInterview = event.type === 'Interview';
                                                     const cardContent = (
                                                         <div 
-                                                            onClick={() => {
-                                                                if (isInterview) {
-                                                                    setSelectedEventDetails(event);
-                                                                    setIsEventDialogOpen(true);
-                                                                }
-                                                            }}
-                                                            className={`bg-white p-3 rounded-lg border border-gray-100 flex items-start gap-3 shadow-sm hover:border-[#193153] transition-colors text-left h-full ${isInterview ? 'cursor-pointer hover:border-purple-600' : ''}`}
+                                                            className="bg-white p-3 rounded-lg border border-gray-100 flex items-start gap-3 shadow-sm hover:border-[#193153] hover:shadow-md transition-all duration-200 text-left h-full cursor-pointer"
                                                         >
                                                             <div className={`p-2 rounded text-center min-w-12.5 ${isInterview ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-[#193153]'}`}>
                                                                 <span className="block text-xs font-bold uppercase">{String(event.date || '').split(' ')[0] || ''}</span>
@@ -1487,9 +1505,9 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                             {cardContent}
                                                         </Link>
                                                     ) : (
-                                                        <div key={event.id}>
+                                                        <Link key={event.id} href={`/calendar?date=${getEventDateParam(event.date)}`} className="block">
                                                             {cardContent}
-                                                        </div>
+                                                        </Link>
                                                     );
                                                 })
                                             ) : (
@@ -1524,7 +1542,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                     <div className="p-4">
                                                         <h4 className="text-sm font-bold text-[#193153] line-clamp-2">{hrNews[0].title}</h4>
                                                         <p className="text-xs text-gray-500 mt-2 line-clamp-3">{hrNews[0].summary}</p>
-                                                        <Link href={`/hr-news/${hrNews[0].id}`} className="mt-4 inline-flex text-xs font-bold text-[#193153] hover:text-[#ffdd59]">
+                                                        <Link href={`/hr-news/${hrNews[0].id}`} className="mt-4 inline-flex text-xs font-bold text-[#193153] hover:text-blue-600">
                                                             Read Article
                                                             <ArrowRight className="w-3 h-3 ml-1" />
                                                         </Link>
@@ -1535,6 +1553,9 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                     No news available right now.
                                                 </div>
                                             )}
+                                            <Link href="/hr-news" className="w-full block mt-3">
+                                                <Button variant="outlineDark" size="sm" className="text-xs bg-white w-full">View All News</Button>
+                                            </Link>
                                         </div>
                                     </Card>
 
@@ -1971,49 +1992,77 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                     </div>
                 </footer>
 
-                {/* --- APPLICANT MESSAGING MODAL --- */}
-                <Dialog open={isMessageModalOpen} onOpenChange={setIsMessageModalOpen}>
-                    <DialogContent className="max-w-xl h-[80vh] flex flex-col p-0 overflow-hidden bg-gray-50">
-                        <DialogHeader className="px-6 py-4 border-b bg-white shrink-0">
-                            <DialogTitle className="flex items-center gap-2 text-lg">
-                                <span className="bg-blue-100 text-blue-700 p-1.5 rounded-full">
+                {/* --- FLOATING CHAT BOX (FACEBOOK-STYLE) --- */}
+                {isMessageModalOpen && (
+                    <div className="fixed bottom-0 right-4 md:right-10 z-50 flex flex-col w-[320px] h-[400px] bg-white border border-gray-200 shadow-2xl rounded-t-2xl overflow-hidden transition-all duration-300">
+                        {/* Header */}
+                        <div className="bg-[#193153] text-white px-4 py-3 flex items-center justify-between select-none shrink-0">
+                            <div className="flex items-center gap-2 max-w-[85%]">
+                                <span className="bg-blue-600 text-[#ffdd59] p-1 rounded-full shrink-0">
                                     <MessageCircle className="h-4 w-4" />
                                 </span>
-                                Messages for {activeMessageJobTitle}
-                            </DialogTitle>
-                        </DialogHeader>
+                                <span className="font-bold text-sm truncate" title={activeMessageJobTitle}>
+                                    {activeMessageJobTitle}
+                                </span>
+                            </div>
+                            <div className="flex items-center">
+                                {/* Close Button */}
+                                <button 
+                                    className="text-gray-300 hover:text-white transition-colors p-1"
+                                    onClick={() => setIsMessageModalOpen(false)}
+                                    title="Close"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </div>
 
-                        <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
+                        {/* Messages Body */}
+                        <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3 bg-gray-50">
                             {messages.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2">
-                                    <div className="p-4 bg-gray-100 rounded-full">
-                                        <Mail className="h-8 w-8" />
+                                    <div className="p-3 bg-gray-100 rounded-full">
+                                        <Mail className="h-6 w-6" />
                                     </div>
-                                    <p>No messages yet.</p>
+                                    <p className="text-xs">No messages yet.</p>
                                 </div>
                             ) : (
                                 messages.map((msg, idx) => {
                                     const isSenderApplicant = msg.sender?.id === user.id;
+                                    const formatTime = (timeStr?: string) => {
+                                        if (!timeStr) return '';
+                                        try {
+                                            const date = new Date(timeStr);
+                                            return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' • ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                                        } catch {
+                                            return '';
+                                        }
+                                    };
                                     return (
-                                        <div key={idx} className={`flex max-w-[80%] ${isSenderApplicant ? 'ml-auto' : 'mr-auto'}`}>
-                                            <div className={`p-3 rounded-2xl ${isSenderApplicant
+                                        <div key={idx} className={`flex flex-col max-w-[85%] ${isSenderApplicant ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+                                            <div className={`p-2.5 rounded-2xl ${isSenderApplicant
                                                 ? 'bg-blue-600 text-white rounded-tr-sm'
                                                 : 'bg-white border text-gray-800 rounded-tl-sm shadow-sm'
                                                 }`}>
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isSenderApplicant ? 'text-blue-200' : 'text-gray-500'}`}>
+                                                <div className="flex items-center gap-2 mb-0.5">
+                                                    <span className={`text-[9px] font-bold uppercase tracking-wider ${isSenderApplicant ? 'text-blue-200' : 'text-gray-500'}`}>
                                                         {isSenderApplicant ? 'You' : (msg.sender?.name || 'Admin')}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                                <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                                             </div>
+                                            <span className="text-[8px] text-gray-400 mt-0.5 px-1">
+                                                {formatTime(msg.created_at || new Date().toISOString())}
+                                            </span>
                                         </div>
                                     );
                                 })
                             )}
+                            <div ref={messagesEndRef} />
                         </div>
 
-                        <div className="p-4 bg-white border-t shrink-0">
+                        {/* Message Input Footer */}
+                        <div className="p-3 bg-white border-t shrink-0">
                             <form
                                 onSubmit={(e: React.FormEvent) => { e.preventDefault(); sendMessage(); }}
                                 className="flex gap-2"
@@ -2021,20 +2070,20 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                 <Input
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder="Type your message to HR..."
-                                    className="flex-1"
+                                    placeholder="Type a message..."
+                                    className="flex-1 h-9 text-xs"
                                 />
                                 <Button
                                     type="submit"
                                     disabled={!newMessage.trim()}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 h-9 text-xs"
                                 >
-                                    Send
+                                    <Send className="h-3.5 w-3.5" />
                                 </Button>
                             </form>
                         </div>
-                    </DialogContent>
-                </Dialog>
+                    </div>
+                )}
 
                 <Dialog open={!!viewingDocument} onOpenChange={(open) => !open && setViewingDocument(null)}>
                     <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">

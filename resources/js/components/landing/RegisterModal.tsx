@@ -18,6 +18,7 @@ export default function RegisterModal({ isOpen, onClose, onSwitchToLogin }: Regi
         email: '',
         password: '',
         password_confirmation: '',
+        invitation_code: '',
     });
 
     const submit = (e: React.FormEvent) => {
@@ -96,6 +97,17 @@ export default function RegisterModal({ isOpen, onClose, onSwitchToLogin }: Regi
                             placeholder="Confirm password"
                         />
                         <InputError message={errors.password_confirmation} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="invitation_code">Invitation Code (Optional)</Label>
+                        <Input
+                            id="invitation_code"
+                            value={data.invitation_code}
+                            onChange={(e) => setData('invitation_code', e.target.value)}
+                            placeholder="NAAP-XXXX-XXXX (for Admin registration)"
+                        />
+                        <InputError message={errors.invitation_code} />
                     </div>
 
                     <Button type="submit" className="w-full" disabled={processing}>

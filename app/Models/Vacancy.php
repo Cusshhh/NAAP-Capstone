@@ -8,6 +8,7 @@ class Vacancy extends Model
 {
     protected $fillable = [
         'staffing_id',
+        'campus_id',
         'title',
         'department',
         'employment_type',

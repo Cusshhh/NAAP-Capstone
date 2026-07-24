@@ -71,7 +71,7 @@ export default function Register() {
                                 <InputError message={errors.password} />
                             </div>
 
-                            <div className="grid gap-2">
+                             <div className="grid gap-2">
                                 <Label htmlFor="password_confirmation">
                                     Confirm password
                                 </Label>
@@ -87,6 +87,20 @@ export default function Register() {
                                 <InputError
                                     message={errors.password_confirmation}
                                 />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="invitation_code">
+                                    Invitation Code (Optional)
+                                </Label>
+                                <Input
+                                    id="invitation_code"
+                                    type="text"
+                                    tabIndex={5}
+                                    name="invitation_code"
+                                    placeholder="NAAP-XXXX-XXXX (for Admin registration)"
+                                />
+                                <InputError message={errors.invitation_code} />
                             </div>
 
                             <Button

@@ -15,10 +15,15 @@ class RegisterUserController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
+        if ($request->has('email')) {
+            $request->merge([
+                'email' => strtolower($request->email),
+            ]);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            // strict password validation
+            'email' => 'required|string|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -32,7 +37,11 @@ class RegisterUserController extends Controller
 
         Auth::login($user);
 
-        // Redirect to dashboard (as per test expectation)
+        // If the registered user is an admin, redirect them to admin dashboard, else normal dashboard
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         return redirect()->route('dashboard');
     }
 }

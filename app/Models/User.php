@@ -22,6 +22,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'campus_id',
         'profile_data',
     ];
 
@@ -50,5 +52,10 @@ class User extends Authenticatable
             'two_factor_confirmed_at' => 'datetime',
             'profile_data' => 'array',
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return in_array($this->role, ['super_admin', 'hr_admin', 'hr_staff', 'admin']) || $this->email === 'admin@naap.edu.ph';
     }
 }

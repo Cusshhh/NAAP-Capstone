@@ -15,9 +15,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { mockJobs, getJobs, SALARY_GRADE_MAP } from '@/data/mockData';
 import AdminLayout from '@/layouts/AdminLayout';
 
-export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, jobs: any[] }) {
+export default function JobManagement({ auth, jobs: serverJobs, campuses }: { auth: any, jobs: any[], campuses: any[] }) {
   const admin = auth?.user || { name: 'Admin' };
   const [jobs, setJobs] = useState<any[]>(serverJobs || []);
+
+  const isJobExpired = (job: any) => {
+    return !!(job.deadline && new Date(job.deadline).setHours(23, 59, 59, 999) < new Date().getTime());
+  };
 
   // Sync with server data when it changes
   useEffect(() => {
@@ -42,12 +46,7 @@ export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, j
           title,
           department: dept,
           staffing_id: params.get('staffingId'),
-          location: campus === 'Villamor' ? 'NAAP - Villamor Campus' :
-            campus === 'BAB' ? 'NAAP - Basa Air Base Campus' :
-              campus === 'FAB' ? 'NAAP - Fernando Air Base Campus' :
-                campus === 'MBEAB' ? 'NAAP - Mactan Campus' :
-                  campus === 'Mactan-Medellin' ? 'NAAP - Mactan-Medellin Extension Campus' :
-                    'NAAP - Villamor Campus'
+          location: 'Villamor Air Base, Pasay City'
         }));
       }
       setIsCreating(true);
@@ -77,6 +76,8 @@ export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, j
           responsibilities: Array.isArray(jobToEdit.responsibilities) ? jobToEdit.responsibilities.join('\n') : (jobToEdit.responsibilities || ''),
           salaryGrade: jobToEdit.salaryGrade || 1,
           deadline: jobToEdit.deadline || '',
+          status: jobToEdit.status || 'Open',
+          campus_id: jobToEdit.campus_id || '',
           custom_file_requirements: Array.isArray(jobToEdit.custom_file_requirements) ? jobToEdit.custom_file_requirements : [],
           uploads: {
             license: null,
@@ -96,12 +97,14 @@ export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, j
     title: '',
     department: '',
     employmentType: 'Full-time',
-    location: 'NAAP - Villamor Campus',
+    location: 'Villamor Air Base, Pasay City',
     description: '',
     requirements: '',
     responsibilities: '',
     salaryGrade: 1,
     deadline: '',
+    status: 'Open',
+    campus_id: '' as string | number,
     custom_file_requirements: [] as { id: number, label: string }[],
     uploads: {
       license: null as File | null,
@@ -129,13 +132,28 @@ export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, j
       return;
     }
 
+    // Auto-calculate campus_id from location if not present
+    let finalCampusId = newJob.campus_id;
+    if (!finalCampusId) {
+      if (newJob.location.includes('Mactan') || newJob.location.includes('Cebu')) {
+        finalCampusId = 2; // Cebu
+      } else if (newJob.location.includes('Davao')) {
+        finalCampusId = 3; // Davao
+      } else {
+        finalCampusId = 1; // Villamor
+      }
+    }
+
+    const payload = {
+      ...newJob,
+      campus_id: finalCampusId,
+      requirements: newJob.requirements.split('\n').filter(r => r.trim() !== ''),
+      responsibilities: newJob.responsibilities.split('\n').filter(r => r.trim() !== ''),
+    };
+
     if (editingId) {
       // Update Existing Job
-      router.put(`/admin/jobs/${editingId}`, {
-        ...newJob,
-        requirements: newJob.requirements.split('\n').filter(r => r.trim() !== ''),
-        responsibilities: newJob.responsibilities.split('\n').filter(r => r.trim() !== ''),
-      }, {
+      router.put(`/admin/jobs/${editingId}`, payload, {
         onSuccess: () => {
           toast.success("Job updated successfully!");
           setIsCreating(false);
@@ -147,11 +165,7 @@ export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, j
       });
     } else {
       // Create New Job
-      router.post('/admin/jobs', {
-        ...newJob,
-        requirements: newJob.requirements.split('\n').filter(r => r.trim() !== ''),
-        responsibilities: newJob.responsibilities.split('\n').filter(r => r.trim() !== ''),
-      }, {
+      router.post('/admin/jobs', payload, {
         onSuccess: () => {
           toast.success("Job posted successfully!");
           setIsCreating(false);
@@ -176,6 +190,8 @@ export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, j
       responsibilities: Array.isArray(job.responsibilities) ? job.responsibilities.join('\n') : (job.responsibilities || ''),
       salaryGrade: job.salaryGrade || 1,
       deadline: job.deadline || '',
+      status: job.status || 'Open',
+      campus_id: job.campus_id || '',
       custom_file_requirements: Array.isArray(job.custom_file_requirements) ? job.custom_file_requirements : [],
       uploads: {
         license: null,
@@ -213,6 +229,8 @@ export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, j
       responsibilities: '',
       salaryGrade: 1,
       deadline: '',
+      status: 'Open',
+      campus_id: '',
       custom_file_requirements: [],
       uploads: {
         license: null,
@@ -257,8 +275,9 @@ export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, j
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.department.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCampus = campusFilter === 'all' || job.location.includes(campusFilter);
-    const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
+    const matchesCampus = campusFilter === 'all' || String(job.campus_id) === String(campusFilter);
+    const effectiveStatus = (job.status === 'Closed' || isJobExpired(job)) ? 'Closed' : (job.status || 'Draft');
+    const matchesStatus = statusFilter === 'all' || effectiveStatus === statusFilter;
     const matchesEmploymentType = employmentTypeFilter === 'all' || job.employmentType === employmentTypeFilter;
     return matchesSearch && matchesCampus && matchesStatus && matchesEmploymentType;
   });
@@ -344,17 +363,22 @@ export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, j
                   </div>
                   <div>
                     <Label htmlFor="location">Location</Label>
-                    <Select value={newJob.location} onValueChange={(value) => setNewJob({ ...newJob, location: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Campus" />
+                    <Input
+                      id="location"
+                      value={newJob.location}
+                      onChange={(e) => setNewJob({ ...newJob, location: e.target.value })}
+                      placeholder="e.g. Villamor Air Base, Pasay City"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="status">Job Status</Label>
+                    <Select value={newJob.status} onValueChange={(value) => setNewJob({ ...newJob, status: value })}>
+                      <SelectTrigger id="status">
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="NAAP - Villamor Campus">NAAP - Villamor Campus</SelectItem>
-                        <SelectItem value="NAAP - Basa Air Base Campus">NAAP - Basa Air Base Campus</SelectItem>
-                        <SelectItem value="NAAP - Basa-Palmayo Extension Campus">NAAP - Basa-Palmayo Extension Campus</SelectItem>
-                        <SelectItem value="NAAP - Fernando Air Base Campus">NAAP - Fernando Air Base Campus</SelectItem>
-                        <SelectItem value="NAAP - Mactan Campus">NAAP - Mactan Campus</SelectItem>
-                        <SelectItem value="NAAP - Mactan-Medellin Extension Campus">NAAP - Mactan-Medellin Extension Campus</SelectItem>
+                        <SelectItem value="Open">Open</SelectItem>
+                        <SelectItem value="Closed">Closed</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -531,7 +555,7 @@ export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, j
                 <div>
                   <p className="text-gray-600 mb-1">Open Positions</p>
                   <p className="text-3xl font-bold text-green-600">
-                    {jobs.filter(j => j.status === 'Open').length}
+                    {jobs.filter(j => j.status === 'Open' && !isJobExpired(j)).length}
                   </p>
                 </div>
                 <Users className="h-8 w-8 text-green-100" />
@@ -569,18 +593,7 @@ export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, j
                   />
                 </div>
               </div>
-              <Select value={campusFilter} onValueChange={setCampusFilter}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Filter by campus" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Campuses</SelectItem>
-                  <SelectItem value="Villamor">Villamor Campus</SelectItem>
-                  <SelectItem value="Basa Air Base">Basa Air Base Campus</SelectItem>
-                  <SelectItem value="Fernando Air Base">Fernando Air Base Campus</SelectItem>
-                  <SelectItem value="Basa-Palmayo">Basa-Palmayo Extension</SelectItem>
-                </SelectContent>
-              </Select>
+
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Filter by status" />
@@ -649,13 +662,26 @@ export default function JobManagement({ auth, jobs: serverJobs }: { auth: any, j
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={`
-                          ${job.status === 'Open' ? 'bg-green-100 text-green-800' : ''}
-                          ${job.status === 'Closed' ? 'bg-red-100 text-red-800' : ''}
-                          ${!job.status ? 'bg-gray-100 text-gray-800' : ''}
-                        `}>
-                            {job.status || 'Draft'}
-                          </Badge>
+                          {(() => {
+                            const isExpired = isJobExpired(job);
+                            const displayStatus = (job.status === 'Closed' || isExpired) ? 'Closed' : (job.status || 'Draft');
+                            return (
+                              <div className="flex flex-col gap-1 items-start">
+                                <Badge className={`
+                                  ${displayStatus === 'Open' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}
+                                  ${displayStatus === 'Closed' ? 'bg-red-100 text-red-800 hover:bg-red-100' : ''}
+                                  ${displayStatus === 'Draft' ? 'bg-gray-100 text-gray-800 hover:bg-gray-100' : ''}
+                                `}>
+                                  {displayStatus}
+                                </Badge>
+                                {isExpired && job.status === 'Open' && (
+                                  <span className="text-[10px] text-red-600 font-bold bg-red-50 border border-red-100 px-1 py-0.5 rounded leading-none">
+                                    Expired
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell className="text-sm">
                           {job.postedDate ? new Date(job.postedDate).toLocaleDateString() : 'N/A'}

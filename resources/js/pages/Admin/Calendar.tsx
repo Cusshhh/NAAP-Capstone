@@ -223,8 +223,33 @@ export default function AdminCalendar() {
     };
 
     // State for current view (Month/Year)
-    // Default to Feb 2026 to match mock data context
-    const [currentDate, setCurrentDate] = useState(new Date(2026, 1, 1));
+    // Default to Feb 2026 or URL date query parameter if present
+    const [currentDate, setCurrentDate] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const dateParam = params.get('date');
+            if (dateParam) {
+                const parsed = new Date(dateParam);
+                if (!isNaN(parsed.getTime())) {
+                    return parsed;
+                }
+            }
+        }
+        return new Date(2026, 1, 1);
+    });
+
+    React.useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const dateParam = params.get('date');
+            if (dateParam) {
+                const parsed = new Date(dateParam);
+                if (!isNaN(parsed.getTime())) {
+                    setCurrentDate(parsed);
+                }
+            }
+        }
+    }, []);
 
     const handlePrevMonth = () => {
         setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -340,9 +365,9 @@ export default function AdminCalendar() {
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent className="max-h-[300px]">
-                                                {Array.from({ length: 15 }, (_, i) => (
-                                                    <SelectItem key={i} value={(2024 + i).toString()}>
-                                                        {2024 + i}
+                                                {Array.from({ length: 20 }, (_, i) => (
+                                                    <SelectItem key={i} value={(2020 + i).toString()}>
+                                                        {2020 + i}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -501,14 +526,23 @@ export default function AdminCalendar() {
                                     </div>
                                 ) : (
                                     events.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((event, index) => (
-                                        <div key={index} className="px-6 py-5 border-b last:border-0 hover:bg-gray-50 transition-all group relative">
+                                        <div 
+                                            key={index} 
+                                            onClick={() => {
+                                                const d = new Date(event.date);
+                                                if (!isNaN(d.getTime())) {
+                                                    setCurrentDate(d);
+                                                }
+                                            }}
+                                            className="px-6 py-5 border-b last:border-0 hover:bg-gray-50 transition-all group relative cursor-pointer"
+                                        >
                                             <div className="flex items-start gap-5">
                                                 <div className={`flex-shrink-0 w-14 text-center rounded-2xl py-3 shadow-md ${event.type === 'Deadline' ? 'bg-red-600 text-white' :
                                                     event.type === 'Interview' ? 'bg-blue-600 text-white' :
                                                         'bg-gray-800 text-white'
                                                     }`}>
-                                                    <span className="block text-[10px] font-black uppercase tracking-tighter opacity-80">{event.date.split(' ')[0]}</span>
-                                                    <span className="block text-2xl font-black leading-none">{event.date.split(' ')[1].replace(',', '')}</span>
+                                                    <span className="block text-[10px] font-black uppercase tracking-tighter opacity-80">{event.date.split(' ')[0] || ''}</span>
+                                                    <span className="block text-2xl font-black leading-none">{event.date.split(' ')[1]?.replace(',', '') || ''}</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex justify-between items-start mb-1">

@@ -16,7 +16,7 @@ class CmsContentController extends Controller
         if ($content) {
             return response()->json(json_decode($content->value));
         }
-        return response()->json(null);
+        return response()->json(['error' => 'CMS content not found'], 404);
     }
 
     /**
@@ -24,6 +24,11 @@ class CmsContentController extends Controller
      */
     public function store(Request $request)
     {
+        $user = auth()->user();
+        if (!$user || (!$user->isSuperAdmin() && $user->email !== 'admin@naap.edu.ph')) {
+            return response()->json(['error' => 'Unauthorized. Only Super Administrators can manage CMS content.'], 403);
+        }
+
         $validated = $request->validate([
             'key' => 'required|string',
             'value' => 'required', // can be array or stringified json

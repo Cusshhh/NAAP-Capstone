@@ -39,7 +39,10 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user() ? array_merge($request->user()->toArray(), [
+                    'is_admin' => $request->user()->isAdmin() || in_array($request->user()->email, ['admin@naap.edu.ph', 'admin@admin.com']),
+                    'campus_name' => 'Villamor Air Base, Pasay City',
+                ]) : null,
             ],
             'flash' => [
                 'message' => $request->session()->get('message'),

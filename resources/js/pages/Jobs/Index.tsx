@@ -1,4 +1,4 @@
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Search, Filter, MapPin, Briefcase, Clock, ArrowLeft, User, LogOut, LayoutDashboard, Bookmark } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -24,6 +24,13 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
     };
 
     const [jobs, setJobs] = useState<any[]>(serverJobs || []);
+    const [profileImage, setProfileImage] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (user && typeof window !== 'undefined') {
+            setProfileImage(localStorage.getItem(`user_profile_image_${user.id}`));
+        }
+    }, [user]);
 
     useEffect(() => {
         if (serverJobs) {
@@ -34,13 +41,11 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
     const departments = Array.from(new Set(jobs.map(j => j.department)));
     const employmentTypes = Array.from(new Set(jobs.map(j => j.employmentType)));
 
-    const locations = Array.from(new Set(jobs.map(j => j.location).filter(Boolean)));
-
 
     const [searchTerm, setSearchTerm] = useState('');
     const [departmentFilter, setDepartmentFilter] = useState('all');
     const [employmentFilter, setEmploymentFilter] = useState('all');
-    const [locationFilter, setLocationFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
     const [showSavedOnly, setShowSavedOnly] = useState(false);
     const [savedJobIds, setSavedJobIds] = useState<any[]>([]);
 
@@ -88,10 +93,10 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
 
         const matchesDepartment = departmentFilter === 'all' || job.department === departmentFilter;
         const matchesEmployment = employmentFilter === 'all' || job.employmentType === employmentFilter;
-        const matchesLocation = locationFilter === 'all' || job.location === locationFilter;
+        const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
         const matchesSaved = !showSavedOnly || savedJobIds.includes(job.id);
 
-        return matchesSearch && matchesDepartment && matchesEmployment && matchesLocation && matchesSaved && job.status === 'Open';
+        return matchesSearch && matchesDepartment && matchesEmployment && matchesStatus && matchesSaved && (job.status === 'Open' || job.status === 'Closed');
     });
 
     return (
@@ -111,9 +116,13 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                         {user ? (
                             <div className="flex items-center gap-4">
 
-                                <Link href="/dashboard" className="flex items-center gap-3 pl-4 border-l border-white/20 group hover:bg-white/10 rounded-full py-1 pr-4 transition-all">
+                                <Link href="/dashboard" className="flex items-center gap-3 group hover:bg-white/10 rounded-full py-1 px-3 transition-all">
                                     <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden border border-white group-hover:scale-105 transition-transform">
-                                        {user.name.charAt(0)}
+                                        {profileImage ? (
+                                            <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                                        ) : (
+                                            user.name.charAt(0)
+                                        )}
                                     </div>
                                     <span className="text-sm font-medium hidden sm:block group-hover:text-[#ffdd59] transition-colors">{user.name}</span>
                                 </Link>
@@ -139,8 +148,12 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                         </>
                     ) : (
                         <>
-                            <h1 className="text-4xl font-bold mb-2">Career Opportunities</h1>
-                            <p className="text-blue-200">Explore open positions at NAAP</p>
+                            <h1 className="text-4xl font-bold mb-2">
+                                Career Opportunities
+                            </h1>
+                            <p className="text-blue-200">
+                                Explore open positions at National Aviation Academy of the Philippines
+                            </p>
                         </>
                     )}
                 </div>
@@ -184,16 +197,15 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            {/* Updated Location Filter */}
-                            <Select value={locationFilter} onValueChange={setLocationFilter}>
+                            {/* Status Filter */}
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="All Locations" />
+                                    <SelectValue placeholder="All Statuses" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Locations</SelectItem>
-                                    {locations.map(loc => (
-                                        <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                                    ))}
+                                    <SelectItem value="all">All Statuses</SelectItem>
+                                    <SelectItem value="Open">Open</SelectItem>
+                                    <SelectItem value="Closed">Closed</SelectItem>
                                 </SelectContent>
                             </Select>
                             <Button
@@ -215,7 +227,7 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                     </p>
                     <div className="flex items-center text-gray-600">
                         <Filter className="h-4 w-4 mr-2" />
-                        {(departmentFilter !== 'all' || employmentFilter !== 'all' || locationFilter !== 'all' || searchTerm) && (
+                        {(departmentFilter !== 'all' || employmentFilter !== 'all' || statusFilter !== 'all' || searchTerm) && (
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -223,7 +235,7 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                                     setSearchTerm('');
                                     setDepartmentFilter('all');
                                     setEmploymentFilter('all');
-                                    setLocationFilter('all');
+                                    setStatusFilter('all');
                                     setShowSavedOnly(false);
                                 }}
                             >
@@ -303,9 +315,16 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                                     </div>
                                     <p className="text-gray-700 mb-4 line-clamp-2">{job.description}</p>
                                     <div className="flex items-center justify-between">
-                                        <p className="text-sm text-gray-500">
-                                            Deadline: {new Date(job.deadline).toLocaleDateString()}
-                                        </p>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <p className="text-sm text-gray-500">
+                                                Deadline: {job.deadline ? new Date(job.deadline).toLocaleDateString() : 'N/A'}
+                                            </p>
+                                            {job.status === 'Closed' && (
+                                                <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border border-red-200 text-[10px] font-bold py-0.5 px-2">
+                                                    Closed
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <Link href={`/jobs/${job.id}`}>
                                             <Button className="bg-[#193153] text-white hover:bg-[#193153]/90 hover:text-[#ffdd59] shadow-md">
                                                 View Details

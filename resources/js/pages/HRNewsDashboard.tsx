@@ -1,5 +1,5 @@
-import { Head, Link } from '@inertiajs/react';
-import { ChevronLeft, Calendar, Tag, Edit2, Save, X } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { ChevronLeft, Calendar, Tag, Edit2, Save, X, Settings, LogOut } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getHRNews, updateHRNews, type HRNewsItem } from '@/data/mockData';
@@ -16,8 +16,9 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
         const loadNews = async () => {
             try {
                 const response = await axios.get('/cms-content/mock_hr_news');
-                if (response.data && Array.isArray(response.data)) {
-                    setHrNews(response.data);
+                if (response.data) {
+                    const articlesList = Array.isArray(response.data) ? response.data : Object.values(response.data || {});
+                    setHrNews(articlesList);
                 }
             } catch (e) {
                 console.error("Failed to load news from database", e);
@@ -65,39 +66,140 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
         <div className="min-h-screen bg-gray-50 font-sans text-slate-800">
             < Head title="HR News Dashboard" />
 
-            {/* Header */}
-            <header className="bg-[#193153] text-white shadow-lg">
-                < div className="container mx-auto px-6 py-8">
-                    < div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                        < div >
-                            <h1 className="text-3xl font-bold tracking-tight mb-2">HR Updates & Announcements</h1>
-                            < p className="text-blue-200">Keeping the NAAP community informed about Human Resources initiatives.</p>
-                        </div >
+            {/* --- TOP BAR --- */}
+            {auth?.user ? (
+                <nav className="bg-[#193153] text-white shadow-lg sticky top-0 z-50">
+                    <div className="container mx-auto px-6 py-4">
+                        <div className="flex justify-between items-center">
+                            {/* Logo Area */}
+                            <Link href={isAdmin ? "/admin/dashboard" : "/dashboard"} className="flex items-center space-x-4">
+                                <img
+                                    src="/images/PhilSCA_Logo.png"
+                                    alt="NAAP Logo"
+                                    className="h-10 w-auto object-contain bg-white/10 rounded-full p-1"
+                                />
+                                <div>
+                                    <span className="font-bold text-lg tracking-tight block leading-none text-white">NAAP Careers</span>
+                                    <span className="text-[10px] text-blue-200 uppercase tracking-widest block mt-0.5">
+                                        {isAdmin ? "Admin Portal" : "Applicant Portal"}
+                                    </span>
+                                </div>
+                            </Link>
+
+                            {/* Right Menu */}
+                            <div className="flex items-center space-x-4">
+                                <Link href={isAdmin ? "/admin/dashboard" : "/dashboard"}>
+                                    <button className="text-xs font-semibold bg-[#ffdd59] text-[#193153] hover:bg-[#eac545] px-3.5 py-2 rounded-lg transition-colors cursor-pointer">
+                                        Back to Dashboard
+                                    </button>
+                                </Link>
+
+                                <div className="h-6 w-px bg-white/20"></div>
+
+                                {/* User Avatar */}
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden border border-white">
+                                        {auth.user.name ? auth.user.name.charAt(0) : 'U'}
+                                    </div>
+                                    <span className="text-sm font-medium hidden sm:block text-white">
+                                        {auth.user.name}
+                                    </span>
+
+                                    <button
+                                        onClick={() => router.get('/settings/profile')}
+                                        className="p-2 hover:bg-white/10 rounded-full text-white transition-colors cursor-pointer"
+                                        title="Settings"
+                                    >
+                                        <Settings className="w-4 h-4" />
+                                    </button>
+
+                                    <button
+                                        onClick={() => router.post('/logout')}
+                                        className="p-2 hover:bg-white/10 rounded-full text-white transition-colors cursor-pointer"
+                                        title="Logout"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            ) : (
+                <header className="bg-[#193153] border-b border-[#193153] sticky top-0 z-50 shadow-md">
+                    <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+                        <Link href="/" className="flex items-center space-x-3">
+                            <div className="bg-white/10 p-2 rounded-full h-12 w-12 flex items-center justify-center overflow-hidden">
+                                <img src="/images/PhilSCA_Logo.png" alt="NAAP Logo" className="h-full w-full object-contain" />
+                            </div>
+                            <div>
+                                <span className="font-bold text-lg block leading-none text-white">NAAP HR</span>
+                                <span className="text-[10px] text-blue-200 uppercase tracking-widest">Newsroom</span>
+                            </div>
+                        </Link>
+
+                        <nav className="hidden md:flex items-center space-x-6">
+                            <Link href="/" className="text-white hover:text-[#ffdd59] transition-colors text-sm font-medium">
+                                Home
+                            </Link>
+                            <Link href="/hr-news" className="text-white hover:text-[#ffdd59] font-medium text-sm">
+                                HR News
+                            </Link>
+                            <Link href="/jobs" className="text-white hover:text-[#ffdd59] transition-colors text-sm font-medium">
+                                Browse Jobs
+                            </Link>
+                        </nav>
+
+                        <button className="md:hidden text-white">
+                            <Menu className="h-6 w-6" />
+                        </button>
+                    </div>
+                </header>
+            )}
+
+            {/* Page Title Header */}
+            <div className="bg-gray-100 border-b border-gray-200">
+                <div className="container mx-auto px-6 py-8">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div>
+                            <h1 className="text-2xl font-bold text-[#193153] tracking-tight mb-1">HR Updates & Announcements</h1>
+                            <p className="text-sm text-gray-500">Keeping the NAAP community informed about Human Resources initiatives.</p>
+                        </div>
                         <div className="flex gap-2">
                             {isAdmin && (
                                 <button
                                     onClick={() => setEditMode(!editMode)}
                                     className={`flex items-center text-sm font-medium px-4 py-2 rounded-lg transition-colors ${editMode
                                         ? 'bg-[#ffdd59] text-[#193153]'
-                                        : 'bg-white/10 hover:bg-white/20'
+                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm'
                                         }`}
                                 >
                                     <Edit2 className="w-4 h-4 mr-1" />
                                     {editMode ? 'Exit Edit Mode' : 'Edit Mode'}
                                 </button>
                             )}
-                            <Link href="/news/csc-prime-hrm-level-2" className="flex items-center text-sm font-medium bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors">
-                                < ChevronLeft className="w-4 h-4 mr-1" />
-                                Back to Newsroom
-                            </Link >
-                            <Link href="/" className="flex items-center text-sm font-medium bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors">
-                                < ChevronLeft className="w-4 h-4 mr-1" />
-                                Back to Home
-                            </Link >
-                        </div >
-                    </div >
-                </div >
-            </header >
+                            {auth?.user && !isAdmin && (
+                                <Link href="/dashboard" className="flex items-center text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors shadow-sm">
+                                    <ChevronLeft className="w-4 h-4 mr-1" />
+                                    Back to Dashboard
+                                </Link>
+                            )}
+                            {!auth?.user && (
+                                <>
+                                    <Link href="/news/csc-prime-hrm-level-2" className="flex items-center text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors shadow-sm">
+                                        <ChevronLeft className="w-4 h-4 mr-1" />
+                                        Back to Newsroom
+                                    </Link>
+                                    <Link href="/" className="flex items-center text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors shadow-sm">
+                                        <ChevronLeft className="w-4 h-4 mr-1" />
+                                        Back to Home
+                                    </Link>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {/* Main Content */}
             < main className="container mx-auto px-6 py-12">

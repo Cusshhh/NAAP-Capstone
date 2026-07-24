@@ -72,8 +72,7 @@ class ApplicantController extends Controller
         $user = Auth::user();
         
         // Safety check for admins
-        $adminEmails = ['admin@naap.edu.ph', 'admin@admin.com'];
-        if (in_array($user->email, $adminEmails)) {
+        if ($user->isAdmin() || in_array($user->email, ['admin@naap.edu.ph', 'admin@admin.com'])) {
             return redirect()->route('admin.dashboard');
         }
 
@@ -87,6 +86,7 @@ class ApplicantController extends Controller
                     'jobId' => $app->job_id,
                     'status' => $app->status,
                     'submittedDate' => $app->created_at->toISOString(),
+                    'updatedAt' => $app->updated_at->toISOString(),
                     'phone' => $app->phone_number,
                     'education' => $app->education,
                     'email' => $app->email,

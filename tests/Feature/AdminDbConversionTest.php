@@ -8,6 +8,7 @@ use App\Models\CalendarEvent;
 use App\Models\ActivityLog;
 
 beforeEach(function () {
+
     $this->admin = User::create([
         'name' => 'Admin User',
         'email' => 'admin@naap.edu.ph',

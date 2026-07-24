@@ -68,7 +68,7 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Staffing Monitoring</h1>
-                        <p className="text-gray-500">Track and manage staffing requirements across all campuses.</p>
+                        <p className="text-gray-500">Track and manage staffing requirements for NAAP.</p>
                     </div>
                     <div className="flex gap-2">
                         <Link
@@ -151,19 +151,6 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                                 />
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="w-4 h-4 text-gray-500" />
-                                    <select
-                                        className="text-sm border-gray-200 rounded-md py-1.5 focus:ring-blue-500"
-                                        value={campusFilter}
-                                        onChange={(e) => setCampusFilter(e.target.value)}
-                                    >
-                                        <option value="All">All Campuses</option>
-                                        {campuses.map(campus => (
-                                            <option key={campus} value={campus}>{campus} Campus</option>
-                                        ))}
-                                    </select>
-                                </div>
                                 <div className="flex items-center gap-2">
                                     <Filter className="w-4 h-4 text-gray-500" />
                                     <select

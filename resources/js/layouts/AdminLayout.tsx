@@ -1,5 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { Users, Briefcase, Shield, LogOut, Menu, Layout, Clock, FileText, Calendar, ChevronRight } from 'lucide-react';
+import { Users, Briefcase, Shield, LogOut, Menu, Layout, Clock, FileText, Calendar, ChevronRight, Key, MessageSquare } from 'lucide-react';
 import type { ReactNode } from 'react';
 import React from 'react';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,9 @@ interface AdminLayoutProps {
         user: {
             name: string;
             email: string;
+            role?: string;
+            is_super_admin?: boolean;
+            is_admin?: boolean;
         };
     };
     title?: string;
@@ -17,7 +20,7 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children, auth, title, headerActions }: AdminLayoutProps) {
-    const admin = auth?.user || { name: 'Admin' };
+    const admin = auth?.user || { name: 'Admin', email: '' } as any;
     const { url } = usePage();
 
     const handleLogout = () => {
@@ -33,7 +36,12 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
         { name: 'Jobs', href: '/admin/jobs', icon: Briefcase },
         { name: 'Applicants', href: '/admin/applicants', icon: Users },
         { name: 'Staffing', href: '/admin/staffing', icon: Shield },
+        { name: 'Messages', href: '/admin/messages', icon: MessageSquare },
     ];
+
+    if (admin.is_super_admin || admin.email === 'admin@naap.edu.ph') {
+        navItems.push({ name: 'Invitations', href: '/admin/invitations', icon: Key });
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
@@ -42,9 +50,9 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
                 <div className="container mx-auto px-4 py-4">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center space-x-3">
-                            <Link href="/admin/dashboard" className="bg-white/10 p-2 rounded-full h-12 w-12 flex items-center justify-center overflow-hidden">
+                            <a href="/admin/dashboard" className="bg-white/10 p-2 rounded-full h-12 w-12 flex items-center justify-center overflow-hidden">
                                 <img src="/images/PhilSCA_Logo.png" alt="NAAP Logo" className="h-full w-full object-contain" />
-                            </Link>
+                            </a>
                             <div>
                                 <span className="font-bold text-lg block leading-none">NAAP HR Admin</span>
                                 <span className="text-[10px] text-blue-200 uppercase tracking-widest">Portal</span>
@@ -54,7 +62,7 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
                         {/* Desktop Menu */}
                         <div className="hidden md:flex items-center space-x-2">
                             {navItems.map((item) => (
-                                <Link key={item.name} href={item.href}>
+                                <a key={item.name} href={item.href}>
                                     <Button 
                                         variant="ghost" 
                                         className={`text-white transition-all duration-200 ${
@@ -66,7 +74,7 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
                                         <item.icon className={`h-4 w-4 mr-2 ${isActive(item.href) ? 'text-[#ffdd59]' : ''}`} />
                                         {item.name}
                                     </Button>
-                                </Link>
+                                </a>
                             ))}
                             
                             <div className="h-6 w-px bg-white/20 mx-2"></div>

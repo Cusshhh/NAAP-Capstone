@@ -33,6 +33,7 @@ export default function LandingPageManager({ auth }: { auth: any }) {
     const [editingHiredId, setEditingHiredId] = useState<number | null>(null);
     const [hiredFormData, setHiredFormData] = useState<Partial<RecentlyHiredApplicant>>({});
     const [hiredImageUrl, setHiredImageUrl] = useState<string>('');
+    const hiredImageInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         const loadDbData = async () => {

@@ -32,14 +32,26 @@ interface JobDetailsProps {
     id: string;
     auth: { user: any };
     job: any;
+    application?: any;
+    interview?: any;
 }
 
-export default function JobDetails({ id, auth, job: serverJob }: JobDetailsProps) {
+export default function JobDetails({ id, auth, job: serverJob, application, interview }: JobDetailsProps) {
     const user = auth?.user;
+    const isAdmin = !!(user && (user.is_admin || user.role === 'super_admin' || user.role === 'hr_admin' || user.role === 'hr_staff' || user.email === 'admin@naap.edu.ph'));
     const job = serverJob;
-    const [hasApplied, setHasApplied] = useState(false);
+    const isExpired = job.status === 'Closed' || (job.deadline ? new Date(job.deadline).setHours(23, 59, 59, 999) < new Date().getTime() : false);
+    const [hasApplied, setHasApplied] = useState(application !== null && application !== undefined);
     const [isApplyOpen, setIsApplyOpen] = useState(false);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [profileImage, setProfileImage] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (user && typeof window !== 'undefined') {
+            setProfileImage(localStorage.getItem(`user_profile_image_${user.id}`));
+        }
+    }, [user]);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -176,6 +188,7 @@ export default function JobDetails({ id, auth, job: serverJob }: JobDetailsProps
     }, [user, job]);
 
     const handleApplyClick = () => {
+        if (isExpired) return;
         if (!user) {
             router.visit('/login');
             return;
@@ -298,20 +311,24 @@ export default function JobDetails({ id, auth, job: serverJob }: JobDetailsProps
             {/* Header */}
             <div className="bg-[#193153] text-white py-6">
                 <div className="container mx-auto px-4 flex justify-between items-center">
-                    <Link href="/jobs">
+                    <Link href={isAdmin ? "/admin/dashboard" : (user ? "/dashboard" : "/")}>
                         <Button
                             variant="ghost"
                             className="text-white hover:bg-white/10 hover:text-[#ffdd59] mb-4"
                         >
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Listings
+                            {user ? "Go back to Dashboard" : "Go back to Home"}
                         </Button>
                     </Link>
 
                     {user && (
-                        <Link href="/dashboard" className="flex items-center gap-3 pl-4 border-l border-white/20 mb-4 text-white group hover:bg-white/10 rounded-full py-1 pr-4 transition-all">
-                            <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs group-hover:scale-105 transition-transform">
-                                {user.name.charAt(0)}
+                        <Link href="/dashboard" className="flex items-center gap-3 mb-4 text-white group hover:bg-white/10 rounded-full py-1 px-3 transition-all">
+                            <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden border border-white group-hover:scale-105 transition-transform">
+                                {profileImage ? (
+                                    <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                                ) : (
+                                    user.name.charAt(0)
+                                )}
                             </div>
                             <span className="text-sm font-medium group-hover:text-[#ffdd59] transition-colors">{user.name}</span>
                         </Link>
@@ -429,39 +446,68 @@ export default function JobDetails({ id, auth, job: serverJob }: JobDetailsProps
 
                                 <Separator className="my-4" />
 
-                                {user && user.email === 'admin@naap.edu.ph' ? (
+                                {isAdmin ? (
                                     // ADMIN VIEW
                                     <div className="flex flex-col gap-3">
                                         <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-2">
-                                            <p className="text-sm text-[#193153] font-semibold flex items-center">
+                                            <p className="text-sm text-[#193153] font-semibold flex items-center font-bold">
                                                 <Shield className="w-4 h-4 mr-2" />
                                                 Admin View
                                             </p>
                                             <p className="text-xs text-gray-600 mt-1">
-                                                You are viewing this job as an administrator.
+                                                You are logged in as an administrator.
                                             </p>
                                         </div>
-                                        <Link href={`/admin/jobs?edit=${job.id}`}>
-                                            <Button
-                                                className="w-full bg-[#193153] hover:bg-[#ffdd59] hover:text-[#193153] mb-3 font-bold transition-colors"
-                                                size="lg"
-                                            >
-                                                <Edit className="w-4 h-4 mr-2" />
-                                                Edit Job Details
-                                            </Button>
-                                        </Link>
+                                        {(user && (user.is_super_admin || user.role === 'super_admin' || user.email === 'admin@naap.edu.ph' || String(job.campus_id) === String(user.campus_id))) ? (
+                                            <Link href={`/admin/jobs?edit=${job.id}`}>
+                                                <Button
+                                                    className="w-full bg-[#193153] hover:bg-[#ffdd59] hover:text-[#193153] mb-3 font-bold transition-colors"
+                                                    size="lg"
+                                                >
+                                                    <Edit className="w-4 h-4 mr-2" />
+                                                    Edit Job Details
+                                                </Button>
+                                            </Link>
+                                        ) : (
+                                            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-2">
+                                                <p className="text-xs text-amber-800">
+                                                    This job is managed by another campus.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     // APPLICANT VIEW
-                                    user ? (
-                                        hasApplied ? (
-                                            <Button
-                                                className="w-full bg-green-600 hover:bg-green-700 text-white mb-3 font-bold transition-colors cursor-default"
-                                                size="lg"
-                                            >
-                                                <CheckCircle className="w-5 h-5 mr-2" />
-                                                Applied
-                                            </Button>
+                                    isExpired ? (
+                                        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-3 text-center">
+                                            <p className="text-sm text-red-800 font-bold">
+                                                Applications Closed
+                                            </p>
+                                            <p className="text-xs text-red-600 mt-1">
+                                                The application deadline for this position has passed.
+                                            </p>
+                                        </div>
+                                    ) : user ? (
+                                        (hasApplied || application) ? (
+                                            <div className="space-y-3 mb-3">
+                                                <Button
+                                                    className="w-full bg-green-600 text-white font-bold transition-colors cursor-default"
+                                                    size="lg"
+                                                    disabled
+                                                >
+                                                    <CheckCircle className="w-5 h-5 mr-2" />
+                                                    Applied
+                                                </Button>
+                                                {application && (
+                                                    <Button
+                                                        onClick={() => setIsDetailsOpen(true)}
+                                                        className="w-full bg-[#193153] hover:bg-[#ffdd59] hover:text-[#193153] font-bold transition-colors"
+                                                        size="lg"
+                                                    >
+                                                        View Submitted Details
+                                                    </Button>
+                                                )}
+                                            </div>
                                         ) : (
                                             <Button
                                                 onClick={handleApplyClick}
@@ -482,10 +528,13 @@ export default function JobDetails({ id, auth, job: serverJob }: JobDetailsProps
                                         </Link>
                                     )
                                 )}
-
-                                <Link href={user && user.email === 'admin@naap.edu.ph' ? "/admin/jobs" : (user ? "/dashboard" : "/login")}>
-                                    <Button variant="outline" className="w-full border-gray-300 text-gray-600 hover:text-[#193153] hover:border-[#193153]">
-                                        {user && user.email === 'admin@naap.edu.ph' ? "Back to Job Management" : "Track Your Application"}
+ 
+                                <Link href={isAdmin ? "/admin/jobs" : "/jobs"} className="block w-full">
+                                    <Button
+                                        variant="outline"
+                                        className="w-full border-gray-300 text-gray-600 hover:text-[#193153] hover:border-[#193153]"
+                                    >
+                                        {isAdmin ? "Back to Job Management" : "Back to Listings"}
                                     </Button>
                                 </Link>
                             </CardContent>
@@ -961,6 +1010,190 @@ export default function JobDetails({ id, auth, job: serverJob }: JobDetailsProps
                             </Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Submitted Application Details Modal */}
+            <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col w-full">
+                    <DialogHeader className="border-b pb-4 shrink-0">
+                        <DialogTitle className="text-2xl font-bold text-[#193153] flex items-center gap-2">
+                            <Briefcase className="w-6 h-6 text-blue-600" />
+                            Application & Interview Details
+                        </DialogTitle>
+                        <DialogDescription>
+                            Your submitted application for <span className="font-bold text-[#193153]">{job.title}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {application && (
+                        <div className="overflow-y-auto flex-1 pr-2 my-2 space-y-6">
+                            {/* 1. Status Tracker */}
+                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                <h4 className="font-bold text-[#193153] text-sm mb-3 flex items-center gap-1.5">
+                                    <Clock className="w-4 h-4 text-blue-600" />
+                                    Application Status: <span className="underline ml-1 font-extrabold text-[#193153]">{application.status}</span>
+                                </h4>
+                                
+                                {/* Timeline Steps */}
+                                <div className="flex items-center justify-between max-w-md mx-auto pt-2 pb-4">
+                                    {[
+                                        { label: 'Applied', active: true },
+                                        { label: 'Review', active: ['Under Review', 'Shortlisted', 'Hired', 'Rejected'].includes(application.status) },
+                                        { label: 'Interview', active: ['Shortlisted', 'Hired', 'Rejected'].includes(application.status) },
+                                        { label: 'Result', active: ['Hired', 'Rejected'].includes(application.status), isEnd: true }
+                                    ].map((step, i) => (
+                                        <div key={i} className="flex-1 flex items-center">
+                                            <div className="flex flex-col items-center relative">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border ${
+                                                    step.active 
+                                                        ? 'bg-blue-600 text-white border-blue-600' 
+                                                        : 'bg-white text-gray-400 border-gray-300'
+                                                }`}>
+                                                    {i + 1}
+                                                </div>
+                                                <span className={`text-[10px] mt-1 font-medium ${step.active ? 'text-blue-600 font-bold' : 'text-gray-400'}`}>
+                                                    {step.label}
+                                                </span>
+                                            </div>
+                                            {!step.isEnd && (
+                                                <div className={`flex-1 h-0.5 mx-2 -mt-4 ${step.active ? 'bg-blue-600' : 'bg-gray-200'}`} />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="h-4" /> {/* Spacer for labels */}
+                            </div>
+
+                            {application.status === 'Rejected' && (
+                                <div className="bg-red-50 border border-red-200 text-red-950 p-4 rounded-lg flex flex-col gap-1.5 shadow-sm">
+                                    <span className="font-bold text-sm flex items-center gap-1.5 text-red-700">
+                                        ❌ Rejection Details
+                                    </span>
+                                    <p className="text-xs font-semibold leading-relaxed">
+                                        Feedback from HR: <span className="font-normal text-red-800">{application.dynamic_responses?.rejection_reason || 'Minimum education or experience requirements not met.'}</span>
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* 2. Scheduled Interview Details (If status is shortlisted or interview is loaded) */}
+                            {interview && (
+                                <div className="bg-[#193153] text-white p-5 rounded-lg shadow-inner border border-blue-900 relative overflow-hidden">
+                                    <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-4 translate-y-4">
+                                        <Calendar className="w-40 h-40" />
+                                    </div>
+                                    <h4 className="font-bold text-[#ffdd59] text-base mb-4 flex items-center gap-2 border-b border-blue-800 pb-2">
+                                        <span className="flex items-center justify-center w-6 h-6 bg-[#ffdd59] text-[#193153] rounded-full text-xs font-black">🗓️</span>
+                                        Scheduled Interview Details
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                        <div className="flex flex-col">
+                                            <span className="text-blue-200 text-xs font-medium">Date</span>
+                                            <span className="font-bold text-white mt-0.5">{new Date(interview.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-blue-200 text-xs font-medium">Time</span>
+                                            <span className="font-bold text-white mt-0.5">{interview.time}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-blue-200 text-xs font-medium">Venue / Platform</span>
+                                            <span className="font-bold text-white mt-0.5">{interview.venue}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-blue-200 text-xs font-medium">Interview Panel Members</span>
+                                            <span className="font-bold text-white mt-0.5">{interview.panelMembers || 'HR Committee Panel'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 3. Academic & Professional Summary */}
+                            <div className="space-y-4">
+                                <h4 className="font-bold text-[#193153] text-sm border-b pb-1">Professional Credentials</h4>
+                                <div className="grid grid-cols-2 gap-4 text-xs">
+                                    <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
+                                        <span className="text-gray-500 font-medium">Highest Education Attained</span>
+                                        <span className="font-bold text-gray-900 mt-1">
+                                            {application.dynamic_responses?.educationLevel || application.education || 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
+                                        <span className="text-gray-500 font-medium">Years of Experience</span>
+                                        <span className="font-bold text-gray-900 mt-1">
+                                            {application.dynamic_responses?.yearsOfExperience || 0} years
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
+                                        <span className="text-gray-500 font-medium">Training Hours Completed</span>
+                                        <span className="font-bold text-gray-900 mt-1">
+                                            {application.dynamic_responses?.trainingHours || 0} hours
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
+                                        <span className="text-gray-500 font-medium">Open to other positions?</span>
+                                        <span className="font-bold text-gray-900 mt-1 capitalize">
+                                            {application.dynamic_responses?.openToOthers || 'Yes'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 4. Personal Info Submitted */}
+                            <div className="space-y-4">
+                                <h4 className="font-bold text-[#193153] text-sm border-b pb-1">Personal Details</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                                    <div className="flex flex-col">
+                                        <span className="text-gray-500">First Name</span>
+                                        <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.firstName || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-gray-500">Middle Name</span>
+                                        <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.middleName || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-gray-500">Last Name</span>
+                                        <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.lastName || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-gray-500">Age / Sex</span>
+                                        <span className="font-semibold text-gray-900 mt-0.5">
+                                            {application.dynamic_responses?.age ? `${application.dynamic_responses.age} yrs old` : 'N/A'} / {application.dynamic_responses?.sex || 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-gray-500">Civil Status</span>
+                                        <span className="font-semibold text-gray-900 mt-0.5 capitalize">{application.dynamic_responses?.civilStatus || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-gray-500">Contact Number</span>
+                                        <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.contactNumber || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col col-span-2 md:grid-span-3">
+                                        <span className="text-gray-500">Residential Address</span>
+                                        <span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{application.dynamic_responses?.address || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 5. Civil Service Board Eligibilities */}
+                            {application.dynamic_responses?.eligibilities && application.dynamic_responses.eligibilities.length > 0 && (
+                                <div className="space-y-3">
+                                    <h4 className="font-bold text-[#193153] text-sm border-b pb-1">Eligibilities</h4>
+                                    <ul className="list-disc list-inside space-y-1 text-xs text-gray-700 pl-1">
+                                        {application.dynamic_responses.eligibilities.map((elig: string, index: number) => (
+                                            <li key={index}>{elig}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <DialogFooter className="border-t pt-4 shrink-0 mt-2">
+                        <Button onClick={() => setIsDetailsOpen(false)} className="bg-[#193153] text-white hover:bg-[#ffdd59] hover:text-[#193153] font-bold">
+                            Close Details
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>

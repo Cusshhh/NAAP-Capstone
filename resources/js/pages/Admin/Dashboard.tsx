@@ -1,4 +1,4 @@
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Users, Briefcase, FileText, Award, LogOut, Shield, TrendingUp, UserCheck, UserX, MapPin, Menu, Calendar, Clock, ChevronRight, Download, XCircle, UserPlus, Layout } from 'lucide-react';
 import React, { useState } from 'react';
 import {
@@ -55,15 +55,14 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
         return () => window.removeEventListener('storage', handleSync);
     }, [dbApplications, dbJobs, unfilledStaffingCount]);
 
-    const [reportType, setReportType] = useState('applicants');
-    const [dateRange, setDateRange] = useState('month');
+    const { campuses: activeCampuses = [] } = usePage().props as any;
+    const [reportCampusId, setReportCampusId] = useState('all');
+    const [reportStatus, setReportStatus] = useState('all');
 
-    const handleGenerateReport = () => {
-        // Simulate report generation
+    const handleDownloadReport = () => {
         setIsReportModalOpen(false);
-        // You would typically trigger a download here
-        console.log(`Generating ${reportType} report for ${dateRange}`);
-        // Maybe show a toast notification here in a real app
+        const url = `/admin/reports/export?campus_id=${reportCampusId}&status=${reportStatus}`;
+        window.open(url, '_blank');
     };
 
     const COLORS = ['#3b82f6', '#eab308', '#22c55e', '#ef4444', '#10b981'];
@@ -100,8 +99,73 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                 <div className="mb-8 border-b border-gray-200 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-[#193153]">Welcome, {admin.name.split(' ')[0]}!</h1>
-                        <p className="text-gray-500 mt-1">Here's your administrative overview for today.</p>
+                        <p className="text-gray-500 mt-1">
+                            {admin.is_super_admin || admin.email === 'admin@naap.edu.ph'
+                                ? "Here's your administrative overview for today."
+                                : `Campus Administrator: ${admin.campus_name || 'N/A'}`}
+                        </p>
                     </div>
+
+                    <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="bg-[#193153] hover:bg-[#193153]/90 text-white font-semibold flex items-center gap-2">
+                                <Download className="w-4 h-4" /> Export Reports
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md bg-white p-6 rounded-xl border border-gray-200 shadow-2xl">
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-bold text-[#193153] flex items-center gap-2">
+                                    <FileText className="w-5 h-5 text-blue-600" />
+                                    Export Applicants Report
+                                </DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 my-4">
+                                {(admin.is_super_admin || admin.email === 'admin@naap.edu.ph') && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="report-campus" className="font-semibold text-gray-700">Filter by Campus</Label>
+                                        <Select value={reportCampusId} onValueChange={setReportCampusId}>
+                                            <SelectTrigger id="report-campus">
+                                                <SelectValue placeholder="All Campuses" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All Campuses</SelectItem>
+                                                {activeCampuses.map((c: any) => (
+                                                    <SelectItem key={c.id} value={c.id.toString()}>
+                                                        {c.campus_name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="report-status" className="font-semibold text-gray-700">Filter by Status</Label>
+                                    <Select value={reportStatus} onValueChange={setReportStatus}>
+                                        <SelectTrigger id="report-status">
+                                            <SelectValue placeholder="All Statuses" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Statuses</SelectItem>
+                                            <SelectItem value="Submitted">Submitted</SelectItem>
+                                            <SelectItem value="Under Review">Under Review</SelectItem>
+                                            <SelectItem value="Shortlisted">Shortlisted</SelectItem>
+                                            <SelectItem value="Hired">Hired</SelectItem>
+                                            <SelectItem value="Rejected">Rejected</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <DialogFooter className="gap-2">
+                                <Button variant="outline" onClick={() => setIsReportModalOpen(false)}>
+                                    Cancel
+                                </Button>
+                                <Button onClick={handleDownloadReport} className="bg-[#193153] hover:bg-[#193153]/90 text-white font-semibold">
+                                    Download CSV
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
 
                 {viewMode === 'campus' && (
@@ -566,38 +630,42 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                         <UserCheck className="w-4 h-4 mr-2" /> Review Applicants
                                     </Button>
                                 </Link>
-                                <Link href="/admin/landing-page" className="block">
-                                    <Button variant="outline" className="w-full justify-start border-[#193153] text-[#193153] hover:bg-[#193153] hover:text-[#ffdd59] hover:shadow-lg hover:scale-105 transition-all duration-200">
-                                        <Layout className="w-4 h-4 mr-2" /> Edit Landing Page
-                                    </Button>
-                                </Link>
+                                {(admin.is_super_admin || admin.email === 'admin@naap.edu.ph') && (
+                                    <Link href="/admin/landing-page" className="block">
+                                        <Button variant="outline" className="w-full justify-start border-[#193153] text-[#193153] hover:bg-[#193153] hover:text-[#ffdd59] hover:shadow-lg hover:scale-105 transition-all duration-200">
+                                            <Layout className="w-4 h-4 mr-2" /> Edit Landing Page
+                                        </Button>
+                                    </Link>
+                                )}
                             </CardContent>
                         </Card>
 
                         {/* Campus Locations */}
-                        <Card className="bg-white shadow-md border-0">
-                            <CardHeader className="bg-[#193153] text-white rounded-t-xl py-4">
-                                <CardTitle className="text-sm font-bold flex items-center">
-                                    <MapPin className="h-4 w-4 mr-2 text-[#ffdd59]" />
-                                    NAAP Campuses
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <div className="flex flex-col divide-y divide-gray-100">
-                                    {campuses.map((campus, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-center text-sm text-gray-600 p-3 hover:bg-gray-50 transition-colors cursor-pointer group"
-                                            onClick={() => handleCampusClick(campus)}
-                                        >
-                                            <div className="w-2 h-2 rounded-full bg-blue-400 mr-3 group-hover:scale-125 transition-transform"></div>
-                                            <span className="group-hover:text-blue-600 font-medium">{campus}</span>
-                                            <ChevronRight className="w-3 h-3 ml-auto text-gray-300 group-hover:text-blue-400" />
-                                        </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
+                        {(admin.is_super_admin || admin.email === 'admin@naap.edu.ph') && (
+                            <Card className="bg-white shadow-md border-0">
+                                <CardHeader className="bg-[#193153] text-white rounded-t-xl py-4">
+                                    <CardTitle className="text-sm font-bold flex items-center">
+                                        <MapPin className="h-4 w-4 mr-2 text-[#ffdd59]" />
+                                        NAAP Campuses
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="flex flex-col divide-y divide-gray-100">
+                                        {campuses.map((campus, index) => (
+                                            <div
+                                                key={index}
+                                                className="flex items-center text-sm text-gray-600 p-3 hover:bg-gray-50 transition-colors cursor-pointer group"
+                                                onClick={() => handleCampusClick(campus)}
+                                            >
+                                                <div className="w-2 h-2 rounded-full bg-blue-400 mr-3 group-hover:scale-125 transition-transform"></div>
+                                                <span className="group-hover:text-blue-600 font-medium">{campus}</span>
+                                                <ChevronRight className="w-3 h-3 ml-auto text-gray-300 group-hover:text-blue-400" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
 
                     </div>
                 </div>

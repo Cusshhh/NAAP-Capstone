@@ -1,10 +1,12 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
   Users,
   Award,
   TrendingUp,
   Briefcase,
-  Gift
+  Gift,
+  MapPin,
+  Building
 } from 'lucide-react';
 import React, { useState } from 'react';
 import LoginModal from '@/components/landing/LoginModal';
@@ -119,11 +121,25 @@ export default function Welcome() {
               </div>
 
               <div className="hidden md:flex items-center space-x-6">
-                {/* <Link href="/jobs" className="text-sm font-medium hover:text-[#ffdd59] transition-colors">
-                  Browse Jobs
-                </Link> */}
-                {/* <div className="h-4 w-px bg-white/20"></div> */}
-                <button onClick={openLogin} className="text-sm font-medium hover:text-[#ffdd59] transition-colors">
+                {selected_campus ? (
+                  <button 
+                    onClick={() => setIsCampusModalOpen(true)} 
+                    className="text-xs bg-white/10 hover:bg-white/20 border border-white/20 text-[#ffdd59] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                  >
+                    <MapPin className="w-3.5 h-3.5" />
+                    {selected_campus.campus_name} (Change)
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => setIsCampusModalOpen(true)} 
+                    className="text-xs bg-[#ffdd59] hover:bg-[#ffdd59]/90 text-[#193153] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                  >
+                    <Building className="w-3.5 h-3.5" />
+                    Select Campus
+                  </button>
+                )}
+                
+                <button onClick={openLogin} className="text-sm font-medium hover:text-[#ffdd59] transition-colors cursor-pointer">
                   Applicant Login
                 </button>
                 <Link href="/admin-login" className="text-sm font-medium hover:text-[#ffdd59] transition-colors">

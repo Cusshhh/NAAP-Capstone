@@ -40,6 +40,9 @@ class Application extends Model
 
     public function getCampusAttribute()
     {
+        if ($this->vacancy && $this->vacancy->campus) {
+            return $this->vacancy->campus->campus_name;
+        }
         return $this->vacancy ? $this->vacancy->location : 'NAAP - Villamor Campus';
     }
 
