@@ -423,9 +423,9 @@ export default function ProfessionalsHired() {
                             <div className="w-24 h-1 bg-[#ffdd59] mt-4 rounded-full"></div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div className="flex flex-wrap justify-center items-stretch gap-8 max-w-7xl mx-auto">
                             {recentlyHired.map((hired) => (
-                                <div key={hired.id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all group flex flex-col items-center">
+                                <div key={hired.id} className="w-full sm:w-[280px] bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-all group flex flex-col items-center">
                                     <div className="w-32 h-32 mb-6 relative">
                                         {/* 2x2 Formal Style Border */}
                                         <div className="absolute inset-0 border-2 border-[#193153]/10 transform rotate-3 group-hover:rotate-0 transition-transform"></div>

@@ -15,12 +15,7 @@ class JobController extends Controller
      */
     public function index()
     {
-        $user = auth()->user();
         $query = Vacancy::query();
-
-        if (!$user->isSuperAdmin() && $user->email !== 'admin@naap.edu.ph') {
-            $query->where('campus_id', $user->campus_id);
-        }
 
         return Inertia::render('Admin/JobManagement', [
             'jobs' => $query->latest()->get()->map(function ($vacancy) {
@@ -39,10 +34,8 @@ class JobController extends Controller
                     'status' => $vacancy->status,
                     'postedDate' => $vacancy->created_at->toDateString(),
                     'applicantCount' => $vacancy->applications()->count(),
-                    'campus_id' => $vacancy->campus_id,
                 ];
             }),
-            'campuses' => \App\Models\Campus::where('status', 'Active')->get(['id', 'campus_name']),
         ]);
     }
 
@@ -51,10 +44,7 @@ class JobController extends Controller
      */
     public function store(Request $request)
     {
-        $user = auth()->user();
-        $isSuper = $user->isSuperAdmin() || $user->email === 'admin@naap.edu.ph';
-
-        $rules = [
+        $validated = $request->validate([
             'staffing_id' => 'nullable|exists:staffing_positions,id',
             'title' => 'required|string|max:255',
             'department' => 'required|string|max:255',
@@ -66,25 +56,14 @@ class JobController extends Controller
             'deadline' => 'nullable|date',
             'custom_file_requirements' => 'nullable|array',
             'status' => 'nullable|string|in:Open,Closed',
-        ];
-
-        if ($isSuper && $request->has('campus_id')) {
-            $rules['campus_id'] = 'nullable|exists:campuses,id';
-        }
-
-        $validated = $request->validate($rules);
-
-        $campusId = $validated['campus_id'] ?? $user->campus_id ?? 1;
-        $campus = \App\Models\Campus::find($campusId);
-        $location = $campus ? $campus->campus_name : ($request->location ?? 'NAAP Campus');
+        ]);
 
         $vacancy = Vacancy::create([
             'staffing_id' => $validated['staffing_id'] ?? null,
-            'campus_id' => $campusId,
             'title' => $validated['title'],
             'department' => $validated['department'],
             'employment_type' => $validated['employmentType'],
-            'location' => $location,
+            'location' => 'Villamor Air Base, Pasay City',
             'description' => $validated['description'],
             'responsibilities' => $validated['responsibilities'] ?? null,
             'requirements' => $validated['requirements'] ?? null,
@@ -110,14 +89,7 @@ class JobController extends Controller
      */
     public function update(Request $request, Vacancy $vacancy)
     {
-        $user = auth()->user();
-        $isSuper = $user->isSuperAdmin() || $user->email === 'admin@naap.edu.ph';
-
-        if (!$isSuper && $vacancy->campus_id !== $user->campus_id) {
-            abort(403, 'Unauthorized.');
-        }
-
-        $rules = [
+        $validated = $request->validate([
             'title' => 'required|string|max:255',
             'department' => 'required|string|max:255',
             'employmentType' => 'required|string|in:Full-time,Part-time,Contract',
@@ -127,24 +99,13 @@ class JobController extends Controller
             'salaryGrade' => 'nullable|integer',
             'deadline' => 'nullable|date',
             'status' => 'nullable|string|in:Open,Closed',
-        ];
-
-        if ($isSuper && $request->has('campus_id')) {
-            $rules['campus_id'] = 'nullable|exists:campuses,id';
-        }
-
-        $validated = $request->validate($rules);
-
-        $campusId = $validated['campus_id'] ?? $vacancy->campus_id ?? $user->campus_id ?? 1;
-        $campus = \App\Models\Campus::find($campusId);
-        $location = $campus ? $campus->campus_name : $vacancy->location;
+        ]);
 
         $vacancy->update([
             'title' => $validated['title'],
-            'campus_id' => $campusId,
             'department' => $validated['department'],
             'employment_type' => $validated['employmentType'],
-            'location' => $location,
+            'location' => 'Villamor Air Base, Pasay City',
             'description' => $validated['description'],
             'responsibilities' => $validated['responsibilities'] ?? $vacancy->responsibilities,
             'requirements' => $validated['requirements'] ?? $vacancy->requirements,
@@ -162,13 +123,6 @@ class JobController extends Controller
      */
     public function destroy(Vacancy $vacancy)
     {
-        $user = auth()->user();
-        if (!$user->isSuperAdmin() && $user->email !== 'admin@naap.edu.ph') {
-            if ($vacancy->campus_id !== $user->campus_id) {
-                abort(403, 'Unauthorized.');
-            }
-        }
-
         $vacancy->delete();
         return back()->with('message', 'Job deleted successfully.');
     }

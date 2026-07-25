@@ -54,6 +54,21 @@ class User extends Authenticatable
         ];
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin' || $this->email === 'admin@naap.edu.ph';
+    }
+
+    public function isHrAdmin(): bool
+    {
+        return $this->role === 'hr_admin' || $this->isAdmin();
+    }
+
+    public function isHrStaff(): bool
+    {
+        return $this->role === 'hr_staff' || $this->isAdmin();
+    }
+
     public function isAdmin(): bool
     {
         return in_array($this->role, ['super_admin', 'hr_admin', 'hr_staff', 'admin']) || $this->email === 'admin@naap.edu.ph';

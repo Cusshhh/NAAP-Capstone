@@ -28,16 +28,8 @@ Route::get('/', function () {
 
 Route::get('/cms-content/{key}', [\App\Http\Controllers\CmsContentController::class, 'show'])->name('cms-content.show');
 
-Route::post('/select-campus', [\App\Http\Controllers\PublicJobController::class, 'selectCampus'])->name('select-campus');
-
 Route::get('/api/open-jobs', function() {
-    $selectedCampusId = session('selected_campus_id');
     $query = \App\Models\Vacancy::where('status', 'Open')->latest();
-    if ($selectedCampusId) {
-        $query->where('campus_id', $selectedCampusId);
-    } else {
-        $query->whereRaw('1 = 0');
-    }
     
     return response()->json(
         $query->get()->map(function ($vacancy) {
@@ -190,18 +182,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', function () {
-            $user = auth()->user();
             $appQuery = \App\Models\Application::query();
             $jobQuery = \App\Models\Vacancy::query();
             $staffingQuery = \App\Models\StaffingPosition::where('status', 'Unfilled');
-
-            if (!$user->isSuperAdmin() && $user->email !== 'admin@naap.edu.ph') {
-                $appQuery->whereHas('vacancy', function ($q) use ($user) {
-                    $q->where('campus_id', $user->campus_id);
-                });
-                $jobQuery->where('campus_id', $user->campus_id);
-                $staffingQuery->where('campus', $user->campus ? $user->campus->campus_name : '');
-            }
 
             return Inertia::render('Admin/Dashboard', [
                 'dbApplications' => $appQuery->latest()->get()->map(function ($app) {
@@ -211,7 +194,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         'jobTitle' => $app->job_title,
                         'status' => $app->status,
                         'submittedDate' => $app->created_at->toISOString(),
-                        'campus' => $app->campus,
+                        'campus' => 'Villamor Air Base, Pasay City',
                     ];
                 }),
                 'dbJobs' => $jobQuery->latest()->get()->map(function ($vacancy) {
@@ -237,14 +220,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/reports/export', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'exportReport'])->name('reports.export');
 
         Route::get('/applicants', function () {
-            $user = auth()->user();
             $query = \App\Models\Application::query();
-            
-            if (!$user->isSuperAdmin() && $user->email !== 'admin@naap.edu.ph') {
-                $query->whereHas('vacancy', function ($q) use ($user) {
-                    $q->where('campus_id', $user->campus_id);
-                });
-            }
 
             return Inertia::render('Admin/Applicants', [
                 'applications' => $query->latest()->get()->map(function ($app) {
@@ -294,88 +270,92 @@ Route::middleware(['auth', 'verified'])->group(function () {
                                     'url' => null,
                                 ],
                             ],
-                        // Stable & Data-Driven Score Percentage (0-100)
+                        // Dynamic, Balanced PDS Qualification Match Score (0-100%)
                         'aiScore' => (function($app) {
-                            if (isset($app->dynamic_responses['educationLevel'])) {
-                                $edu = 0;
-                                $lvl = $app->dynamic_responses['educationLevel'];
-                                if (in_array($lvl, ['doctoral_graduate', 'doctoral_27+'])) $edu = 5;
-                                elseif ($lvl === 'doctoral_18-24') $edu = 4;
-                                elseif (in_array($lvl, ['doctoral_15-18', 'doctoral_9-15'])) $edu = 3;
-                                elseif ($lvl === 'masters') $edu = 3;
-                                
-                                $exp = min(25, max(0, ((int)($app->dynamic_responses['yearsOfExperience'] ?? 0) - 2) * 2));
-                                
-                                $awds = $app->dynamic_responses['awards'] ?? [];
-                                $awdPoints = 0;
-                                if (!empty($awds)) {
-                                    $pointsMap = ['national' => 5, 'csc' => 4, 'president' => 3, 'ngo' => 2];
-                                    foreach ($awds as $a) {
-                                        if (isset($pointsMap[$a])) {
-                                            $awdPoints = max($awdPoints, $pointsMap[$a]);
-                                        }
-                                    }
-                                }
-                                
-                                $tr = 0;
-                                $hrs = (int)($app->dynamic_responses['trainingHours'] ?? 0);
-                                if ($hrs >= 300) $tr = 10;
-                                elseif ($hrs >= 200) $tr = 8;
-                                elseif ($hrs >= 100) $tr = 4;
-                                elseif ($hrs >= 50) $tr = 2;
-
-                                $total = $edu + $exp + $awdPoints + $tr;
-                                return (int) round(($total / 45) * 100);
-                            }
+                            $dyn = $app->dynamic_responses ?? [];
                             
-                            $base = (crc32($app->applicant_name . $app->job_title) % 30) + 50; 
-                            $eduBonus = $app->education ? 10 : 0;
-                            $docBonus = count($app->custom_file_responses ?? []) * 5;
-                            $missingPenalty = count($app->to_follow_docs ?? []) * 2;
-                            return min(100, max(0, $base + $eduBonus + $docBonus - $missingPenalty));
+                            // 1. Education (Max 30 pts)
+                            $eduScore = 15; // default bachelor
+                            $eduLvl = $dyn['educationLevel'] ?? ($app->education ?? '');
+                            if (in_array($eduLvl, ['doctoral_graduate', 'doctoral_27+', 'doctoral_18-24', 'doctoral_15-18', 'doctoral_9-15', 'Doctorate', 'PhD'])) {
+                                $eduScore = 30;
+                            } elseif (in_array($eduLvl, ['masters', 'Post-Graduate', 'Masterate'])) {
+                                $eduScore = 25;
+                            } elseif (in_array($eduLvl, ['bachelor', 'College Graduate', 'College'])) {
+                                $eduScore = 20;
+                            } elseif (in_array($eduLvl, ['vocational', 'Vocational'])) {
+                                $eduScore = 12;
+                            } elseif ($eduLvl) {
+                                $eduScore = 10;
+                            }
+
+                            // 2. Experience (Max 35 pts)
+                            $yrs = isset($dyn['yearsOfExperience']) ? (int)$dyn['yearsOfExperience'] : 2;
+                            if ($yrs >= 6) $expScore = 35;
+                            elseif ($yrs >= 4) $expScore = 30;
+                            elseif ($yrs >= 2) $expScore = 22;
+                            elseif ($yrs >= 1) $expScore = 14;
+                            else $expScore = 6;
+
+                            // 3. Eligibility & Accomplishments / Awards (Max 20 pts)
+                            $awds = $dyn['awards'] ?? [];
+                            $eligs = $dyn['eligibilities'] ?? [];
+                            $awdScore = 8;
+                            if (!empty($awds) || !empty($eligs)) {
+                                if (in_array('national', $awds) || in_array('csc', $awds) || !empty($eligs)) $awdScore = 20;
+                                elseif (in_array('president', $awds)) $awdScore = 16;
+                                elseif (in_array('ngo', $awds)) $awdScore = 12;
+                            }
+
+                            // 4. Training & L&D Hours (Max 15 pts)
+                            $hrs = isset($dyn['trainingHours']) ? (int)$dyn['trainingHours'] : 0;
+                            if ($hrs >= 100) $trScore = 15;
+                            elseif ($hrs >= 40) $trScore = 11;
+                            elseif ($hrs >= 16) $trScore = 7;
+                            elseif ($hrs >= 8) $trScore = 4;
+                            else $trScore = 2;
+
+                            // 5. Document Completeness Adjustments (-10 penalty for to-follow, +5 for complete attachments)
+                            $missingPenalty = count($app->to_follow_docs ?? []) * 5;
+                            $attachmentBonus = count($app->custom_file_responses ?? []) * 2;
+
+                            $rawTotal = $eduScore + $expScore + $awdScore + $trScore + $attachmentBonus - $missingPenalty;
+                            return min(100, max(25, $rawTotal));
                         })($app),
                         'aiScoreBreakdown' => [
                             'education' => (function($app) {
-                                if (isset($app->dynamic_responses['educationLevel'])) {
-                                    $lvl = $app->dynamic_responses['educationLevel'];
-                                    if (in_array($lvl, ['doctoral_graduate', 'doctoral_27+'])) return 5;
-                                    if ($lvl === 'doctoral_18-24') return 4;
-                                    if (in_array($lvl, ['doctoral_15-18', 'doctoral_9-15'])) return 3;
-                                    if ($lvl === 'masters') return 3;
-                                    return 0;
-                                }
-                                return $app->education ? 5 : 0;
+                                $dyn = $app->dynamic_responses ?? [];
+                                $eduLvl = $dyn['educationLevel'] ?? ($app->education ?? '');
+                                if (in_array($eduLvl, ['doctoral_graduate', 'doctoral_27+', 'doctoral_18-24', 'doctoral_15-18', 'doctoral_9-15', 'Doctorate', 'PhD'])) return 5;
+                                if (in_array($eduLvl, ['masters', 'Post-Graduate', 'Masterate'])) return 4;
+                                if (in_array($eduLvl, ['bachelor', 'College Graduate', 'College'])) return 3;
+                                return 2;
                             })($app),
                             'experience' => (function($app) {
-                                if (isset($app->dynamic_responses['yearsOfExperience'])) {
-                                    return min(25, max(0, ((int)$app->dynamic_responses['yearsOfExperience'] - 2) * 2));
-                                }
-                                return (crc32($app->applicant_name) % 15) + 10;
+                                $dyn = $app->dynamic_responses ?? [];
+                                $yrs = isset($dyn['yearsOfExperience']) ? (int)$dyn['yearsOfExperience'] : 2;
+                                if ($yrs >= 6) return 25;
+                                if ($yrs >= 4) return 20;
+                                if ($yrs >= 2) return 15;
+                                if ($yrs >= 1) return 10;
+                                return 5;
                             })($app),
                             'accomplishments' => (function($app) {
-                                if (isset($app->dynamic_responses['awards'])) {
-                                    $awds = $app->dynamic_responses['awards'];
-                                    $pointsMap = ['national' => 5, 'csc' => 4, 'president' => 3, 'ngo' => 2];
-                                    $max = 0;
-                                    foreach ($awds as $a) {
-                                        if (isset($pointsMap[$a])) {
-                                            $max = max($max, $pointsMap[$a]);
-                                        }
-                                    }
-                                    return $max;
-                                }
-                                return (crc32($app->job_title) % 5);
+                                $dyn = $app->dynamic_responses ?? [];
+                                $awds = $dyn['awards'] ?? [];
+                                if (in_array('national', $awds) || in_array('csc', $awds)) return 5;
+                                if (in_array('president', $awds)) return 4;
+                                if (in_array('ngo', $awds)) return 3;
+                                return 2;
                             })($app),
                             'training' => (function($app) {
-                                if (isset($app->dynamic_responses['trainingHours'])) {
-                                    $hrs = (int)$app->dynamic_responses['trainingHours'];
-                                    if ($hrs >= 300) return 10;
-                                    if ($hrs >= 200) return 8;
-                                    if ($hrs >= 100) return 4;
-                                    if ($hrs >= 50) return 2;
-                                    return 0;
-                                }
-                                return count($app->custom_file_responses ?? []) * 2;
+                                $dyn = $app->dynamic_responses ?? [];
+                                $hrs = isset($dyn['trainingHours']) ? (int)$dyn['trainingHours'] : 0;
+                                if ($hrs >= 100) return 10;
+                                if ($hrs >= 40) return 8;
+                                if ($hrs >= 16) return 5;
+                                if ($hrs >= 8) return 3;
+                                return 1;
                             })($app),
                         ],
                         'educationLevel' => isset($app->dynamic_responses['educationLevel'])
@@ -511,8 +491,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/landing-page', function () {
             $user = auth()->user();
-            if (!$user->isSuperAdmin() && $user->email !== 'admin@naap.edu.ph') {
-                abort(403, 'Unauthorized. Only Super Administrators can manage the landing page.');
+            if (!$user || !$user->isAdmin()) {
+                abort(403, 'Unauthorized. Only Administrators can manage the landing page.');
             }
             return Inertia::render('Admin/LandingPageManager');
         })->name('landing-page');

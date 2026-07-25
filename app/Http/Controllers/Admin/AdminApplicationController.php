@@ -50,22 +50,7 @@ class AdminApplicationController extends Controller
 
     public function exportReport(Request $request)
     {
-        $user = auth()->user();
-        $isSuper = $user->isSuperAdmin() || $user->email === 'admin@naap.edu.ph';
-
         $query = Application::query();
-
-        if ($isSuper) {
-            if ($request->filled('campus_id') && $request->campus_id !== 'all') {
-                $query->whereHas('vacancy', function ($q) use ($request) {
-                    $q->where('campus_id', $request->campus_id);
-                });
-            }
-        } else {
-            $query->whereHas('vacancy', function ($q) use ($user) {
-                $q->where('campus_id', $user->campus_id);
-            });
-        }
 
         if ($request->filled('status') && $request->status !== 'all') {
             $query->where('status', $request->status);

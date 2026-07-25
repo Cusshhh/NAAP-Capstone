@@ -120,24 +120,6 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                 </DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4 my-4">
-                                {(admin.is_super_admin || admin.email === 'admin@naap.edu.ph') && (
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="report-campus" className="font-semibold text-gray-700">Filter by Campus</Label>
-                                        <Select value={reportCampusId} onValueChange={setReportCampusId}>
-                                            <SelectTrigger id="report-campus">
-                                                <SelectValue placeholder="All Campuses" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">All Campuses</SelectItem>
-                                                {activeCampuses.map((c: any) => (
-                                                    <SelectItem key={c.id} value={c.id.toString()}>
-                                                        {c.campus_name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="report-status" className="font-semibold text-gray-700">Filter by Status</Label>
@@ -525,27 +507,31 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                 </Link>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {activities.slice(0, 5).map((activity) => (
-                                    <div key={activity.id} className="flex items-start space-x-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                                        <div className={`p-2 rounded-full ${activity.color} bg-opacity-20 mt-1`}>
-                                            {activity.icon === 'UserPlus' && <UserPlus className="w-3 h-3" />}
-                                            {activity.icon === 'Briefcase' && <Briefcase className="w-3 h-3" />}
-                                            {activity.icon === 'Calendar' && <Calendar className="w-3 h-3" />}
-                                            {activity.icon === 'XCircle' && <UserX className="w-3 h-3" />}
-                                            {activity.icon === 'UserCheck' && <UserCheck className="w-3 h-3" />}
-                                            {activity.icon === 'FileText' && <FileText className="h-3 w-3" />}
-                                            {activity.icon === 'Shield' && <Shield className="h-3 w-3" />}
-                                            {activity.icon === 'Users' && <Users className="h-3 w-3" />}
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center justify-between">
-                                                <p className="text-sm font-bold text-gray-800">{activity.action}</p>
-                                                <p className="text-[10px] text-blue-500 font-semibold">{activity.time}</p>
+                                {activities.length > 0 ? (
+                                    activities.slice(0, 5).map((activity) => (
+                                        <div key={activity.id} className="flex items-start space-x-3 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+                                            <div className={`p-2 rounded-full ${activity.color} bg-opacity-20 mt-1`}>
+                                                {activity.icon === 'UserPlus' && <UserPlus className="w-3 h-3" />}
+                                                {activity.icon === 'Briefcase' && <Briefcase className="w-3 h-3" />}
+                                                {activity.icon === 'Calendar' && <Calendar className="w-3 h-3" />}
+                                                {activity.icon === 'XCircle' && <UserX className="w-3 h-3" />}
+                                                {activity.icon === 'UserCheck' && <UserCheck className="w-3 h-3" />}
+                                                {activity.icon === 'FileText' && <FileText className="h-3 w-3" />}
+                                                {activity.icon === 'Shield' && <Shield className="h-3 w-3" />}
+                                                {activity.icon === 'Users' && <Users className="h-3 w-3" />}
                                             </div>
-                                            <p className="text-xs text-gray-500 line-clamp-2">{activity.details}</p>
+                                            <div>
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-sm font-bold text-gray-800">{activity.action}</p>
+                                                    <p className="text-[10px] text-blue-500 font-semibold">{activity.time}</p>
+                                                </div>
+                                                <p className="text-xs text-gray-500 line-clamp-2">{activity.details}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))
+                                ) : (
+                                    <p className="text-xs text-gray-400 text-center py-6 italic">No recent activity recorded yet.</p>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -630,43 +616,13 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                         <UserCheck className="w-4 h-4 mr-2" /> Review Applicants
                                     </Button>
                                 </Link>
-                                {(admin.is_super_admin || admin.email === 'admin@naap.edu.ph') && (
-                                    <Link href="/admin/landing-page" className="block">
-                                        <Button variant="outline" className="w-full justify-start border-[#193153] text-[#193153] hover:bg-[#193153] hover:text-[#ffdd59] hover:shadow-lg hover:scale-105 transition-all duration-200">
-                                            <Layout className="w-4 h-4 mr-2" /> Edit Landing Page
-                                        </Button>
-                                    </Link>
-                                )}
+                                <Link href="/admin/landing-page" className="block">
+                                    <Button variant="outline" className="w-full justify-start border-[#193153] text-[#193153] hover:bg-[#193153] hover:text-[#ffdd59] hover:shadow-lg hover:scale-105 transition-all duration-200">
+                                        <Layout className="w-4 h-4 mr-2" /> Edit Landing Page
+                                    </Button>
+                                </Link>
                             </CardContent>
                         </Card>
-
-                        {/* Campus Locations */}
-                        {(admin.is_super_admin || admin.email === 'admin@naap.edu.ph') && (
-                            <Card className="bg-white shadow-md border-0">
-                                <CardHeader className="bg-[#193153] text-white rounded-t-xl py-4">
-                                    <CardTitle className="text-sm font-bold flex items-center">
-                                        <MapPin className="h-4 w-4 mr-2 text-[#ffdd59]" />
-                                        NAAP Campuses
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    <div className="flex flex-col divide-y divide-gray-100">
-                                        {campuses.map((campus, index) => (
-                                            <div
-                                                key={index}
-                                                className="flex items-center text-sm text-gray-600 p-3 hover:bg-gray-50 transition-colors cursor-pointer group"
-                                                onClick={() => handleCampusClick(campus)}
-                                            >
-                                                <div className="w-2 h-2 rounded-full bg-blue-400 mr-3 group-hover:scale-125 transition-transform"></div>
-                                                <span className="group-hover:text-blue-600 font-medium">{campus}</span>
-                                                <ChevronRight className="w-3 h-3 ml-auto text-gray-300 group-hover:text-blue-400" />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
                     </div>
                 </div>
             </div>

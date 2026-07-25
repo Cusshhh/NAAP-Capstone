@@ -39,10 +39,6 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
         { name: 'Messages', href: '/admin/messages', icon: MessageSquare },
     ];
 
-    if (admin.is_super_admin || admin.email === 'admin@naap.edu.ph') {
-        navItems.push({ name: 'Invitations', href: '/admin/invitations', icon: Key });
-    }
-
     return (
         <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
             {/* Navigation Header */}

@@ -1,0 +1,859 @@
+﻿HUMAN RESOURCE DEPARTMENT WEB-BASED JOB PORTAL SYSTEM FOR NATIONAL AVIATION ACADEMY OF THE PHILIPPINES
+An Undergraduate Capstone Project Presented to the Faculty of the
+Institute of Computer Studies
+NATIONAL AVIATION ACADEMY OF THE PHILIPPINES
+Piccio Garden, Villamor, Pasay City
+
+
+
+In Partial Fulfillment of the Requirements for the Degree of
+BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY WITH THE SPECIALIZATION AVIATION INFORMATION TECHNOLOGY
+
+
+
+ALARCIO, CHARLES JOHN S.
+CACACHO, MARCUS ANGELO T.
+
+
+
+Alan Lino Silverio J. Agustin, DAEM.
+APRIL 2026
+
+
+
+Chapter 1
+INTRODUCTION
+               In the modern digital era, (the integration of web-based Information Technology and Artificial Intelligence (AI) into Human Resource Management (HRM) has evolved from an operational convenience into a strategic necessity.) [1], [4]. Traditional recruitment practices relying on paper-based workflows, manual record management, and human-intensive resume evaluation create (major) administrative bottlenecks, increase data redundancy, and prolong hiring timelines [2], [3], [6]. Manual resume screening is particularly prone to evaluator fatigue, inconsistent qualification verification, and subjective bias [5]. Modern empirical literature demonstrates that integrating machine learning algorithms and natural language processing (NLP) into web-based recruitment platforms (significantly) improves applicant screening accuracy, speeds up shortlisting, and enhances candidate data integrity across specialized public and educational institutions [3]â€“[5].
+Specialized aviation institutions, such as the National Aviation Academy of the Philippines (NAAP), require highly structured and rigorous recruitment workflows [2]. HR personnel must evaluate specialized technical credentials, Civil Service eligibility, CAAP ratings, and specific academic background requirements across a growing volume of applicants [2]. NAAPâ€™s existing reliance on conventional semi-manual hiring mechanisms exposes its HR operations to misplaced documentation, untracked application statuses, and delayed candidate evaluation [6], [7]. While generic commercial Applicant Tracking Systems (ATS) exist, recent research highlights that commercial tools are cost-prohibitive, lack customized AI algorithms aligned with specialized institutional job descriptions, and present data privacy concerns regarding external candidate hosting [2], [8], [11].
+Statement of the Problem:
+Despite the recognized capabilities of web-based e-recruitment platforms and AI screening technologies [1]â€“[5], NAAP continues to face critical operational friction due to the lack of a tailored, AI-enabled digital portal. Specifically, the HR Department faces three core challenges:
+Inefficient Manual Candidate screening: (HR personnel spend excessive time manually reviewing resumes and verifying applicant qualifications, resulting in processing delays.) [5], [6], [8].
+Fragmented Applicant Records: Reliance on physical filings and spreadsheets leads to misplaced documentation, data duplication, and lack of a unified database [3], [10].
+Lack of Applicant Visibility: Candidates lack real-time visibility into their application and qualification status, causing high volumes of repetitive administrative inquiries [7].
+Consequently, a distinct research problem exists regarding how an AI-powered web-based job portal system with automated candidate screening and scoring can systematically eliminate resume screening bottlenecks, standardize qualification scoring, and secure recruitment workflows for NAAP.
+Project Context
+Digital transformation in Human Resource Management (HRM) has evolved beyond basic digital record-keeping toward intelligent, automated decision-support systems [4], [18]. In data-heavy recruitment environments, screening applicants requires parsing resumes, extracting key competencies, and matching qualifications against predefined job criteria [5], [8].
+Although commercial Applicant Tracking Systems (ATS) and job search platforms offer broad recruitment automation, recent studies by Alshamaila et al. [2] and Nguyen & Pham [8] note that commercial solutions present severe limitations when applied to specialized public educational institutions. Commercial ATS platforms require continuous subscription fees, operate as closed "black box" models that cannot be tailored to specialized aviation job specifications, and store confidential applicant records on third-party servers [2], [11]. Conversely, NAAP's traditional manual processes are highly vulnerable to human error, lack real-time synchronization, and cannot automatically match applicant qualifications [6], [10].
+To contextualize this research within existing systems and literature, Table 1 presents a comparative evaluation between generic commercial ATS solutions, traditional manual workflows, and the proposed NAAP AI-Powered Job Portal System.
+While existing literature thoroughly examines broad AI recruitment tools [4], [5] and enterprise e-HRM frameworks [18]â€“[20], there is a scarcity of empirical research evaluating the localized implementation, algorithmic screening accuracy, processing time reduction, and user acceptance (TAM) of a custom AI-driven job portal within a specialized aviation academic institution in the Philippines. This research bridges this gap by developing, deploying, and empirically evaluating an AI-powered job portal specifically tailored to NAAP.Â 
+Purpose and Description
+Purpose of the Study
+This study exists to resolve the operational inefficiencies, manual screening delays, and data management vulnerabilities inherent in traditional recruitment workflows within public aviation educational institutions.
+From an operational standpoint, the study modernizes NAAP's HR Department by deploying an intelligent digital platform that automatically screens, filters, and scores candidate applications based on submitted credentials and requirements.
+From an academic and empirical standpoint, the study systematically measures and evaluates the impact of AI candidate screening on processing speed, filtering accuracy (Percentage Error), technical software quality (ISO/IEC 25010), and user adoption (Technology Acceptance Model).
+Description of the System
+The AI-Powered Human Resource Department Web-Based Job Portal System for National Aviation Academy of the Philippines is a browser-accessible platform built on a monolithic client-server architecture (Laravel/PHP backend, React/Inertia frontend, and MySQL database) integrated with an Automated Candidate Screening and Scoring Engine.
+The system provides tailored, role-based environments for two primary user groups:
+HR Administrators: Equipped with an administrative dashboard to manage job postings, define qualification criteria (education, certifications, experience), view AI-generated match scores and candidate rank lists, manage interview schedules, and export recruitment analytics.
+Job Applicants: Provided with a responsive portal to explore open positions, submit digital application forms, upload resumes and requirement documents, and track their qualification and application status in real time.
+The integrated AI Screening Module automatically parses uploaded applicant documents, compares extracted skills, education, and credentials against posted job specifications, and calculates a percentage suitability score [4], [5]. Security measures including password encryption, server-side data validation, and Role-Based Access Control (RBAC) safeguard sensitive applicant documentation [9]â€“[11].
+Objectives of the Study
+The main objective of this study is to design, develop, and implement an AI-Powered Human Resource Department Web-Based Job Portal System for the National Aviation Academy of the Philippines (NAAP) to enhance recruitment efficiency, screening speed, and data organization.
+Specifically, this study aims to:
+Develop a web-based platform that allows the HR Department to publish and manage job vacancies efficiently.
+Design a user registration and application portal where job seekers can submit applications and upload required credentials online.
+Integrate an AI-driven candidate screening and scoring engine that parses submitted requirements and automatically scores applicant suitability against job specifications [4], [5].
+Implement an applicant tracking module enabling HR staff and applicants to monitor real-time application and qualification statuses [7].
+Ensure candidate data security and privacy through password encryption, input validation, and Role-Based Access Control (RBAC) [9], [11].
+Construct an administrative analytics dashboard to support data-driven shortlisting and recruitment reporting [8].
+(Evaluate the developed system in terms of processing speed, screening accuracy, software quality (ISO/IEC 25010), and user acceptance (Technology Acceptance Model).)
+Scope and Limitations
+Scope
+The research focuses on the design, development, and evaluation of an AI-powered web-based job portal for NAAPâ€™s Human Resource Department at the Villamor Air Base campus. The system scope includes user authentication, vacancy management, digital requirement upload, automated AI/ML candidate screening and qualification scoring, applicant shortlisting, real-time status tracking, and basic recruitment report generation. The software stack utilizes PHP/Laravel, JavaScript/React, and MySQL. System evaluation covers processing time comparison against manual screening, percentage error in document parsing/scoring, ISO/IEC 25010 software quality, and TAM usability testing with NAAP HR personnel and applicants.
+Limitations
+Document Format Dependency: The AI screening parser relies on readable digital document formats (e.g., standard PDF or DOCX text); image-based scanned PDFs lacking OCR quality may require manual verification [5], [10].
+Scope of HR Functions: The system focuses exclusively on recruitment, application handling, automated screening, and initial shortlisting; it does not include post-hiring functions such as payroll, onboarding, or employee performance evaluation.
+Network Infrastructure: The web portal requires an active internet connection for web access and server-side AI parsing.
+AI Decision Support: The AI-based screening results serve only as decision-support recommendations and do not replace the final hiring decision made by the Human Resource Department. Final hiring decisions remain under the authority and professional judgment of the HR personnel.
+
+Review of Related Literature
+Applicant Tracking Systems (ATS) and Workflow Automation
+on the role of automated tracking pipelines, status updates, and administrative dashboards in reducing recruitment delays and human evaluation errors.Â 
+Applicant Tracking Systems (ATS) are critical components of modern e-recruitment, designed to automate candidate evaluation, status tracking, and notification delivery [5], [8]. Garcia and Torres noted that replacing manual resume review with automated workflow tracking significantly reduces human error and accelerates candidate evaluation times [6].
+Furthermore, Lee et al. found that integrating automated tracking with real-time status updates substantially increases applicant trust and engagement [7]. Nguyen and Pham similarly emphasized that ATS tools equip HR administrators with analytical dashboards that support data-driven hiring decisions and objective candidate evaluations [8].
+The body of ATS literature highlights how automated tracking pipelines and real-time status notifications eliminate communication gaps and manual evaluation delays [6]â€“[8]. In the context of the NAAP Job Portal, these empirical findings directly inform the design of the Applicant Management Module, candidate shortlisting filters, and status timeline dashboards [6]â€“[8]. This automation reduces manual labor hours spent sorting applications while giving NAAP job applicants transparent visibility into their application status [7], [8].
+Artificial Intelligence and Machine Learning in Candidate Screening
+Examines automated resume parsing, qualification matching algorithms, and suitability scoring models that streamline shortlisting while minimizing evaluator bias.Â 
+Automated candidate screening utilizing Artificial Intelligence (AI), Natural Language Processing (NLP), and Machine Learning (ML) has transformed modern recruitment by automating qualification matching and resume analysis [4], [5]. Research by Singh et al. revealed that AI collaboration in recruitment enables system modules to objectively filter, match, and shortlist candidates based on criteria without human evaluator fatigue or cognitive bias [5]. Rahman et al. established that AI integration represents a major evolutionary step in modern hiring, empowering platforms to dynamically calculate qualification match scores based on candidate submissions [4].
+Furthermore, Patel and Sharma highlighted that machine learning applications in data management systems allow for automated pattern recognition and automated profile evaluation [9]. Nguyen and Pham similarly noted that integrating intelligent scoring models into recruitment dashboards enables administrative personnel to instantly identify qualified candidates from large applicant pools [8].
+This body of AI and machine learning research proves that algorithmic parsing and automated qualification scoring drastically reduce time-to-hire while improving screening consistency [4], [5], [8]. In the context of the NAAP Job Portal, these empirical findings directly justify the integration of an AI Candidate Screening Engine [4], [5]. The system will automatically parse uploaded applicant documents, compare extracted credentials against specific NAAP job requirements, and generate percentage suitability scores to assist HR staff in rapid shortlisting [5], [8].
+Digital Transformation in Human Resource Management (e-HRM)
+Explores the overarching strategic transition from traditional, paper-reliant HR operations to automated, data-driven platforms within educational and public institutions.Â 
+The integration of digital technology into Human Resource Management (HRM)â€”commonly referred to as Electronic Human Resource Management (e-HRM)â€”has reshaped administrative workflows by replacing manual paper processes with data-driven automation [18], [19]. According to Vrontis et al., digital transformation in recruitment enhances talent acquisition efficiency by eliminating processing delays and enabling real-time decision-making [1]. Similarly, Bondarouk et al. emphasized that HR digitalization significantly reduces administrative workloads, allowing HR professionals to shift focus from manual record handling to strategic human capital development [18].
+In public and educational institutions, digital transformation is essential for long-term operational sustainability [20]. Strohmeier highlighted that strategic e-HRM implementation provides institutional stability, transparency, and sustainable administrative advantages [20]. Marler and Parry further demonstrated that properly configured e-HRM frameworks improve data accuracy and cross-departmental coordination across complex organizational structures [19].
+Collectively, these studies demonstrate that transitioning from manual paper workflows to digital e-HRM frameworks eliminates processing bottlenecks, prevents document loss, and modernizes institutional operations [18]â€“[20]. For NAAP, adopting these e-HRM principles directly justifies replacing physical logbooks and manual application filing with a centralized digital platform at the Villamor Air Base campus [1], [18]. Implementing a web portal directly operationalizes the literature's recommendations for modernizing daily hiring workflows [1], [4], [18].
+Usability and User Experience (UX) in Web Applications
+Investigates user-centered design principles, cross-device responsive layouts, and standardized evaluation frameworks (ISO/IEC 25010 and TAM) to ensure system adoption and high software qualityÂ 
+The adoption and long-term success of an information system depend heavily on its usability, visual clarity, and user interface design [14], [17]. Norman emphasized that user-centered design principles reduce cognitive load, minimize user friction, and elevate overall user satisfaction [14]. According to Tullis and Albert, measuring objective usability metricsâ€”such as task completion time, navigation efficiency, and error ratesâ€”is essential for validating software quality [15].
+Additionally, Budiu demonstrated that responsive web design guarantees cross-device accessibility, allowing users to interact with platforms across various desktop and mobile viewports seamlessly [16]. Rahul et al. further confirmed that structured layouts and intuitive visual navigation directly enhance user performance and task accuracy [17].
+These usability frameworks confirm that intuitive user interfaces and responsive layouts are critical for user adoption and operational accuracy [14]â€“[17]. Applied to the NAAP project, these established frameworks provide the theoretical foundation for the study's evaluation phase [15], [17]. The literature justifies evaluating the portal using standardized criteriaâ€”specifically ISO/IEC 25010 for functional suitability and usability, and the Technology Acceptance Model (TAM) to measure user adoption among NAAP HR personnel and applicants [15], [17].
+User Authentication, Access Control, and System Security
+
+Covers essential cybersecurity protocols, Role-Based Access Control (RBAC), and data validation techniques required to safeguard sensitive personal data and institutional candidate recordsÂ 
+Maintaining data privacy and system security is paramount in web-based HR platforms that process confidential personal records and candidate evaluation data [9], [11]. Patel and Sharma established that authentication mechanisms and password encryption are foundational security layers required to prevent identity theft and unauthorized access [9]. In terms of data validation, Lopez et al. highlighted that server-side validation techniques preserve system integrity by preventing malicious script injections and corrupted file uploads [10].
+Furthermore, Chen and Li emphasized that Role-Based Access Control (RBAC) effectively guards confidential information by enforcing strict privilege boundaries between administrative users and general applicants [11]. Layered defense architectures, including input sanitization and secure session management, further shield applicant profiles from external security threats [12], [13].
+This cybersecurity literature establishes that robust authentication, data validation, and role-based privilege isolation are non-negotiable requirements for web applications handling sensitive personal data [9]â€“[13]. For the proposed NAAP Job Portal, these security principles directly guide the integration of password hashing, secure session handling, and Role-Based Access Control (RBAC) [9], [11]. These security protocols ensure that job applicants and HR administrators access strictly authorized system functions, safeguarding candidate data privacy under local regulation [10], [11].
+Web-Based Recruitment and Centralized Data Systems
+Highlights the structural necessity of centralized relational databases and browser-accessible client-server platforms in eliminating data fragmentation and ensuring real-time record synchronization.Â 
+Web-based recruitment platforms serve as centralized repositories that streamline job publishing, application collection, and applicant profiling [2], [3]. Kumar and Gupta demonstrated that centralized web architectures drastically improve candidate data organization, enabling rapid record retrieval and minimizing data duplication [3]. Furthermore, Alshamaila et al. identified that cloud and web-based recruitment platforms lower operational costs while significantly expanding qualified applicant reach [2].
+In a study on modern hiring trends, Rahman et al. concluded that centralized job portals enhance transparency and accessibility for both job seekers and administrative reviewers [4]. Storing records in structured relational databases eliminates the risks associated with lost physical paperwork and uncoordinated communication streams [3], [4].
+These web-recruitment studies reinforce the operational necessity of centralized database management for applicant data handling [2]â€“[4]. Applied to NAAPâ€™s institutional setting, this body of research supports replacing decentralized paper submissions and loose email logs with a single relational database repository [3]. Storing vacancy details, applicant submissions, and qualification histories within a centralized web platform ensures real-time data consistency and rapid record retrieval for NAAP HR personnel [3], [4].
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Chapter 3
+TECHNICAL BACKGROUND
+
+               This chapter explains how the researchers developed the Human Resource Department Web-Based Job Portal System for the National Aviation Academy of the Philippines (NAAP). It describes the process of planning, designing, building, and testing the system to improve the recruitment process. The system is web-based and allows HR personnel to post job vacancies, manage applications, and track applicants. At the same time, applicants can register, apply for jobs, and monitor their application status online. The goal of the system is to make recruitment faster, more organized, and easier for both HR staff and applicants.
+
+               This chapter also discusses the tools and technologies used, as well as how data is stored, processed, and displayed in the system. It explains how the system was designed to be user-friendly, secure, and efficient. Overall, this process helped the researchers develop a functional and reliable system that improves the hiring process and can be enhanced in the future.
+
+Research and Development Methodology
+
+              The development of this project methodology is to design and develop the Human Resource Department Web-Based Job Portal System for NAAP. This method focuses on creating a system that improves the current recruitment process. It follows a step-by-step approach including requirements analysis, system design, development, testing, and deployment to ensure the system is functional and effective.
+
+Software Development Life Cycle Methodology
+
+              The study followed the Software Development Life Cycle (SDLC) using the Waterfall Model. This model follows a sequential process where each phase is completed before moving to the next. The phases include planning, analysis, design, development, testing, and deployment. This approach helps ensure that the system is well-organized, properly developed, and meets the required objectives.
+
+System Development
+
+Figure 2. Gantt Chart
+              The Gantt chart illustrates the timeline of activities conducted in the development of the Human Resource Department Web-Based Job Portal System for NAAP, starting from December 2025 to April 2026. It shows the sequence and duration of each phase of the project to ensure proper planning and organization of tasks. The first phase is Finding Client, which was done in December 2025 to identify the project stakeholder and gather initial requirements. This was followed by Proposal or Title Approval, also conducted in December 2025, to formally approve the study and define the scope of the system. The Chapter 1 to 3 Writing phase was done from January to mid-February 2026, which includes the introduction, methodology, and system design of the study. At the same time, the System Design (DFD, ERD, etc.) was completed in February 2026 to prepare the structure of the system. The System Development (coding) phase took place from mid-February to March 2026, where the actual system was built and implemented using web technologies. Finally, Defense Preparation was conducted in April 2026 to finalize all documents, review the system, and prepare for presentation and defense.
+
+Waterfall Development
+
+               The development of the Human Resource Department Web-Based Job Portal System for the National Aviation Academy of the Philippines (NAAP) followed the Waterfall Model of the Software Development Life Cycle (SDLC). This model was selected because it provides a structured and sequential approach, ensuring that each phase of the system is completed and validated before proceeding to the next stage. This approach is suitable for the project since the system requirements were clearly identified during the early stages of development.
+
+
+
+
+Requirements Analysis
+
+                In this stage, detailed information about the systemâ€™s needs was gathered and analyzed. The researchers carefully studied how HR personnel handle job postings and applicant data, as well as how applicants interact with job opportunities. From this, specific system requirements were identified. For example, HR administrators needed features for posting jobs, reviewing applicants, and generating reports, while applicants required functionalities such as registration, job browsing, and application submission. Additionally, important considerations such as system security, data privacy, and ease of use were also defined. This phase ensured that all expected features and system behaviors were clearly documented before development began.
+
+System Design
+
+               Once the requirements were fully understood, the System Design Phase followed. The researchers translated the identified requirements into a structured system design. They created diagrams such as Data Flow Diagrams (DFD), Entity Relationship Diagrams (ERD), and system architecture models to visualize how the system would function. The design also included the layout of the user interface for both administrators and applicants to ensure a user-friendly experience. Decisions regarding technologies were finalized, including the use of HTML, CSS, JavaScript for the frontend, PHP for backend processing, and MySQL for database management. This phase acted as a blueprint, guiding the developers on how to build the system correctly and efficiently.
+
+
+
+
+Development
+
+               With a clear design in place, the development phase where the actual system was built. During this stage, the researchers started coding the system based on the planned design. The frontend interface was developed to allow users to interact with the system, while the backend handled data processing, authentication, and system logic. Key features such as user registration and login, job posting management, applicant tracking, and document uploading were implemented. The database was also structured to store and organize all necessary information, including user accounts, job listings, and application records. Throughout this phase, different modules were gradually integrated until a fully functional system was achieved.
+
+Testing
+
+               After development, the system underwent the Testing Phase to ensure its quality and reliability. The researchers carefully tested each feature to verify that it worked as intended. For instance, login functionalities were checked for proper authentication, job application processes were tested to ensure data was correctly stored, and system responses were evaluated for accuracy. Any errors or issues encountered during testing were identified and corrected. The system was also evaluated in terms of usability to ensure that both HR personnel and applicants could easily navigate and use the platform. This phase was essential in improving the systemâ€™s performance and ensuring that it met the project requirements.
+
+
+
+
+Deployment
+
+               Finally, the researchers proceeded to the Deployment Phase, where the completed system was prepared for actual use and presentation. The system was set up in a web server environment, allowing it to be accessed through a browser. Final adjustments and improvements were made to ensure that the system was stable and ready for demonstration. The researchers also prepared the necessary documentation and presentation materials for the project defense. At this stage, the system was fully operational and capable of supporting the recruitment processes of the Human Resource Department.
+
+
+System Development Framework
+
+               The current recruitment process of the Human Resource Department of the National Aviation Academy of the Philippines (NAAP) is primarily conducted through manual and semi-digital methods. Job vacancies are typically announced through bulletin boards, emails, or external job platforms, while applicants submit their requirements through email or physical documents. HR personnel manually review submitted applications, organize applicant records, and track hiring progress using spreadsheets or paper-based files. 
+
+               Communication with applicants, such as interview schedules or application updates, is also handled manually through email or phone calls. While these procedures allow the recruitment process to function, they require significant time and effort from HR staff. Evaluation of applicants is conducted by reviewing resumes and documents individually, which may lead to inconsistencies in decision-making due to the absence of a centralized and standardized system. The lack of automation limits the ability of HR personnel to efficiently filter, sort, and analyze applicant data.
+
+Limitation and Problem Analysis
+
+               Despite its functionality, the existing system presents several limitations. One major issue is the lack of a centralized platform, which results in scattered data across different files and communication channels. This makes it difficult to track applicant progress and retrieve information quickly.
+
+               Another problem is the time-consuming nature of manual processing. HR personnel must manually review applications, organize documents, and update applicant status, which increases workload and delays the recruitment process.
+
+                The system is also prone to human errors, such as misplaced documents, duplicate entries, and incorrect data recording. Additionally, there is limited accessibility, as applicants cannot easily track their application status, and HR staff cannot access data efficiently from different locations.
+
+                Furthermore, the current process lacks real-time communication and notifications, leading to delays in informing applicants about updates. Security is also a concern, as sensitive applicant data may not be fully protected in manual or loosely managed systems.
+
+
+
+
+Requirement Gap Analysis
+
+               Despite its functionality, the existing system presents several limitations. One major issue is the lack of a centralized platform, which results in scattered data across different files and communication channels. This makes it difficult to track applicant progress and retrieve information quickly.
+
+               Another problem is the time-consuming nature of manual processing. HR personnel must manually review applications, organize documents, and update applicant status, which increases workload and delays the recruitment process.
+
+                The system is also prone to human errors, such as misplaced documents, duplicate entries, and incorrect data recording. Additionally, there is limited accessibility, as applicants cannot easily track their application status, and HR staff cannot access data efficiently from different locations.
+
+                Furthermore, the current process lacks real-time communication and notifications, leading to delays in informing applicants about updates. Security is also a concern, as sensitive applicant data may not be fully protected in manual or loosely managed systems.
+
+
+Alternative Solution and Feasibility Analysis
+
+Alternative A (Enhancement of Existing Manual System) - because it does not fully eliminate the core problems of the system. The process remains manual, making it prone to human errors such as duplicate entries and misplaced records. It also fails to provide centralized data management, real-time access, and automation, which are necessary to improve efficiency and decision-making in recruitment.
+
+Alternative B (Use of Third-Party Recruitment Platforms) - because most third-party platforms are designed for general use and may not align with the specific workflow and requirements of NAAPâ€™s Human Resource Department. In addition, these systems often require subscription fees, offer limited customization, and may pose concerns regarding data privacy and control over sensitive applicant information.
+
+
+Alternative C (Custom Web-Based Job Portal System â€“ Selected Solution) - because it directly addresses the identified limitations of the existing system. It eliminates scattered data by using a centralized database, reduces manual workload through automation, minimizes human errors, and improves accessibility through a web-based platform. Additionally, it enhances communication by providing real-time notifications and ensures data security through authentication and role-based access control.
+
+
+Proposed Technology Alternatives
+The proposed system introduces specific technological solutions to replace the inefficiencies of the manual recruitment process and address the identified system gaps:
+
+Centralized Database Management SystemA database-driven solution that consolidates all applicant records, job postings, and recruitment data into a single platform. This eliminates scattered files and enables real-time data access, improving tracking, retrieval, and overall data consistency.
+
+Automated Application Tracking and Notification SystemA system module that automatically updates application statuses and sends notifications to applicants regarding their progress (e.g., application received, under review, accepted, or rejected). This reduces manual communication efforts and improves transparency between HR personnel and applicants.
+
+Search and Filter Optimization for Applicant ManagementAn integrated search and filtering feature that allows HR personnel to quickly locate applicants based on qualifications, job position, or application status. This enhances decision-making speed and reduces the time spent reviewing large volumes of applications.
+
+
+Feasibility Study 
+Technical Feasibility 
+The proposed system is technically feasible as it utilizes widely available and reliable web technologies such as HTML, CSS, JavaScript, PHP, and MySQL. These tools are compatible with standard computer systems and do not require specialized hardware. The system follows a web-based client-server architecture, allowing users to access the platform through a browser. It can be deployed using common development environments such as XAMPP, making implementation practical and achievable. Additionally, the researchers possess the necessary technical knowledge and skills to successfully develop and maintain the system. 
+
+Operational Feasibility
+The system is operationally feasible as it is designed to align with the workflow of the Human Resource Department. The interface is user-friendly and structured to simplify recruitment tasks such as job posting, applicant review, and report generation. By automating repetitive processes, the system reduces the workload of HR personnel while maintaining a familiar workflow. Applicants also benefit from an intuitive interface that allows easy job searching, application submission, and status tracking. Minimal training is required, making the system practical for daily use.
+
+Economic Feasibility
+The project is economically feasible because it utilizes open-source technologies, eliminating the need for expensive software licenses. Development is conducted within an academic setting, which further minimizes initial costs. In the long term, the system reduces operational expenses by minimizing paper usage, decreasing manual labor, and improving efficiency. Faster recruitment processes and better data management also contribute to indirect cost savings for the organization.
+
+
+
+Schedule Feasibility
+The project is schedule feasible as it follows a structured timeline aligned with the academic calendar. Based on the Gantt Chart, the development phasesâ€”from planning, analysis, design, development, testing, and deploymentâ€”were completed within the period of December 2025 to April 2026. The use of the Waterfall Model ensured that each phase was completed sequentially and on time. Proper time allocation and task management allowed the researchers to develop, test, and finalize the system within the given timeframe.
+
+Cost Benefit
+Cost Benefit summary
+
+System Requirements Specification
+
+             The System Requirement Specification (SRS) for the Human Resource Department Web-Based Job Portal System of the National Aviation Academy of the Philippines (NAAP) is designed to transform the existing manual recruitment process into a centralized, web-based platform. The system aims to improve the efficiency of handling job applications by providing a digital environment where applicants can submit requirements online and HR personnel can manage recruitment processes in an organized manner.
+
+By integrating job posting, applicant management, and application tracking into a single system, all recruitment-related data is stored and processed digitally. This eliminates the limitations of manual processing, such as data redundancy, delays, and difficulty in tracking applicants. Furthermore, the system provides basic reporting features that assist the HR Department in monitoring application progress and improving decision-making.
+
+
+Costâ€“Benefit Analysis
+Project Description
+              This project develops a Human Resource Department Web-Based Job Portal for NAAP to modernize and automate recruitment and hiring. It replaces manual, paper-based processes with a centralized system for job postings, applications, document uploads, and real-time application tracking. Built using the Waterfall model and technologies like HTML, CSS, JavaScript, PHP, and MySQL, it also includes role-based access control and password encryption to protect data. Overall, the system improves efficiency, transparency, and scalability for NAAPâ€™s hiring process.
+
+Cost Analysis
+Labor Rate Assumption
+
+The following hourly rates are applied uniformly based on professional roles:
+
+
+
+
+
+
+Role
+Hourly Rate (â‚±)
+Project Manager
+550
+Developer / Programmer
+550
+System Analyst
+550
+UI/UX Designer
+400
+QA / Test Specialist
+350
+
+
+Phase 1: Requirement Analysis
+This phase involves gathering specific operational needs for the NAAP HR Department, focusing on transitioning from manual resume handling to digital tracking.
+
+
+Activity
+Role
+Hours
+Computation
+Cost (â‚±)
+Requirement Gathering (HR Workflow)
+System Analyst
+8
+1 x 550 x 8
+4,400
+Project Scoping and Planning
+Project Manager
+4
+1 x 550 x 4
+2,200
+HR Stakeholder Consultation
+Full-Stack Developer
+6
+1 x 550 x 6
+3,300
+Workflow Documentation
+QA Specialist
+5
+1 x 400 x 5
+2,000
+Documentation Materials
+Project Manager / Develope
+-
+Estimated
+50
+Total Cost
+
+
+
+11,550
+
+
+Phase 2: System Design
+Translating HR requirements into a technical blueprint, including the database schema for applicant records and vacancy details .
+
+
+
+
+Activity
+Role
+Computation
+Cost (â‚±)
+Architecture Supervision
+Project Manager
+1 x 550 x 8
+4,400
+System Logic and DFD
+System Analyst
+1 x 550 x 10
+5,500
+Database Schema and ERD
+Developer
+1 x 550 x 12
+6,600
+Portal Wireframing
+UI/UX Designer
+1 x 400 x 15
+6000
+Total cost
+
+
+22,500
+
+
+Phase 3: Implementation (Coding)
+Developing the React.js/Inertia frontend and Laravel backend, integrating the role-based access control for HR and Applicants .
+
+
+Activity
+Role
+Hours
+Computation
+Cost (â‚±)
+Full-Stack Portal Development
+Developer
+45
+1 x 550 x 45
+24,750
+Logic and RBAC Structuring
+System Analyst
+16
+1 x 550 x 16
+8,800
+Development Supervision
+Project Manager
+7
+1 x 550 x 7
+3,850
+HR Dashboard Integration
+UI/UX Designer
+8
+1 x 400 x 8
+3,200
+Development Utilities
+Internet/Cloud
+-
+Estimated
+4,350
+Total cost
+
+
+
+44,950
+
+
+
+
+Phase 4: Testing
+Executing functional tests to ensure resume uploads and application status tracking work correctly across NAAP campuses .
+
+
+Activity
+Role
+Hours
+Computation
+Cost (â‚±)
+Test Plan and Execution
+QA Specialist
+20
+1 x 350 x 20
+7,000
+Bug Fixing and Logic Adjustment
+Developer
+10
+1 x 550 x 10
+5,500
+UAT Coordination
+QA Specialist
+5
+1 x 350 x 5
+1,750
+User Acceptance (HR Dept)
+Project Manager
+5
+1 x 550 x 5
+2,750
+Total Cost
+
+
+
+17,000
+
+
+
+
+Phase 5: Deployment
+Migrating legacy recruitment logs to the centralized MySQL database and training NAAP HR staff .
+
+
+Activity
+Role
+Hours
+Computation
+Cost (â‚±)
+Deployment Planning
+Project Manager
+5
+1 x 550 x 5
+2,750
+Server Setup and Data Migration
+Developer
+9
+1 x 550 x 9
+4,950
+HR Training Preparation
+System Analyst
+5
+1 x 550 x 5
+2,750
+HR Portal Walkthrough
+Project Manager
+5
+1 x 550 x 5
+2,750
+Security and Web Hosting (1 Yr)
+Hosting/SSL
+-
+Estimated
+3,481
+Total Cost
+
+
+
+16,681
+
+
+
+
+
+
+
+
+
+
+
+Phase 6: Maintenance
+Ongoing system monitoring to ensure security updates and portal uptime .
+
+
+Activity
+Role
+Hours
+Computation
+Cost (â‚±)
+Performance Monitoring
+Developer
+6
+1 x 550 x 6
+3,300
+Security Issue Diagnosis
+QA Specialist
+6
+1 x 350 x 6
+2,100
+Documentation Updates
+System Analyst
+4
+1 x 550 x 4
+2,200
+Total Cost
+
+
+
+7,600
+
+
+
+
+
+A. Cost Analysis
+The cost analysis includes the labor required to build the system following the Waterfall SDLC and the long-term operational expenses. Labor rates are calculated based on professional standards, including â‚±550/hour for Developers and Project Managers.
+
+
+
+
+
+
+Total Development Cost Summary
+
+Phase
+Description
+Total Cost (â‚±)
+Phase 1
+Requirement Analysis
+11,550
+Phase 2
+System Design
+22,500
+Phase 3
+Implementation (Coding)
+44,950
+Phase 4
+Testing and Integration
+17,000
+Phase 5
+Deployment
+16,681
+Phase 6
+Maintenance
+7,600
+Total Project Cost
+Overall Waterfall Development
+120,281
+
+
+
+
+
+
+
+
+3-Year Operational Cost Projection
+
+
+Category
+Description
+Estimated Cost (â‚±)
+Hardware
+Existing NAAP Computer Setup
+0
+Software
+SSL, Hosting, Domain, and Cloud Backups
+30,000
+Labor
+System design and database optimization
+45,000
+Miscellaneous
+Utilities and Documentation Materials
+5,000
+Total Estimated Cost
+Projected Budget for 3 Years
+80,000
+
+
+
+B. Benefit Analysis (3 Years)
+The benefits are divided into tangible savings (direct money saved) and intangible improvements (qualitative gains in efficiency).
+
+Tangible Benefits
+
+Category
+Description
+Value (â‚±)
+Stationery
+Elimination of logbooks, pens, and filing materials 
+320
+Labor Recovery
+Recovered hours from manual data entry and tracking 
+48,000
+Total Tangible (Annual)
+Yearly Savings 
+48,320
+3-Year Total Benefits
+Annual Total Ã— 3 Years 
+144,960
+
+Intangible Benefits
+Improved Accuracy: Minimizes human error in record-keeping and data entry.
+Enhanced Decision-Making: Analytics provide real-time insight into recruitment trends.
+Data Security: Secure web-based architecture ensures real-time monitoring and cloud backups.
+Institutional Excellence: Modernizes the recruitment process to meet professional digital standards.
+
+
+C. Cost-Benefit Summary
+This summary provides the final financial health of the project, demonstrating that the savings significantly outweigh the costs.
+Description
+Amount (â‚±)
+Total Project Cost (3 Years)
+80,000 
+Tangible Benefits (3 Years)
+144,960 
+Net Benefits (3 Years)
+64,960 
+Return on Investment (ROI)
+81.2% 
+Benefit-Cost Ratio (BCR)
+1.81:1
+
+
+
+Conclusion
+The 3-Year Cost-Benefit Analysis confirms that the Human Resource Department Web-Based Job Portal System is economically feasible and highly beneficial for the National Aviation Academy of the Philippines (NAAP). With a total project cost of â‚±80,000â€”covering all initial development, software, and three years of maintenanceâ€”the system is projected to yield â‚±144,960 in tangible savings over the same period. This results in a Net Total Benefit of â‚±64,960 and a positive Benefit-Cost Ratio (BCR) of 1.81:1, indicating a solid and secure return on investment for the institution.
+Beyond the direct financial returns derived from preventing the use of manual logs and reducing administrative overhead, the system provides crucial institutional value. The transition from a slow, paper-based recruitment process to an automated digital platform modernizes NAAPâ€™s operations and ensures that applicant tracking is consistent across all campuses. The system mitigates critical operational risks such as lost applicant data or duplicated records and greatly improves the daily management efficiency of the HR department.
+Ultimately, the investment in this custom digital solution allows NAAP to shift from a reactive manual process to a proactive, data-driven operation. By automating job postings, resume storage, and status notifications, the academy can focus its resources on strategic talent acquisition rather than time-consuming paperwork. This digital transformation ensures the recruitment process remains stable, secure, and ready to scale alongside the academyâ€™s future growth.
+
+
+
+
+
+
+
+Stakeholder Identification and User Roles
+
+             The primary stakeholders of the system are the Human Resource (HR) Department of NAAP and the job applicants. The HR Department serves as the main user and decision-maker, responsible for managing job postings, reviewing applications, and monitoring applicant records. To support the recruitment workflow, the system is designed with two main user roles. The Admin (HR Personnel) has full access to the system, including managing job vacancies, reviewing applicant submissions, and updating application statuses. On the other hand, the Applicants interact with the system by registering accounts, browsing job opportunities, submitting applications, and tracking their application status. This role distribution ensures that both administrative and applicant-side processes are handled efficiently within a single platform.
+
+
+Functional Requirements
+
+             To ensure that the system meets the needs of the HR Department and applicants, the functional requirements are defined based on the recruitment process. The system includes a User Registration and Authentication function, which allows applicants and admin to securely access the system using login credentials. The Job Posting Management function enables the admin to create, update, and delete job vacancies. The Application Submission function allows applicants to apply for jobs and upload required documents such as resumes and other credentials. Additionally, the system includes an Application Tracking function, where applicants can monitor the status of their submitted applications. The Applicant Management function enables the admin to review, filter, and manage applicant data efficiently. Lastly, a Reporting function is included to provide summaries of applications and recruitment progress.
+These functions ensure that all major recruitment activities are handled within the system.
+
+
+Non-Functional Requirements
+
+             The system must also meet non-functional requirements to ensure quality and performance. The first requirement is Security, which ensures that user data is protected through authentication and proper data validation. The system also follows basic data protection practices to safeguard applicant information. The second requirement is Usability, ensuring that the system provides a simple and user-friendly interface for both admin and applicants. Another requirement is Performance Efficiency, which ensures that the system responds quickly when loading pages, submitting applications, and retrieving data. The system must also be Reliable, meaning it should function consistently without errors during use. Lastly, Maintainability is considered, allowing the system to be easily updated or improved in the future.
+
+
+
+
+
+Proposed System Architecture and Design
+
+             The proposed system is designed to support a web-based recruitment process using a structured and organized architecture. It follows a three-tier architecture, separating the system into presentation, application, and data layers. This separation ensures better performance, security, and maintainability of the system. The system focuses on providing a smooth interaction between users and the platform, allowing real-time processing of applications and data management. Unlike manual systems, this design ensures that all recruitment activities are handled digitally and efficiently.
+
+
+System Architecture Overview
+
+Client Architectural Framework
+
+             Adopting a web-based client-server architectural model, the system provides a centralized and efficient recruitment platform for the Human Resource Department of the National Aviation Academy of the Philippines (NAAP). This architecture ensures a clear separation between the user interface, application logic, and data storage, allowing the system to remain modular, maintainable, and scalable. Unlike traditional manual recruitment processes, this model enables real-time interaction between applicants and the HR Department through a browser-based system. It also ensures that updates in the backend or database structure do not require major changes in the frontend design, supporting long-term system flexibility and maintainability.
+
+
+I. (Frontend System)
+
+             The Presentation Layer serves as the primary interface for both applicants and HR administrators. It is developed using HTML, CSS, and JavaScript, providing a responsive and user-friendly environment for system interaction. This layer allows applicants to register accounts, browse job postings, submit applications, upload required documents, and track their application status. For the HR administrators, it provides access to an admin dashboard where job postings are managed, applicant data is reviewed, and recruitment activities are monitored. The frontend is designed to ensure usability and accessibility, enabling users to navigate the system efficiently without requiring technical expertise. It also ensures that all user interactions are properly structured before being sent to the backend for processing.
+
+
+Il. Application Programming Interface Layer (Backend Processing)
+
+             The Application Programming Interface (API) Layer serves as the core processing unit of the system. It is developed using PHP, which handles server-side logic and processes all requests coming from the frontend. This layer is responsible for managing key system operations such as user authentication, job posting management, application submission processing, file uploads, and application status updates. It ensures that all data transmitted between the frontend and database is validated, secure, and properly processed. By separating business logic from the user interface, this layer ensures system efficiency, security, and smooth data handling between users and the database.
+
+
+Ill. (Database System)
+
+             The Data Management Layer is responsible for the storage and organization of all system data. The system utilizes a MySQL relational database to store information such as user accounts, job postings, applicant records, uploaded documents, and application statuses. This layer ensures that all recruitment data is securely stored and can be retrieved efficiently when needed. It also maintains data consistency and integrity, allowing both applicants and HR administrators to access updated and accurate information in real time.
+
+
+System Component and Modules
+
+             The system is organized into specialized modules, each designed to address the gaps identified in the manual recruitment process of the Human Resource Department of the National Aviation Academy of the Philippines (NAAP). The platform is developed as a web-based system using HTML, CSS, JavaScript, PHP, and MySQL, ensuring a responsive and centralized recruitment management system. The system allows real-time processing of job applications, ensuring that applicant data, job postings, and recruitment status are consistently updated and properly managed within the database.
+
+User Authentication Module â€“ This module handles the secure login and registration of both applicants and HR administrators. It ensures that only authorized users can access the system by validating credentials and managing user sessions. This module also protects sensitive user information through proper authentication mechanisms. 
+
+Job Posting Management Module â€“ This module allows the HR administrator to create, update, and delete job vacancies. It ensures that all job postings are accurately displayed to applicants in real time, providing updated employment opportunities within the institution. 
+
+Application Submission Module â€“ This module enables applicants to apply for available job postings by filling out application forms and uploading required documents such as resumes and credentials. All submitted applications are stored directly in the database for proper record management. 
+
+Application Status Tracking Module â€“ This module allows applicants to monitor the progress of their job applications. It provides real-time updates such as pending, reviewed, shortlisted, or approved status, ensuring transparency throughout the recruitment process. 
+
+Applicant Management Module â€“ This module is used by the HR administrator to view, organize, and evaluate applicant data. It allows filtering and reviewing of applications to support efficient decision-making during recruitment. 
+
+Admin Dashboard Module â€“ This module serves as the central control panel of the system. It provides an overview of job postings, applicant submissions, and recruitment activities, allowing the HR administrator to efficiently manage and monitor the entire system. 
+
+
+
+Report Generation Module â€“ This module generates summarized reports of recruitment activities such as number of applicants per job posting and overall application status distribution. It helps the HR Department analyze recruitment performance and improve decision-making. 
+
+Database Management Module â€“ This module is responsible for storing and managing all system data, including user accounts, job postings, application records, and uploaded documents. It ensures data integrity, security, and consistency across the entire system.
+
+
+Context Diagram 
+
+Figure 3. Context Diagram of the Human Resource department web-based Job Portal system
+
+            The context diagram of the Human Resource Department Web-Based Job Portal System presents a high-level view of how the system interacts with its external entities. It shows the overall flow of data between the users and the system, without going into detailed processes. At the center of the diagram is the HR Job Portal System, which serves as the main process that handles all inputs and outputs. Connected to the system are two main external entities: the Applicant and the Admin.
+
+            The applicant interacts with the system by submitting personal information, applying for jobs, and uploading required documents. In return, the system provides outputs such as job listings, application status updates, and notifications. 
+On the other hand, the admin interacts with the system by managing job postings, reviewing applications, and monitoring applicant data. The admin also receives outputs such as reports and system updates that support decision-making.
+All interactions are made possible through the internet, which acts as the communication medium between users and the system. The system processes and stores all data in a centralized database, ensuring that information is organized, secure, and easily accessible. 
+
+
+
+
+
+
+
+
+
+
+
+Figure 4. Applicant & Admin Flowchart
+
+           The system flowchart illustrates the overall process of the web-based job application and management system, integrating both administrator and applicant functionalities into a single unified workflow. This flow ensures a seamless interaction between users and the system while maintaining security, data integrity, and efficient processing.
+
+          The process begins at the system start, where users access the web application through a browser. Upon loading, the system directs users to the authentication page, where they are required to either log in or register. New users
+
+
+must complete the registration process by providing necessary personal information, which is validated before account creation. Existing users enter their credentials, and the system verifies them to grant access.
+
+           Once authenticated, the system determines the user role (administrator or applicant) and redirects the user to the appropriate interface.
+
+           For administrators, the system provides access to the main dashboard, where they can manage core functionalities. Administrators can perform job management, including creating, editing, deleting, and publishing job postings. 
+
+           They can also handle user management, where they view, add, or update user accounts. Additionally, administrators can access applicant management, allowing them to review submitted applications, filter candidates, shortlist applicants, and manage interview schedules. The system also supports report generation and analytics, enabling administrators to monitor system performance and recruitment data. All actions performed are validated and stored in the centralized database.
+
+           For applicants (users), the system provides access to job-related functionalities. Users can browse available job listings through the job exploration module, where search and filter features help them find relevant opportunities. Once a suitable job is identified, users can proceed to the application process, submitting required documents such as resumes and cover letters. The system validates all submitted data before storing it in the database. Users can also manage their personal information through the profile module, ensuring that their details are up to date.
+
+             Throughout the process, the system generates notifications and status updates, informing users about application progress, such as submission confirmation, interview schedules, or hiring decisions (accepted or rejected). These updates enhance communication between the system and its users.
+
+             All data transactions, including user information, job postings, and applications, are handled through a centralized MySQL database, ensuring consistency, security, and efficient retrieval of information.
+
+           The flow concludes when users choose to log out, securely ending their session. If not, they may continue navigating the system as needed.
+
+           Overall, the unified system flowchart demonstrates a complete and integrated workflow that connects authentication, role-based access, job management, application processing, and feedback mechanisms within a single web application. This design ensures a smooth, efficient, and user-friendly experience for both administrators and applicants.
+
+Figure 5. Data-flow diagram Level 0
+
+           The Data Flow Diagram (Level 0) illustrated the overall flow of data within the proposed system, the HR Job Portal System. At this level, the system was represented as a single process, while its interaction with external entities was emphasized.
+
+           The Admin entity was responsible for managing and maintaining the system. The admin handled job postings, review actions, and reports, ensuring that the platform functioned properly. Through the system, the admin could manage job data, evaluate applicants, and monitor overall system performance.
+
+           The Applicant entity interacted with the system by logging in, providing personal information, and accessing job-related data. Applicants used the system to browse job listings, submit applications, and receive updates regarding their 
+application status.
+
+            At the center of the diagram, the HR Job Portal System served as the main process that handled all inputs and outputs. It processed user credentials, managed job postings, handled application data, and ensured proper data storage and retrieval.
+
+           The system also interacted with an external Email/SMS Notification Service, which was responsible for delivering status updates and notifications to users.
+
+           The outputs of the system included job listings, application status updates, reports, and notifications, which were provided to both administrators and applicants. This context diagram showed how the system functioned as a central hub, connecting users and external services to ensure efficient job application and management processes.
+
+           Overall, the context diagram provided a high-level overview of how the system interacts with external entities such as applicants and administrators, showing only the general flow of inputs and outputs. In contrast, the Data Flow Diagram (DFD) Level 1 presents a more detailed representation of how data moves within the system by breaking it down into major processes, data stores, and interactions.
+
+Figure 6. Data-flow diagram Level 1 of Admin
+                The Data Flow Diagram (DFD) Level 1 illustrates how both applicants and administrators interact with the Human Resource Department Web-Based Job Portal System of the National Aviation Academy of the Philippines (NAAP). The process begins with Validate Credentials (1.0), where applicants and admins input their login credentials. These credentials are verified against the Applicant Records (D1) data store to ensure secure authentication. Once verified, the user is granted access to the system.
+
+                After successful authentication, users proceed to the Manage Dashboard (2.0), which serves as the central interface of the system. For applicants, the dashboard allows them to view their profiles and track application-related data retrieved from the system. For administrators, the dashboard acts as 
+
+
+a control panel for managing system data such as applicants, job postings, and surveys.
+
+            From the dashboard, applicants can access the Search Job Listings (3.0) process, where they can browse available job opportunities and company information. The system retrieves relevant data from the Job Data (D2) data store and returns the results based on the userâ€™s search queries.
+
+            Applicants can also interact with the Applicant Surveys (4.0) process, where they answer survey questions related to employment, feedback, or system evaluation. The survey data is retrieved from and stored in the Surveys (D3) data store. Additionally, this process connects to the Email/SMS Notification Service, which sends alerts, updates, and confirmations to users.
+
+           On the other hand, the administrator plays a crucial role in managing and maintaining the system. The admin interacts with the system by accessing applicant records, reviewing survey responses, and managing overall system operations. The admin can also trigger notifications and oversee data stored in the central Database, ensuring data integrity, accuracy, and system functionality.
+
+
+
+
+
+
+
+
+External Entities
+
+The Level 1 DFD includes two main external entities:
+Applicant â€“ Represents job seekers who use the system to log in, search for jobs, and answer surveys. 
+
+Admin â€“ Represents the Human Resource staff or system administrator responsible for managing applicants, job postings, and survey data. 
+
+Processes
+
+Process-1:Validate-Credentials-(1.0)             This process handles user authentication. Applicants and admins enter their login credentials, which are verified against stored records in the Applicant Records database. Once validated, access to the system is granted.
+
+Process-2:-Manage-Dashboard-(2.0)              After successful login, users are directed to the dashboard. Applicants can view their records and application status, while admins can monitor and manage system data such as users, job postings, and surveys.
+
+Process-3:-Search-Job-Listings-(3.0)             This process allows applicants to search for available job opportunities and companies. The system retrieves relevant data from the Job Data store and displays results based on the applicantâ€™s search criteria.
+
+
+
+Process-4:-Applicant-Surveys-(4.0)              Applicants answer survey questions through this process. The responses are stored in the Surveys data store and can be used for evaluation, feedback, and reporting. Notifications may also be sent through the Email/SMS Notification Service.
+
+Data Stores
+
+D1: Applicant Records â€“ Stores user profiles, login credentials, and application details. 
+
+D2: Job Data â€“ Contains job postings, company information, and related data. 
+
+D3: Surveys â€“ Stores survey questions, responses, and results. 
+
+Database â€“ Serves as the central repository that integrates all system data and-supports-notification-processes.
+Figure 7. Entity Relationship Diagram
+
+               The Entity Relationship Diagram (ERD) of the Human Resource Department Web-Based Job Portal System illustrates the structure of the database and the relationships between the systemâ€™s core entities. It provides a detailed representation of how data is organized, stored, and interconnected to support the overall functionality of the system.
+ 
+               At the center of the diagram is the Users entity, which stores essential user information such as name, email, and password. This entity is connected to other components of the system, as users can act as applicants who submit job applications and interact with the platform.
+
+
+               The Applications entity contains applicant-specific information, including applicant name, contact details, and educational background. This entity represents the data submitted by users when applying for job opportunities. Each application is associated with a user and serves as a primary record of applicant information.
+
+               The Vacancies entity represents job postings created by the Human Resource administrators. It includes details such as job title, department, deadline, and status. This entity is linked to the Staffing entity, which defines organizational details such as campus, office, and position, indicating that each job vacancy is associated with a specific staffing requirement.
+
+               To manage the relationship between applicants and job vacancies, the system uses the Applications Vacancies entity. This serves as a junction table that connects applications and vacancies, enabling a many-to-many relationship. It also stores important information such as application status, submitted documents, and the date of application.
+
+               The Messages entity supports communication within the system by storing messages exchanged between users. It includes sender and receiver identifiers, message content, and read status. This entity is linked to both users and applications, allowing communication regarding specific job applications.
+
+               All entities are connected through primary and foreign keys, ensuring data integrity and consistency within the database. These relationships enable efficient data retrieval, management, and processing across the system.
+
+
+
+CHAPTER IV
+RESEARCH METHODOLOGY, RESULTS, AND DISCUSSION
+
+Research Design
+This study utilizes a developmental-descriptive research design to evaluate the Human Resource Department Web-Based Job Portal System for the National Aviation Academy of the Philippines (NAAP). The developmental phase followed the Waterfall Software Development Life Cycle (SDLC) to systematically build the platform through sequential phases of requirement analysis, design, and implementation. The descriptive-evaluative phase is then employed to assess the system's effectiveness compared to the previous manual operations, specifically measuring how well the portal improves recruitment efficiency and data organization.
+
+Data Gathering Technique
+Data was gathered through three primary methods to directly address the objectives of the study. First, a time-motion study was conducted to measure processing efficiency by recording the time required to sort and track 50 simulated job applications using the traditional manual paper method versus the new web-based portal. Second, system audit logs were examined to evaluate data accuracy by comparing physical applicant records against the digital entries over a simulated operational period. Finally, standardized questionnaires were administered to gather feedback on technical quality using the ISO/IEC 25010 standard and user adoption viability through the Technology Acceptance Model (TAM).
+
+Statistical Treatment of Data
+Specific mathematical tools were applied to interpret the gathered data and test the studyâ€™s hypothesis. A Paired Samples T-Test was employed to determine if there is a statistically significant difference in efficiency between the previous manual recruitment workflow and the web-based system. To measure data accuracy, Percentage Error was calculated to identify any discrepancies between physical applicant files and the centralized database records. Lastly, the Weighted Mean was utilized to analyze responses from the software evaluation questionnaires, quantifying the overall technical quality and user acceptance of the portal.
+
+
+
+Population and Sampling Technique
+The study utilized a purposive sampling technique to ensure that the evaluators possessed the necessary expertise and context for the system. The primary respondents for the usability evaluation included the HR staff of NAAP, as the system is specifically tailored to their departmental workflow. To ensure technical validity, a selected group of IT professionals evaluated the system's architecture and security protocols. For efficiency testing, a sample of 50 common recruitment transactionsâ€”such as posting a vacancy and processing a resumeâ€”was used to ensure statistical reliability when measuring system performance.
+
+Result and Discussion
+The findings from the implementation and testing of the system are categorized into key performance areas. The time-motion study revealed a significant reduction in application processing speed, moving from hours of manual sorting to near-instant digital filtering. The percentage error evaluation confirmed that the centralized database eliminated duplicated records and "lost" applications common in the paper-based system. Technical evaluation based on ISO/IEC 25010 showed high scores in Functional Suitability and Security, proving that the portal effectively handles sensitive applicant data while remaining reliable. Finally, the TAM results indicated that the HR department found the system highly useful and easy to navigate, confirming that the digital transformation successfully met the operational needs of the academy.
+
+

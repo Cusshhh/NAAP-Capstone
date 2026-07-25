@@ -25,8 +25,8 @@ class CmsContentController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
-        if (!$user || (!$user->isSuperAdmin() && $user->email !== 'admin@naap.edu.ph')) {
-            return response()->json(['error' => 'Unauthorized. Only Super Administrators can manage CMS content.'], 403);
+        if (!$user || !$user->isAdmin()) {
+            return response()->json(['error' => 'Unauthorized. Only Administrators can manage CMS content.'], 403);
         }
 
         $validated = $request->validate([

@@ -541,13 +541,6 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                     <SelectItem value="Archived">Archived</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Select value={campusFilter} onValueChange={setCampusFilter}>
-                                <SelectTrigger><SelectValue placeholder="All Campuses" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Campuses</SelectItem>
-                                    {campuses.map(campus => <SelectItem key={campus} value={campus}>{campus}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
                             <Select value={aiMatchFilter} onValueChange={setAiMatchFilter}>
                                 <SelectTrigger><SelectValue placeholder="AI Match" /></SelectTrigger>
                                 <SelectContent>
@@ -605,7 +598,6 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                     <TableRow>
                                         <TableHead>Applicant</TableHead>
                                         <TableHead>Position</TableHead>
-                                        <TableHead>Campus</TableHead>
                                         <TableHead>Score Percentage</TableHead>
                                         <TableHead>Breakdown</TableHead>
                                         <TableHead>Match</TableHead>
@@ -625,9 +617,6 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                             </TableCell>
                                             <TableCell>{app.jobTitle}</TableCell>
                                             <TableCell>
-                                                <Badge variant="outline" className="text-[10px] font-semibold bg-gray-50 border-gray-200">{app.campus ? app.campus.replace('NAAP - ', '') : 'N/A'}</Badge>
-                                            </TableCell>
-                                            <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-24 bg-gray-200 rounded-full h-2">
                                                         <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${Math.min(scoreToPercentage(app.aiScore || 0), 100)}%` }} />
@@ -641,24 +630,32 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                         <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"><TrendingUp className="w-4 h-4 mr-1" /> View</Button>
                                                     </DialogTrigger>
                                                     <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-                                                        <DialogHeader><DialogTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5 text-blue-600" /> Score Breakdown - {app.applicantName}</DialogTitle></DialogHeader>
-                                                        <div className="space-y-4 pb-4">
+                                                        <DialogHeader>
+                                                            <DialogTitle className="flex items-center gap-2 text-base font-bold text-[#193153]">
+                                                                <TrendingUp className="w-5 h-5 text-blue-600" /> PDS Qualification Match - {app.applicantName}
+                                                            </DialogTitle>
+                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                Evaluated from Applicant's Personal Data Sheet (CS Form 212) against Position Requirements.
+                                                            </p>
+                                                        </DialogHeader>
+                                                        <div className="space-y-4 pb-4 mt-2">
                                                             {(() => {
                                                                 const breakdown = app.aiScoreBreakdown || { education: 0, experience: 0, accomplishments: 0, training: 0 };
                                                                 const totalScore = app.aiScore || 0;
                                                                 return (
                                                                     <>
-                                                                        <div className="bg-linear-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                                                                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                                                                             <div className="flex items-center justify-between mb-2">
-                                                                                <span className="text-sm font-medium text-gray-700">Overall Score</span>
-                                                                                <span className="text-2xl font-bold text-[#193153]">{scoreToPercentage(totalScore)}% <span className="text-sm text-gray-500">Match Score</span></span>
+                                                                                <span className="text-sm font-medium text-gray-700">Balanced Qualification Score</span>
+                                                                                <span className="text-2xl font-bold text-[#193153]">{scoreToPercentage(totalScore)}% <span className="text-sm text-gray-500">Match</span></span>
                                                                             </div>
                                                                             <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
                                                                                 <div className={`h-3 rounded-full ${scoreToPercentage(totalScore) >= 90 ? 'bg-green-500' : scoreToPercentage(totalScore) >= 80 ? 'bg-blue-500' : scoreToPercentage(totalScore) >= 70 ? 'bg-cyan-500' : scoreToPercentage(totalScore) >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${Math.min(scoreToPercentage(totalScore), 100)}%` }} />
                                                                             </div>
+                                                                            <p className="text-[11px] text-gray-500 italic">Formula: Education (30%) + Experience (35%) + Eligibility/Awards (20%) + Training (15%)</p>
                                                                         </div>
                                                                         <div className="space-y-3">
-                                                                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Score Breakdown</p>
+                                                                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">PDS Section Evaluation Breakdown</p>
 
                                                                             {/* Education */}
                                                                             <div className="flex items-center gap-3">
@@ -667,7 +664,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                                 </div>
                                                                                 <div className="flex-1">
                                                                                     <div className="flex items-center justify-between mb-1">
-                                                                                        <span className="text-sm font-medium">Education</span>
+                                                                                        <span className="text-sm font-medium">Education (PDS Sec II)</span>
                                                                                         <span className="text-sm font-bold">{Math.round((breakdown.education / 5) * 100)}%</span>
                                                                                     </div>
                                                                                     <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
@@ -699,7 +696,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                                 </div>
                                                                                 <div className="flex-1">
                                                                                     <div className="flex items-center justify-between mb-1">
-                                                                                        <span className="text-sm font-medium">Work Experience</span>
+                                                                                        <span className="text-sm font-medium">Work Experience (PDS Sec IV)</span>
                                                                                         <span className="text-sm font-bold">{Math.round((breakdown.experience / 25) * 100)}%</span>
                                                                                     </div>
                                                                                     <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
@@ -722,7 +719,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                                 </div>
                                                                                 <div className="flex-1">
                                                                                     <div className="flex items-center justify-between mb-1">
-                                                                                        <span className="text-sm font-medium">Awards & Recognition</span>
+                                                                                        <span className="text-sm font-medium">Eligibility & Awards (PDS Sec III & VII)</span>
                                                                                         <span className="text-sm font-bold">{Math.round((breakdown.accomplishments / 5) * 100)}%</span>
                                                                                     </div>
                                                                                     <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
@@ -750,7 +747,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                                 </div>
                                                                                 <div className="flex-1">
                                                                                     <div className="flex items-center justify-between mb-1">
-                                                                                        <span className="text-sm font-medium">Training Hours</span>
+                                                                                        <span className="text-sm font-medium">Training & L&D (PDS Sec VI)</span>
                                                                                         <span className="text-sm font-bold">{Math.round((breakdown.training / 10) * 100)}%</span>
                                                                                     </div>
                                                                                     <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
@@ -910,7 +907,22 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                             <div>
                                                                                 <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Professional Credentials</h3>
                                                                                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Highest Education Attained</span><span className="font-semibold text-gray-900 mt-0.5">{app.education || 'N/A'}</span></div>
+                                                                                    <div className="flex flex-col"><span className="text-gray-500">Highest Education Attained</span><span className="font-semibold text-gray-900 mt-0.5">{(() => {
+                                                                                        const rawEd = app.educationLevel || app.dynamic_responses?.educationLevel || app.education || '';
+                                                                                        if (rawEd === 'bachelor') return "Bachelor's Degree";
+                                                                                        if (rawEd === 'masters') return "Master's Degree";
+                                                                                        if (rawEd === 'doctoral_9-15') return "Doctoral (9-15 units)";
+                                                                                        if (rawEd === 'doctoral_15-18') return "Doctoral (15-18 units)";
+                                                                                        if (rawEd === 'doctoral_18-24') return "Doctoral (18-24 units)";
+                                                                                        if (rawEd === 'doctoral_27+') return "Doctoral (27+ units)";
+                                                                                        if (rawEd === 'doctoral_graduate') return "Doctoral Graduate";
+                                                                                        if (rawEd.includes('doctoral')) return "Doctoral / Ph.D. Degree";
+                                                                                        if (rawEd.includes('master')) return "Master's Degree";
+                                                                                        if (rawEd.includes('bachelor')) return "Bachelor's Degree";
+                                                                                        if (rawEd.includes('vocational')) return "Vocational / Technical Diploma";
+                                                                                        if (rawEd.includes('highschool')) return "High School Graduate";
+                                                                                        return rawEd || 'N/A';
+                                                                                    })()}</span></div>
                                                                                     <div className="flex flex-col"><span className="text-gray-500">Years of Experience</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.yearsOfExperience || (app.aiScoreBreakdown?.experience ? Math.max(1, app.aiScoreBreakdown.experience) : 'N/A')} years</span></div>
                                                                                     <div className="flex flex-col"><span className="text-gray-500">Training hours</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.trainingHours || 'N/A'} hours</span></div>
                                                                                     <div className="flex flex-col"><span className="text-gray-500">Open to other positions?</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{app.dynamic_responses?.openToOthers || 'Yes'}</span></div>
@@ -1528,30 +1540,6 @@ export default function Applicants({ auth, applications: serverApplications }: {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            {/* Footer */}
-            <footer className="bg-[#193153] text-white py-6 border-t border-white/10 mt-auto">
-                <div className="container mx-auto px-6">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center space-x-3">
-                            <img
-                                src="/images/PhilSCA_Logo.png"
-                                alt="NAAP Logo"
-                                className="h-10 w-auto object-contain bg-white/10 rounded-full p-1"
-                            />
-                            <div>
-                                <span className="font-bold text-lg tracking-tight block">NAAP Careers</span>
-                                <span className="text-xs text-blue-200">National Aviation Academy of the Philippines</span>
-                            </div>
-                        </div>
-
-                        <div className="text-center md:text-right">
-                            <p className="text-xs text-blue-200 mb-1">Shaping the skies, one professional at a time.</p>
-                            <p className="text-xs text-gray-400">© 2026 NAAP. All rights reserved.</p>
-                        </div>
-                    </div>
-                </div>
-            </footer>
         </AdminLayout>
     );
 }

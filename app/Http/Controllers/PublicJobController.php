@@ -72,6 +72,10 @@ class PublicJobController extends Controller
             ],
             'application' => $application ? [
                 'id' => $application->id,
+                'applicant_name' => $application->applicant_name,
+                'email' => $application->email,
+                'phone_number' => $application->phone_number,
+                'education' => $application->education,
                 'status' => $application->status,
                 'submittedDate' => $application->created_at->toDateString(),
                 'dynamic_responses' => $application->dynamic_responses,

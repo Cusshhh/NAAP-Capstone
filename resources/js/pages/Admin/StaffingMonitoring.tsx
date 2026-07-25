@@ -17,25 +17,13 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
     const admin = auth?.user || { name: 'Admin' };
     const [staffingData, setStaffingData] = useState(serverStaffing || []);
     const [searchTerm, setSearchTerm] = useState('');
-    const [campusFilter, setCampusFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
-
-    const [campuses, setCampuses] = useState<string[]>([]);
-
-    // Sync with server data
-    React.useEffect(() => {
-        if (serverStaffing) {
-            setStaffingData(serverStaffing);
-            setCampuses(Array.from(new Set(serverStaffing.map(i => i.campus))));
-        }
-    }, [serverStaffing]);
 
     const filteredData = staffingData.filter(item => {
         const matchesSearch = item.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
             item.office.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCampus = campusFilter === 'All' || item.campus === campusFilter;
         const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
-        return matchesSearch && matchesCampus && matchesStatus;
+        return matchesSearch && matchesStatus;
     });
 
     const handleCreateJob = (item: any) => {
@@ -172,7 +160,6 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
                                     <tr>
-                                        <th className="px-6 py-4 font-semibold border-b">Campus</th>
                                         <th className="px-6 py-4 font-semibold border-b">Office</th>
                                         <th className="px-6 py-4 font-semibold border-b">Position</th>
                                         <th className="px-6 py-4 font-semibold border-b">SG</th>
@@ -184,11 +171,6 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                                     {filteredData.length > 0 ? (
                                         filteredData.map((item) => (
                                             <tr key={item.id} className="hover:bg-gray-50 transition-colors group">
-                                                <td className="px-6 py-4">
-                                                    <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded uppercase">
-                                                        {item.campus}
-                                                    </span>
-                                                </td>
                                                 <td className="px-6 py-4 text-sm font-medium text-gray-700">{item.office}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-800">{item.position}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-600">SG {item.sg}</td>
@@ -222,7 +204,7 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                                            <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                                                 No staffing items found matching your filters.
                                             </td>
                                         </tr>

@@ -33,10 +33,23 @@ export default function ActivityLog({ auth, dbApplications = [], dbJobs = [] }: 
         const loadLogs = async () => {
             try {
                 const response = await axios.get('/admin/activity-logs');
-                const dbLogs = response.data;
-                const mockLogs = getActivities(dbApplications, dbJobs);
+                const dbLogs = (response.data || []).map((log: any) => ({
+                    id: log.id,
+                    action: log.action || 'Activity Logged',
+                    details: log.details || '',
+                    time: log.created_at ? getTimeAgo(log.created_at) : 'N/A',
+                    date: log.created_at,
+                    icon: log.icon || 'Shield',
+                    color: log.color || 'text-blue-500 bg-blue-100',
+                    campus: 'Villamor Air Base, Pasay City',
+                    timestamp: new Date(log.created_at).getTime(),
+                }));
+                const generatedLogs = getActivities(dbApplications, dbJobs).map(item => ({
+                    ...item,
+                    campus: 'Villamor Air Base, Pasay City'
+                }));
                 // Combine and de-duplicate by action & details & date
-                const combined = [...dbLogs, ...mockLogs].reduce((acc: any[], item: any) => {
+                const combined = [...dbLogs, ...generatedLogs].reduce((acc: any[], item: any) => {
                     const duplicate = acc.some(x => 
                         x.action === item.action && 
                         x.details === item.details &&

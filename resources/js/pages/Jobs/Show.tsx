@@ -235,16 +235,37 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
 
         const experienceDescription = `${formData.yearsOfExperience} years of relevant experience in ${job.title} fields. Completed ${formData.trainingHours} hours of training and seminars.`;
 
+        const getEducationLabel = (level: string) => {
+            if (level === 'bachelor') return "Bachelor's Degree";
+            if (level === 'masters') return "Master's Degree";
+            if (level === 'doctoral_9-15') return "Doctoral (9-15 units)";
+            if (level === 'doctoral_15-18') return "Doctoral (15-18 units)";
+            if (level === 'doctoral_18-24') return "Doctoral (18-24 units)";
+            if (level === 'doctoral_27+') return "Doctoral (27+ units)";
+            if (level === 'doctoral_graduate') return "Doctoral Graduate";
+            if (level.includes('doctoral')) return "Doctoral / Ph.D. Degree";
+            if (level.includes('master')) return "Master's Degree";
+            if (level.includes('bachelor')) return "Bachelor's Degree";
+            if (level.includes('vocational')) return "Vocational / Technical Diploma";
+            if (level.includes('highschool')) return "High School Graduate";
+            return level || "Bachelor's Degree";
+        };
+
         router.post('/applications', {
             job_id: job.id,
             job_title: job.title,
             email: formData.email,
             applicant_name: fullName,
             phone_number: formData.contactNumber,
-            education: formData.educationLevel === 'bachelor' ? 'College Graduate' : 'Post-Graduate',
+            education: getEducationLabel(formData.educationLevel),
             to_follow_docs: Object.keys(toFollowDocs).filter(k => toFollowDocs[k]),
             custom_files: customFiles,
             dynamic_responses: {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                middleName: formData.middleName,
+                extensionName: formData.extensionName,
+                contactNumber: formData.contactNumber,
                 address: formData.address,
                 age: formData.age,
                 sex: formData.sex,
@@ -256,8 +277,6 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                 skills: skills,
                 experience: experienceDescription,
                 documents: uploadedDocs,
-                middleName: formData.middleName,
-                extensionName: formData.extensionName,
                 religion: formData.religion,
                 isIP: formData.isIP,
                 isPWD: formData.isPWD,
@@ -556,45 +575,46 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
 
             {/* Application Modal */}
             <Dialog open={isApplyOpen} onOpenChange={setIsApplyOpen}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-full">
-                    <DialogHeader>
+                <DialogContent className="max-w-4xl h-[90vh] max-h-[90vh] flex flex-col p-0 overflow-hidden w-full gap-0">
+                    <DialogHeader className="p-6 border-b shrink-0 bg-white">
                         <DialogTitle className="text-2xl font-bold text-[#193153]">Application Form</DialogTitle>
                         <DialogDescription>
                             Applying for <span className="font-bold text-[#193153]">{job.title}</span>. Please complete all fields below.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <form onSubmit={handleSubmitApplication} className="space-y-6 mt-4">
+                    <form onSubmit={handleSubmitApplication} className="flex flex-col flex-1 overflow-hidden min-h-0">
+                        <div className="p-6 overflow-y-auto flex-1 space-y-6">
 
                         {/* 1. Personal Information */}
                         <div className="space-y-4">
                             <h3 className="font-bold text-lg text-[#193153] border-b pb-2">Personal Information</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <div className="space-y-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+                                <div className="flex flex-col justify-end space-y-2">
                                     <Label htmlFor="email">Email</Label>
                                     <Input id="email" value={formData.email} readOnly className="bg-gray-50" />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-col justify-end space-y-2">
                                     <Label htmlFor="lastName">Last Name</Label>
                                     <Input id="lastName" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} required />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-col justify-end space-y-2">
                                     <Label htmlFor="firstName">First Name</Label>
                                     <Input id="firstName" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} required />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="middleName">Middle Name</Label>
-                                    <Input id="middleName" value={formData.middleName} onChange={(e) => setFormData({ ...formData, middleName: e.target.value })} required />
+                                <div className="flex flex-col justify-end space-y-2">
+                                    <Label htmlFor="middleName" className="truncate">Middle Name <span className="text-[11px] text-gray-400 font-normal">(Optional)</span></Label>
+                                    <Input id="middleName" placeholder="N/A if none" value={formData.middleName} onChange={(e) => setFormData({ ...formData, middleName: e.target.value })} />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-col justify-end space-y-2">
                                     <Label htmlFor="extensionName">Extension Name</Label>
                                     <Input id="extensionName" placeholder="" value={formData.extensionName} onChange={(e) => setFormData({ ...formData, extensionName: e.target.value })} />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-col justify-end space-y-2">
                                     <Label htmlFor="age">Age</Label>
                                     <Input id="age" type="number" value={formData.age} onChange={(e) => setFormData({ ...formData, age: e.target.value })} required />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-col justify-end space-y-2">
                                     <Label htmlFor="sex">Sex</Label>
                                     <Select value={formData.sex} onValueChange={(val) => setFormData({ ...formData, sex: val })} required>
                                         <SelectTrigger>
@@ -606,7 +626,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-col justify-end space-y-2">
                                     <Label htmlFor="civilStatus">Civil Status</Label>
                                     <Select value={formData.civilStatus} onValueChange={(val) => setFormData({ ...formData, civilStatus: val })} required>
                                         <SelectTrigger>
@@ -621,7 +641,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-col justify-end space-y-2">
                                     <Label htmlFor="religion">Religion</Label>
                                     <Input id="religion" value={formData.religion} onChange={(e) => setFormData({ ...formData, religion: e.target.value })} required />
                                 </div>
@@ -1000,8 +1020,9 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 })}
                             </div>
                         </div>
+                        </div>
 
-                        <DialogFooter className="sticky bottom-0 bg-white py-4 border-t mt-6">
+                        <DialogFooter className="p-4 border-t shrink-0 bg-gray-50 flex items-center justify-end gap-3">
                             <Button type="button" variant="outline" onClick={() => setIsApplyOpen(false)} disabled={isSubmitting}>
                                 Cancel
                             </Button>
@@ -1114,7 +1135,15 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
                                         <span className="text-gray-500 font-medium">Highest Education Attained</span>
                                         <span className="font-bold text-gray-900 mt-1">
-                                            {application.dynamic_responses?.educationLevel || application.education || 'N/A'}
+                                            {(() => {
+                                                const rawEd = application.dynamic_responses?.educationLevel || application.education || '';
+                                                if (rawEd.includes('doctoral')) return 'Doctoral / Ph.D. Degree';
+                                                if (rawEd.includes('master')) return "Master's Degree";
+                                                if (rawEd.includes('bachelor')) return "Bachelor's Degree";
+                                                if (rawEd.includes('vocational')) return "Vocational / Technical Diploma";
+                                                if (rawEd.includes('highschool')) return "High School Graduate";
+                                                return rawEd || 'N/A';
+                                            })()}
                                         </span>
                                     </div>
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
@@ -1139,41 +1168,51 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                             </div>
 
                             {/* 4. Personal Info Submitted */}
-                            <div className="space-y-4">
-                                <h4 className="font-bold text-[#193153] text-sm border-b pb-1">Personal Details</h4>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
-                                    <div className="flex flex-col">
-                                        <span className="text-gray-500">First Name</span>
-                                        <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.firstName || 'N/A'}</span>
+                            {(() => {
+                                const nameParts = (application?.applicant_name || '').trim().split(/\s+/);
+                                const parsedFirstName = application.dynamic_responses?.firstName || nameParts[0] || 'N/A';
+                                const parsedLastName = application.dynamic_responses?.lastName || (nameParts.length > 1 ? nameParts[nameParts.length - 1] : 'N/A');
+                                const parsedMiddleName = application.dynamic_responses?.middleName || (nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : 'N/A');
+                                const parsedContact = application.dynamic_responses?.contactNumber || application.phone_number || 'N/A';
+
+                                return (
+                                    <div className="space-y-4">
+                                        <h4 className="font-bold text-[#193153] text-sm border-b pb-1">Personal Details</h4>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-500">First Name</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5">{parsedFirstName}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-500">Middle Name</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5">{parsedMiddleName}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-500">Last Name</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5">{parsedLastName}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-500">Age / Sex</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5">
+                                                    {application.dynamic_responses?.age ? `${application.dynamic_responses.age} yrs old` : 'N/A'} / {application.dynamic_responses?.sex || 'N/A'}
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-500">Civil Status</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5 capitalize">{application.dynamic_responses?.civilStatus || 'N/A'}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-500">Contact Number</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5">{parsedContact}</span>
+                                            </div>
+                                            <div className="flex flex-col col-span-2 md:grid-span-3">
+                                                <span className="text-gray-500">Residential Address</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{application.dynamic_responses?.address || 'N/A'}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-gray-500">Middle Name</span>
-                                        <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.middleName || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-gray-500">Last Name</span>
-                                        <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.lastName || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-gray-500">Age / Sex</span>
-                                        <span className="font-semibold text-gray-900 mt-0.5">
-                                            {application.dynamic_responses?.age ? `${application.dynamic_responses.age} yrs old` : 'N/A'} / {application.dynamic_responses?.sex || 'N/A'}
-                                        </span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-gray-500">Civil Status</span>
-                                        <span className="font-semibold text-gray-900 mt-0.5 capitalize">{application.dynamic_responses?.civilStatus || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-gray-500">Contact Number</span>
-                                        <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.contactNumber || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex flex-col col-span-2 md:grid-span-3">
-                                        <span className="text-gray-500">Residential Address</span>
-                                        <span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{application.dynamic_responses?.address || 'N/A'}</span>
-                                    </div>
-                                </div>
-                            </div>
+                                );
+                            })()}
 
                             {/* 5. Civil Service Board Eligibilities */}
                             {application.dynamic_responses?.eligibilities && application.dynamic_responses.eligibilities.length > 0 && (

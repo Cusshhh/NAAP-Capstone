@@ -40,6 +40,16 @@ class ApplicantController extends Controller
                 }
             }
 
+            $dyn = $validated['dynamic_responses'] ?? [];
+            if (empty($dyn['contactNumber']) && !empty($validated['phone_number'])) {
+                $dyn['contactNumber'] = $validated['phone_number'];
+            }
+            if (empty($dyn['firstName']) || empty($dyn['lastName'])) {
+                $parts = explode(' ', trim($validated['applicant_name']));
+                $dyn['firstName'] = $dyn['firstName'] ?? ($parts[0] ?? '');
+                $dyn['lastName'] = $dyn['lastName'] ?? (count($parts) > 1 ? end($parts) : '');
+            }
+
             $application = Application::create([
                 'job_id' => $validated['job_id'],
                 'job_title' => $validated['job_title'],
@@ -49,7 +59,7 @@ class ApplicantController extends Controller
                 'education' => $validated['education'],
                 'to_follow_docs' => $validated['to_follow_docs'],
                 'custom_file_responses' => $customFileResponses,
-                'dynamic_responses' => $validated['dynamic_responses'] ?? [],
+                'dynamic_responses' => $dyn,
                 'status' => 'Submitted',
             ]);
 

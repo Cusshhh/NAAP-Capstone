@@ -40,6 +40,9 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user() ? array_merge($request->user()->toArray(), [
+                    'is_super_admin' => $request->user()->isSuperAdmin(),
+                    'is_hr_admin' => $request->user()->isHrAdmin(),
+                    'is_hr_staff' => $request->user()->isHrStaff(),
                     'is_admin' => $request->user()->isAdmin() || in_array($request->user()->email, ['admin@naap.edu.ph', 'admin@admin.com']),
                     'campus_name' => 'Villamor Air Base, Pasay City',
                 ]) : null,

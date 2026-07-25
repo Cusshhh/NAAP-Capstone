@@ -178,12 +178,6 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
                                     {editMode ? 'Exit Edit Mode' : 'Edit Mode'}
                                 </button>
                             )}
-                            {auth?.user && !isAdmin && (
-                                <Link href="/dashboard" className="flex items-center text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors shadow-sm">
-                                    <ChevronLeft className="w-4 h-4 mr-1" />
-                                    Back to Dashboard
-                                </Link>
-                            )}
                             {!auth?.user && (
                                 <>
                                     <Link href="/news/csc-prime-hrm-level-2" className="flex items-center text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors shadow-sm">
