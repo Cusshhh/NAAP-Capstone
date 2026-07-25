@@ -863,14 +863,32 @@ export const getActivities = (dbApps: any[] = [], dbJobs: any[] = []) => {
             dateObj.setMinutes(dateObj.getMinutes() + 2);
             const shortStr = dateObj.toISOString();
             
+            const actionName = app.status === 'Interview' 
+                ? 'Interview Scheduled' 
+                : app.status === 'Under Review' 
+                    ? 'Application Under Review' 
+                    : 'Candidate Shortlisted';
+
+            const iconName = app.status === 'Interview' 
+                ? 'Calendar' 
+                : app.status === 'Under Review' 
+                    ? 'FileText' 
+                    : 'Users';
+
+            const colorClass = app.status === 'Interview' 
+                ? 'text-purple-500 bg-purple-50' 
+                : app.status === 'Under Review' 
+                    ? 'text-amber-600 bg-amber-50' 
+                    : 'text-indigo-500 bg-indigo-50';
+
             activities.push({
                 id: `db_app_short_${app.id}`,
-                action: app.status === 'Interview' ? 'Interview Scheduled' : 'Candidate Shortlisted',
+                action: actionName,
                 details: `${app.applicantName} status updated to ${app.status} for ${app.jobTitle}`,
                 time: getTimeAgo(shortStr),
                 date: shortStr,
-                icon: app.status === 'Interview' ? 'Calendar' : 'Users',
-                color: app.status === 'Interview' ? 'text-purple-500 bg-purple-50' : 'text-indigo-500 bg-indigo-50',
+                icon: iconName,
+                color: colorClass,
                 campus: app.campus || 'Pasay City',
                 timestamp: dateObj.getTime()
             });
