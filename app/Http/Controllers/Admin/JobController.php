@@ -44,44 +44,43 @@ class JobController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'staffing_id' => 'nullable|exists:staffing_positions,id',
-            'title' => 'required|string|max:255',
-            'department' => 'required|string|max:255',
-            'employmentType' => 'required|string|in:Full-time,Part-time,Contract',
-            'description' => 'required|string',
-            'responsibilities' => 'nullable|array',
-            'requirements' => 'nullable|array',
-            'salaryGrade' => 'nullable|integer',
-            'deadline' => 'nullable|date',
-            'custom_file_requirements' => 'nullable|array',
-            'status' => 'nullable|string|in:Open,Closed',
-        ]);
+        try {
+            $validated = $request->validate([
+                'staffing_id' => 'nullable|exists:staffing_positions,id',
+                'title' => 'required|string|max:255',
+                'department' => 'required|string|max:255',
+                'employmentType' => 'required|string|in:Full-time,Part-time,Contract',
+                'description' => 'required|string',
+                'responsibilities' => 'nullable|array',
+                'requirements' => 'nullable|array',
+                'salaryGrade' => 'nullable|integer',
+                'deadline' => 'nullable|date',
+                'custom_file_requirements' => 'nullable|array',
+                'status' => 'nullable|string|in:Open,Closed',
+            ]);
 
-        $vacancy = Vacancy::create([
-            'staffing_id' => $validated['staffing_id'] ?? null,
-            'title' => $validated['title'],
-            'department' => $validated['department'],
-            'employment_type' => $validated['employmentType'],
-            'location' => 'Villamor Air Base, Pasay City',
-            'description' => $validated['description'],
-            'responsibilities' => $validated['responsibilities'] ?? null,
-            'requirements' => $validated['requirements'] ?? null,
-            'salary_grade' => $validated['salaryGrade'] ?? null,
-            'deadline' => $validated['deadline'] ?? null,
-            'custom_file_requirements' => $validated['custom_file_requirements'] ?? null,
-            'status' => $validated['status'] ?? 'Open',
-        ]);
+            $vacancy = Vacancy::create([
+                'staffing_id' => $validated['staffing_id'] ?? null,
+                'title' => $validated['title'],
+                'department' => $validated['department'],
+                'employment_type' => $validated['employmentType'],
+                'location' => 'Villamor Air Base, Pasay City',
+                'description' => $validated['description'],
+                'responsibilities' => $validated['responsibilities'] ?? null,
+                'requirements' => $validated['requirements'] ?? null,
+                'salary_grade' => $validated['salaryGrade'] ?? null,
+                'deadline' => $validated['deadline'] ?? null,
+                'custom_file_requirements' => $validated['custom_file_requirements'] ?? null,
+                'status' => $validated['status'] ?? 'Open',
+            ]);
 
-        // If created from staffing monitoring, update that status to On-process
-        if (isset($validated['staffing_id']) && $validated['staffing_id']) {
-            $staffing = \App\Models\StaffingPosition::find($validated['staffing_id']);
-            if ($staffing) {
-                $staffing->update(['status' => 'On-process']);
-            }
+            return back()->with('message', 'Job posted successfully.');
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            throw $ve;
+        } catch (\Throwable $ex) {
+            \Illuminate\Support\Facades\Log::error('Error creating vacancy: ' . $ex->getMessage());
+            return back()->withErrors(['error' => 'Failed to post job vacancy: ' . $ex->getMessage()]);
         }
-
-        return back()->with('message', 'Job posted successfully.');
     }
 
     /**
@@ -89,33 +88,40 @@ class JobController extends Controller
      */
     public function update(Request $request, Vacancy $vacancy)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'department' => 'required|string|max:255',
-            'employmentType' => 'required|string|in:Full-time,Part-time,Contract',
-            'description' => 'required|string',
-            'responsibilities' => 'nullable|array',
-            'requirements' => 'nullable|array',
-            'salaryGrade' => 'nullable|integer',
-            'deadline' => 'nullable|date',
-            'status' => 'nullable|string|in:Open,Closed',
-        ]);
+        try {
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'department' => 'required|string|max:255',
+                'employmentType' => 'required|string|in:Full-time,Part-time,Contract',
+                'description' => 'required|string',
+                'responsibilities' => 'nullable|array',
+                'requirements' => 'nullable|array',
+                'salaryGrade' => 'nullable|integer',
+                'deadline' => 'nullable|date',
+                'status' => 'nullable|string|in:Open,Closed',
+            ]);
 
-        $vacancy->update([
-            'title' => $validated['title'],
-            'department' => $validated['department'],
-            'employment_type' => $validated['employmentType'],
-            'location' => 'Villamor Air Base, Pasay City',
-            'description' => $validated['description'],
-            'responsibilities' => $validated['responsibilities'] ?? $vacancy->responsibilities,
-            'requirements' => $validated['requirements'] ?? $vacancy->requirements,
-            'salary_grade' => $validated['salaryGrade'] ?? $vacancy->salary_grade,
-            'deadline' => $validated['deadline'] ?? $vacancy->deadline,
-            'custom_file_requirements' => $request->custom_file_requirements ?? $vacancy->custom_file_requirements,
-            'status' => $validated['status'] ?? $vacancy->status,
-        ]);
+            $vacancy->update([
+                'title' => $validated['title'],
+                'department' => $validated['department'],
+                'employment_type' => $validated['employmentType'],
+                'location' => 'Villamor Air Base, Pasay City',
+                'description' => $validated['description'],
+                'responsibilities' => $validated['responsibilities'] ?? $vacancy->responsibilities,
+                'requirements' => $validated['requirements'] ?? $vacancy->requirements,
+                'salary_grade' => $validated['salaryGrade'] ?? $vacancy->salary_grade,
+                'deadline' => $validated['deadline'] ?? $vacancy->deadline,
+                'custom_file_requirements' => $request->custom_file_requirements ?? $vacancy->custom_file_requirements,
+                'status' => $validated['status'] ?? $vacancy->status,
+            ]);
 
-        return back()->with('message', 'Job updated successfully.');
+            return back()->with('message', 'Job updated successfully.');
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            throw $ve;
+        } catch (\Throwable $ex) {
+            \Illuminate\Support\Facades\Log::error("Error updating vacancy ID {$vacancy->id}: " . $ex->getMessage());
+            return back()->withErrors(['error' => 'Failed to update job vacancy: ' . $ex->getMessage()]);
+        }
     }
 
     /**
@@ -123,7 +129,13 @@ class JobController extends Controller
      */
     public function destroy(Vacancy $vacancy)
     {
-        $vacancy->delete();
-        return back()->with('message', 'Job deleted successfully.');
+        try {
+            \App\Models\Application::where('job_id', $vacancy->id)->delete();
+            $vacancy->delete();
+            return back()->with('message', 'Job deleted successfully.');
+        } catch (\Throwable $ex) {
+            \Illuminate\Support\Facades\Log::error("Error deleting vacancy ID {$vacancy->id}: " . $ex->getMessage());
+            return back()->withErrors(['error' => 'Failed to delete job vacancy: ' . $ex->getMessage()]);
+        }
     }
 }

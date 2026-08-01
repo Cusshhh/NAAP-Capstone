@@ -13,11 +13,30 @@ class CalendarEventController extends Controller
      */
     public function index()
     {
-        $events = CalendarEvent::where('user_id', Auth::id())
-            ->orWhereNull('user_id')
-            ->latest()
-            ->get();
-            
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([]);
+        }
+
+        $adminUserIds = \App\Models\User::whereIn('email', ['admin@naap.edu.ph', 'admin@admin.com'])
+            ->pluck('id')
+            ->toArray();
+
+        if ($user->isAdmin() || in_array($user->email, ['admin@naap.edu.ph', 'admin@admin.com'])) {
+            // HR Admin sees: Admin events, null user_id events, or public events
+            $events = CalendarEvent::whereIn('user_id', $adminUserIds)
+                ->orWhereNull('user_id')
+                ->orWhere('is_public', true)
+                ->latest()
+                ->get();
+        } else {
+            // Applicant sees: ONLY their own personal events or public events
+            $events = CalendarEvent::where('user_id', $user->id)
+                ->orWhere('is_public', true)
+                ->latest()
+                ->get();
+        }
+
         return response()->json($events);
     }
 
@@ -26,22 +45,35 @@ class CalendarEventController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string',
-            'date' => 'required|date',
-            'time' => 'required|string',
-            'type' => 'required|string',
-            'venue' => 'nullable|string',
-            'panel_members' => 'nullable|string',
-            'result_notes' => 'nullable|string',
-        ]);
+        try {
+            $validated = $request->validate([
+                'title' => 'required|string',
+                'date' => 'required',
+                'time' => 'required|string',
+                'type' => 'required|string',
+                'venue' => 'nullable|string',
+                'panel_members' => 'nullable|string',
+                'result_notes' => 'nullable|string',
+            ]);
 
-        $event = CalendarEvent::create(array_merge(
-            $validated,
-            ['user_id' => Auth::id()]
-        ));
+            // Ensure date is formatted as YYYY-MM-DD
+            $dateStr = date('Y-m-d', strtotime($validated['date']));
 
-        return response()->json($event, 201);
+            $event = CalendarEvent::create(array_merge(
+                $validated,
+                [
+                    'date' => $dateStr,
+                    'user_id' => Auth::id()
+                ]
+            ));
+
+            return response()->json($event, 201);
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            return response()->json(['errors' => $ve->errors(), 'message' => $ve->getMessage()], 422);
+        } catch (\Throwable $ex) {
+            \Log::error('CalendarEvent Store Error: ' . $ex->getMessage());
+            return response()->json(['error' => $ex->getMessage(), 'message' => $ex->getMessage()], 500);
+        }
     }
 
     /**
@@ -49,7 +81,8 @@ class CalendarEventController extends Controller
      */
     public function destroy(CalendarEvent $calendarEvent)
     {
-        if ($calendarEvent->user_id !== Auth::id()) {
+        $user = Auth::user();
+        if (!$user->isAdmin() && $calendarEvent->user_id !== $user->id) {
             return response()->json(['error' => 'Unauthorized action.'], 403);
         }
 

@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Models\Application; 
+use App\Models\ActivityLog;
 
 class ApplicantController extends Controller
 {
@@ -65,6 +66,18 @@ class ApplicantController extends Controller
 
             Log::info("Application created successfully with ID: {$application->id}");
 
+            try {
+                ActivityLog::write(
+                    "New Application Submitted",
+                    "{$application->applicant_name} submitted application for {$application->job_title}",
+                    "Villamor Campus",
+                    "FileText",
+                    "text-blue-600 bg-blue-50"
+                );
+            } catch (\Exception $ex) {
+                Log::warning("ActivityLog write failed: " . $ex->getMessage());
+            }
+
             return redirect()->route('dashboard')->with('message', 'Application submitted successfully!');
         } catch (\Exception $e) {
             Log::error('Application creation failed: ' . $e->getMessage(), [
@@ -86,26 +99,31 @@ class ApplicantController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
-        $applications = Application::where('email', $user->email)
+        $rawApps = Application::where('email', $user->email)
+            ->select('id', 'job_title', 'job_id', 'status', 'created_at', 'updated_at', 'phone_number', 'education', 'email')
             ->latest()
-            ->get()
-            ->map(function ($app) {
-                return [
-                    'id' => $app->id,
-                    'jobTitle' => $app->job_title,
-                    'jobId' => $app->job_id,
-                    'status' => $app->status,
-                    'submittedDate' => $app->created_at->toISOString(),
-                    'updatedAt' => $app->updated_at->toISOString(),
-                    'phone' => $app->phone_number,
-                    'education' => $app->education,
-                    'email' => $app->email,
-                    'hasUnreadMessages' => \App\Models\Message::where('application_id', $app->id)
-                        ->where('sender_id', '!=', Auth::id())
-                        ->where('is_read', false)
-                        ->exists(),
-                ];
-            });
+            ->get();
+
+        $unreadAppIds = \App\Models\Message::whereIn('application_id', $rawApps->pluck('id'))
+            ->where('sender_id', '!=', Auth::id())
+            ->where('is_read', false)
+            ->pluck('application_id')
+            ->flip();
+
+        $applications = $rawApps->map(function ($app) use ($unreadAppIds) {
+            return [
+                'id' => $app->id,
+                'jobTitle' => $app->job_title,
+                'jobId' => $app->job_id,
+                'status' => $app->status,
+                'submittedDate' => $app->created_at->toISOString(),
+                'updatedAt' => $app->updated_at ? $app->updated_at->toISOString() : $app->created_at->toISOString(),
+                'phone' => $app->phone_number,
+                'education' => $app->education,
+                'email' => $app->email,
+                'hasUnreadMessages' => isset($unreadAppIds[$app->id]),
+            ];
+        });
 
         $jobs = \App\Models\Vacancy::where('status', 'Open')->latest()->get()->map(function ($vacancy) {
             return [
@@ -212,16 +230,21 @@ class ApplicantController extends Controller
      */
     public function withdraw(Application $application)
     {
-        if ($application->email !== Auth::user()->email) {
-            return response()->json(['error' => 'Unauthorized action.'], 403);
+        try {
+            if ($application->email !== Auth::user()->email) {
+                return response()->json(['error' => 'Unauthorized action.'], 403);
+            }
+
+            $application->update(['status' => 'Withdrawn']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Application withdrawn successfully.'
+            ]);
+        } catch (\Throwable $ex) {
+            Log::error("Error withdrawing application ID {$application->id}: " . $ex->getMessage());
+            return response()->json(['error' => 'Failed to withdraw application'], 500);
         }
-
-        $application->update(['status' => 'Withdrawn']);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Application withdrawn successfully.'
-        ]);
     }
 
     /**
@@ -229,15 +252,20 @@ class ApplicantController extends Controller
      */
     public function destroy(Application $application)
     {
-        if ($application->email !== Auth::user()->email) {
-            return response()->json(['error' => 'Unauthorized action.'], 403);
+        try {
+            if ($application->email !== Auth::user()->email) {
+                return response()->json(['error' => 'Unauthorized action.'], 403);
+            }
+
+            $application->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Application deleted permanently.'
+            ]);
+        } catch (\Throwable $ex) {
+            Log::error("Error deleting application ID {$application->id}: " . $ex->getMessage());
+            return response()->json(['error' => 'Failed to delete application'], 500);
         }
-
-        $application->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Application deleted permanently.'
-        ]);
     }
 }

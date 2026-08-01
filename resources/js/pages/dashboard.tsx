@@ -481,6 +481,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     };
 
     const saveProfile = () => {
+        const currentPhoto = profileImage || localStorage.getItem(`user_profile_image_${auth.user.id}`);
         const syncData = {
             firstName: profileData.firstName,
             middleName: profileData.middleName,
@@ -494,7 +495,9 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             pwd: profileData.pwd,
             phone: profileData.phone,
             address: profileData.address,
-            email: profileData.email
+            email: profileData.email,
+            photo: currentPhoto,
+            avatar: currentPhoto
         };
 
         localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(syncData));
@@ -518,13 +521,24 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             const reader = new FileReader();
             reader.onloadend = () => {
                 const base64 = reader.result as string;
-                setProfileData((prev: any) => {
-                    // Update auth user name reference if needed, but mainly tracking image here
-                    return prev;
-                });
                 setProfileImage(base64);
                 localStorage.setItem(`user_profile_image_${auth.user.id}`, base64);
-                toast.success("Profile photo updated!");
+                
+                const currentData = {
+                    ...profileData,
+                    photo: base64,
+                    avatar: base64
+                };
+                setProfileData(currentData);
+                localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(currentData));
+
+                router.post('/profile/save', {
+                    profile_data: currentData
+                }, {
+                    onSuccess: () => {
+                        toast.success("Profile photo updated!");
+                    }
+                });
             };
             reader.readAsDataURL(file);
         }
@@ -532,15 +546,17 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
     const [viewingDocument, setViewingDocument] = useState<{ name: string; url: string; fileName?: string } | null>(null);
 
-    // Use real applications from props, fallback to empty array
+    // Use real applications from props if provided, fallback to mock apps only when running without server props
     const [myApplications, setMyApplications] = useState<Application[]>(() => {
-        const dbAppsMapped = (propApplications || []).map((app: any) => ({
-            ...app,
-            department: app.department || 'Aviation',
-            location: app.location || 'Pasay City'
-        }));
+        if (propApplications && Array.isArray(propApplications)) {
+            return propApplications.map((app: any) => ({
+                ...app,
+                department: app.department || 'Aviation',
+                location: app.location || 'Pasay City'
+            }));
+        }
         const mockApps = typeof window !== 'undefined' ? getApplications().filter((app: any) => app.applicantEmail === auth.user.id || app.applicantEmail === auth.user.email) : [];
-        const mockAppsMapped = mockApps.map((app: any) => ({
+        return mockApps.map((app: any) => ({
             ...app,
             id: `mock_${app.id}`,
             jobTitle: app.jobTitle,
@@ -553,34 +569,27 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             department: app.department || 'Aviation',
             location: app.location || 'Pasay City'
         }));
-        return [...dbAppsMapped, ...mockAppsMapped];
     });
 
     // Update state when props change
     useEffect(() => {
-        if (propApplications) {
+        if (propApplications && Array.isArray(propApplications)) {
             const dbAppsMapped = propApplications.map((app: any) => ({
                 ...app,
                 department: app.department || 'Aviation',
                 location: app.location || 'Pasay City'
             }));
-            const mockApps = typeof window !== 'undefined' ? getApplications().filter((app: any) => app.applicantEmail === auth.user.id || app.applicantEmail === auth.user.email) : [];
-            const mockAppsMapped = mockApps.map((app: any) => ({
-                ...app,
-                id: `mock_${app.id}`,
-                jobTitle: app.jobTitle,
-                jobId: app.jobId,
-                status: app.status,
-                submittedDate: app.submittedDate,
-                phone: app.phone,
-                education: app.education,
-                email: app.email,
-                department: app.department || 'Aviation',
-                location: app.location || 'Pasay City'
-            }));
-            setMyApplications([...dbAppsMapped, ...mockAppsMapped]);
+            setMyApplications(dbAppsMapped);
         }
     }, [propApplications]);
+
+    // Auto-refresh applications every 5 seconds so status changes show up automatically
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.reload({ only: ['propApplications', 'dbApplications'], preserveScroll: true, preserveState: true });
+        }, 5000);
+        return () => clearInterval(interval);
+    }, []);
 
     const [filterStatus, setFilterStatus] = useState('Total');
 
@@ -868,8 +877,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 });
             } catch (e) {}
 
-            // Add custom local events
-            const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('custom_calendar_events') || '[]') : [];
+            // Add custom local applicant events
+            const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(`applicant_custom_events_${auth.user.id}`) || '[]') : [];
             
             // Sort events by date descending (newest/most recent first)
             const sortedEvents = [...eventsList, ...localCustom].sort((a, b) => {
@@ -906,18 +915,67 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         if (typeof window === 'undefined') return 0;
         try {
             const saved = getCombinedInterviews();
-            return saved.filter((interview: any) => checkInterviewMatch(interview)).length;
+            return saved.filter((interview: any) => {
+                if (!checkInterviewMatch(interview)) return false;
+                const matchingApp = myApplications.find(a => (a.jobTitle || '').toLowerCase() === (interview.position || '').toLowerCase());
+                if (matchingApp && ['Hired', 'Rejected', 'Withdrawn'].includes(matchingApp.status)) {
+                    return false;
+                }
+                return true;
+            }).length;
         } catch (e) {
             return 0;
         }
     })();
 
-    const handleWithdraw = async (id: any) => {
-        if (confirm("Are you sure you want to withdraw this application?")) {
-            const isMock = typeof id === 'string' && id.startsWith('mock_');
+    const [actionConfirmModal, setActionConfirmModal] = useState<{
+        isOpen: boolean;
+        type: 'withdraw' | 'delete' | 'reset' | null;
+        targetId: any | null;
+        targetTitle?: string;
+    }>({
+        isOpen: false,
+        type: null,
+        targetId: null,
+        targetTitle: '',
+    });
+
+    const requestWithdraw = (id: any, jobTitle?: string) => {
+        setActionConfirmModal({
+            isOpen: true,
+            type: 'withdraw',
+            targetId: id,
+            targetTitle: jobTitle || '',
+        });
+    };
+
+    const requestDelete = (id: any, jobTitle?: string) => {
+        setActionConfirmModal({
+            isOpen: true,
+            type: 'delete',
+            targetId: id,
+            targetTitle: jobTitle || '',
+        });
+    };
+
+    const requestReset = () => {
+        setActionConfirmModal({
+            isOpen: true,
+            type: 'reset',
+            targetId: null,
+            targetTitle: '',
+        });
+    };
+
+    const executeConfirmedAction = async () => {
+        const { type, targetId } = actionConfirmModal;
+        setActionConfirmModal(prev => ({ ...prev, isOpen: false }));
+
+        if (type === 'withdraw' && targetId != null) {
+            const isMock = typeof targetId === 'string' && targetId.startsWith('mock_');
             if (!isMock) {
                 try {
-                    await axios.post(`/applications/${id}/withdraw`);
+                    await axios.post(`/applications/${targetId}/withdraw`);
                 } catch (e: any) {
                     console.error(e);
                     toast.error(e.response?.data?.error || "Failed to withdraw application.");
@@ -926,12 +984,12 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             }
 
             const updatedApps = myApplications.map(app =>
-                app.id === id ? { ...app, status: 'Withdrawn' as any } : app
+                app.id === targetId ? { ...app, status: 'Withdrawn' as any } : app
             );
             setMyApplications(updatedApps);
 
             // Persist to localStorage if it's a custom application
-            const rawId = typeof id === 'string' && id.startsWith('mock_') ? id.replace('mock_', '') : id;
+            const rawId = typeof targetId === 'string' && targetId.startsWith('mock_') ? targetId.replace('mock_', '') : targetId;
             const localApps = JSON.parse(localStorage.getItem('mock_applications_custom') || '[]');
             const updatedLocalApps = localApps.map((app: any) =>
                 String(app.id) === String(rawId) ? { ...app, status: 'Withdrawn' } : app
@@ -939,15 +997,11 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             localStorage.setItem('mock_applications_custom', JSON.stringify(updatedLocalApps));
 
             toast.success("Application withdrawn.");
-        }
-    };
-
-    const handleDelete = async (id: any) => {
-        if (confirm("Are you sure you want to permanently delete this application? This action cannot be undone.")) {
-            const isMock = typeof id === 'string' && id.startsWith('mock_');
+        } else if (type === 'delete' && targetId != null) {
+            const isMock = typeof targetId === 'string' && targetId.startsWith('mock_');
             if (!isMock) {
                 try {
-                    await axios.delete(`/applications/${id}`);
+                    await axios.delete(`/applications/${targetId}`);
                 } catch (e: any) {
                     console.error(e);
                     toast.error(e.response?.data?.error || "Failed to delete application permanently.");
@@ -956,11 +1010,11 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             }
 
             // Remove from state
-            const updatedApps = myApplications.filter(app => app.id !== id);
+            const updatedApps = myApplications.filter(app => app.id !== targetId);
             setMyApplications(updatedApps);
 
             // Remove from localStorage
-            const rawId = typeof id === 'string' && id.startsWith('mock_') ? id.replace('mock_', '') : id;
+            const rawId = typeof targetId === 'string' && targetId.startsWith('mock_') ? targetId.replace('mock_', '') : targetId;
             const localApps = JSON.parse(localStorage.getItem('mock_applications_custom') || '[]');
             const updatedLocalApps = localApps.filter((app: any) => String(app.id) !== String(rawId));
             localStorage.setItem('mock_applications_custom', JSON.stringify(updatedLocalApps));
@@ -969,6 +1023,13 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             window.dispatchEvent(new StorageEvent('storage', { key: 'mock_applications_custom' }));
 
             toast.success("Application deleted permanently.");
+        } else if (type === 'reset') {
+            const allApps = JSON.parse(localStorage.getItem('mock_applications_custom') || '[]');
+            const otherApps = allApps.filter((app: any) => app.applicantEmail !== user.email);
+            localStorage.setItem('mock_applications_custom', JSON.stringify(otherApps));
+            setMyApplications([]);
+            toast.success("All applications have been reset.");
+            window.dispatchEvent(new StorageEvent('storage', { key: 'mock_applications_custom' }));
         }
     };
 
@@ -1039,8 +1100,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     const getStatusBadge = (status: string, jobTitle?: string) => {
         let displayStatus = status;
 
-        // If jobTitle is provided, check if there is an active scheduled interview for this job
-        if (jobTitle && typeof window !== 'undefined') {
+        // Only override to Interview if application is active (not Hired, Rejected, or Withdrawn)
+        if (!['Hired', 'Rejected', 'Withdrawn'].includes(status) && jobTitle && typeof window !== 'undefined') {
             try {
                 const savedInterviews = getCombinedInterviews();
                 const hasInterview = savedInterviews.some((interview: any) => {
@@ -1308,9 +1369,6 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                 <Link href="/jobs">
                                     <Button variant="outline" className="text-white border-white/30 hover:bg-white/10">Find Jobs</Button>
                                 </Link>
-                                <Button onClick={handleCheckStatus} variant="accent" className="font-bold shadow-lg">
-                                    Check Status
-                                </Button>
                             </div>
                         </div>
                     </div>
@@ -1440,7 +1498,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                 <CustomTooltip content="Delete">
                                                                     <Trash2
                                                                         className="w-4 h-4 text-red-500 hover:text-red-700 cursor-pointer transition-colors"
-                                                                        onClick={() => handleDelete(app.id)}
+                                                                        onClick={() => requestDelete(app.id, app.jobTitle)}
                                                                     />
                                                                 </CustomTooltip>
                                                             ) : (
@@ -1449,7 +1507,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                         variant="ghost"
                                                                         size="sm"
                                                                         className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                                        onClick={() => handleWithdraw(app.id)}
+                                                                        onClick={() => requestWithdraw(app.id, app.jobTitle)}
                                                                     >
                                                                         <LogOut className="w-4 h-4" />
                                                                     </Button>
@@ -1695,16 +1753,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 size="sm"
                                                 variant="outline"
                                                 className="text-red-500 border-red-200 hover:bg-red-50"
-                                                onClick={() => {
-                                                    if (confirm("Are you sure? This will remove ALL your submitted applications. This action cannot be undone.")) {
-                                                        const allApps = JSON.parse(localStorage.getItem('mock_applications_custom') || '[]');
-                                                        const otherApps = allApps.filter((app: any) => app.applicantEmail !== user.email);
-                                                        localStorage.setItem('mock_applications_custom', JSON.stringify(otherApps));
-                                                        setMyApplications([]);
-                                                        toast.success("All applications have been reset.");
-                                                        window.dispatchEvent(new StorageEvent('storage', { key: 'mock_applications_custom' }));
-                                                    }
-                                                }}
+                                                onClick={requestReset}
                                             >
                                                 <LogOut className="w-4 h-4 mr-2" />
                                                 Reset My Applications
@@ -2169,6 +2218,74 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                             >
                                 Close
                             </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* --- ACTION CONFIRMATION MODAL --- */}
+                <Dialog open={actionConfirmModal.isOpen} onOpenChange={(open) => !open && setActionConfirmModal(prev => ({ ...prev, isOpen: false }))}>
+                    <DialogContent className="sm:max-w-md bg-[#193153] text-white border-slate-700 shadow-2xl rounded-2xl p-6">
+                        <DialogHeader className="flex flex-col items-center text-center space-y-3 pt-2">
+                            <div className={`w-14 h-14 rounded-full flex items-center justify-center ${
+                                actionConfirmModal.type === 'withdraw' 
+                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            }`}>
+                                {actionConfirmModal.type === 'withdraw' ? (
+                                    <AlertCircle className="w-7 h-7" />
+                                ) : (
+                                    <Trash2 className="w-7 h-7" />
+                                )}
+                            </div>
+                            <DialogTitle className="text-xl font-bold text-white tracking-wide">
+                                {actionConfirmModal.type === 'withdraw' && 'Withdraw Application?'}
+                                {actionConfirmModal.type === 'delete' && 'Delete Application Permanently?'}
+                                {actionConfirmModal.type === 'reset' && 'Reset All Applications?'}
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="text-center text-slate-300 text-sm py-3 space-y-2">
+                            {actionConfirmModal.type === 'withdraw' && (
+                                <>
+                                    <p>Are you sure you want to withdraw your application{actionConfirmModal.targetTitle ? <> for <strong className="text-white font-semibold">{actionConfirmModal.targetTitle}</strong></> : ''}?</p>
+                                    <p className="text-xs text-slate-400">Your application status will be updated to <span className="text-amber-400 font-medium">Withdrawn</span>.</p>
+                                </>
+                            )}
+                            {actionConfirmModal.type === 'delete' && (
+                                <>
+                                    <p>Are you sure you want to permanently delete your application record{actionConfirmModal.targetTitle ? <> for <strong className="text-white font-semibold">{actionConfirmModal.targetTitle}</strong></> : ''}?</p>
+                                    <p className="text-xs text-red-400 font-medium">This action is permanent and cannot be undone.</p>
+                                </>
+                            )}
+                            {actionConfirmModal.type === 'reset' && (
+                                <>
+                                    <p>Are you sure you want to remove <strong className="text-white font-semibold">ALL</strong> your submitted applications?</p>
+                                    <p className="text-xs text-red-400 font-medium">This will clear your application history completely.</p>
+                                </>
+                            )}
+                        </div>
+
+                        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end border-t border-slate-700/60 pt-4 mt-2">
+                            <button
+                                type="button"
+                                onClick={() => setActionConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                                className="px-4 py-2 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-800 text-sm font-medium transition-colors cursor-pointer w-full sm:w-auto"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={executeConfirmedAction}
+                                className={`px-5 py-2 rounded-xl text-white text-sm font-semibold transition-all shadow-md cursor-pointer w-full sm:w-auto ${
+                                    actionConfirmModal.type === 'withdraw'
+                                        ? 'bg-amber-600 hover:bg-amber-500 active:bg-amber-700 shadow-amber-900/30'
+                                        : 'bg-red-600 hover:bg-red-500 active:bg-red-700 shadow-red-900/30'
+                                }`}
+                            >
+                                {actionConfirmModal.type === 'withdraw' && 'Confirm Withdrawal'}
+                                {actionConfirmModal.type === 'delete' && 'Delete Application'}
+                                {actionConfirmModal.type === 'reset' && 'Reset Applications'}
+                            </button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>

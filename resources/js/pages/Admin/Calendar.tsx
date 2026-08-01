@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import { Calendar as CalendarIcon, ChevronLeft, Clock, MapPin, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
@@ -51,8 +51,8 @@ export default function AdminCalendar() {
             });
         });
 
-        // Load custom events from database & LocalStorage
-        const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('custom_calendar_events') || '[]') : [];
+        // Load custom events from database & Admin LocalStorage
+        const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(`admin_custom_events_${auth?.user?.id || 'admin'}`) || '[]') : [];
         const formattedDbEvents = customEventsList.map((e: any) => {
             let formattedDate = e.date;
             try {
@@ -138,22 +138,44 @@ export default function AdminCalendar() {
             return;
         }
 
-        const [y, m, d] = newEvent.date.split('-').map(Number);
-        const dateObj = new Date(y, m - 1, d);
+        let dateObj = new Date(newEvent.date);
+        if (isNaN(dateObj.getTime()) && newEvent.date.includes('-')) {
+            const parts = newEvent.date.split('-').map(Number);
+            if (parts[0] > 1000) {
+                dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            } else {
+                dateObj = new Date(parts[2], parts[0] - 1, parts[1]);
+            }
+        } else if (isNaN(dateObj.getTime()) && newEvent.date.includes('/')) {
+            const parts = newEvent.date.split('/').map(Number);
+            if (parts[2] > 1000) {
+                dateObj = new Date(parts[2], parts[0] - 1, parts[1]);
+            } else {
+                dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            }
+        }
 
+        if (isNaN(dateObj.getTime())) {
+            dateObj = new Date();
+        }
+
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const isoDate = `${yyyy}-${mm}-${dd}`;
         const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
         let dbEvent: any = null;
         try {
             const response = await axios.post('/calendar/events', {
                 title: newEvent.title,
-                date: newEvent.date,
+                date: isoDate,
                 time: newEvent.time,
                 type: newEvent.type
             });
             dbEvent = response.data;
-        } catch (e) {
-            console.error("Failed to save event to database", e);
+        } catch (e: any) {
+            console.warn("Saving admin event locally fallback", e);
         }
 
         const eventToAdd = dbEvent ? {
@@ -163,20 +185,23 @@ export default function AdminCalendar() {
             time: dbEvent.time,
             type: dbEvent.type
         } : {
-            id: Date.now(),
+            id: `local_${Date.now()}`,
             title: newEvent.title,
             date: formattedDate,
             time: newEvent.time,
             type: newEvent.type
         };
 
+        const storageKey = `admin_custom_events_${auth?.user?.id || 'admin'}`;
         if (dbEvent) {
             setDbCustomEvents([dbEvent, ...dbCustomEvents]);
         } else {
-            const localCustom = JSON.parse(localStorage.getItem('custom_calendar_events') || '[]');
-            const updated = [...localCustom, eventToAdd];
-            localStorage.setItem('custom_calendar_events', JSON.stringify(updated));
-            setEvents(buildEvents(dbCustomEvents, dbInterviews));
+            const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(storageKey) || '[]') : [];
+            const updated = [eventToAdd, ...localCustom];
+            if (typeof window !== 'undefined') {
+                localStorage.setItem(storageKey, JSON.stringify(updated));
+            }
+            setEvents(prev => [eventToAdd, ...prev]);
         }
 
         setNewEvent({ title: '', date: '', time: '', type: 'Personal' });
@@ -201,7 +226,7 @@ export default function AdminCalendar() {
 
             // Update custom events in LocalStorage if it's custom
             const customOnly = updated.filter(e => String(e.id).match(/^\d+$/));
-            localStorage.setItem('custom_calendar_events', JSON.stringify(customOnly));
+            localStorage.setItem(`admin_custom_events_${auth?.user?.id || 'admin'}`, JSON.stringify(customOnly));
 
             // If it is a scheduled interview, remove it from scheduled_interviews_custom
             if (String(id).startsWith('real_interview_')) {
@@ -235,7 +260,7 @@ export default function AdminCalendar() {
                 }
             }
         }
-        return new Date(2026, 1, 1);
+        return new Date();
     });
 
     React.useEffect(() => {
@@ -514,7 +539,7 @@ export default function AdminCalendar() {
                             <CardHeader className="bg-[#193153] p-6">
                                 <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
                                     <Clock className="w-5 h-5 text-blue-300" />
-                                    Upcoming Agenda
+                                    Schedules
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-0 max-h-[700px] overflow-y-auto">
@@ -525,13 +550,22 @@ export default function AdminCalendar() {
                                         <p className="text-xs mt-1">Click on a date to add one.</p>
                                     </div>
                                 ) : (
-                                    events.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((event, index) => (
+                                    events.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((event, index) => (
                                         <div 
                                             key={index} 
                                             onClick={() => {
-                                                const d = new Date(event.date);
-                                                if (!isNaN(d.getTime())) {
-                                                    setCurrentDate(d);
+                                                if (event.type === 'Interview' || (event.title && event.title.startsWith('Interview:'))) {
+                                                    const candidateName = event.candidateName || event.candidate_name || (event.title ? event.title.replace('Interview:', '').split('-')[0].trim() : '');
+                                                    if (candidateName) {
+                                                        router.visit(`/admin/applicants?search=${encodeURIComponent(candidateName)}`);
+                                                    } else {
+                                                        router.visit('/admin/applicants');
+                                                    }
+                                                } else {
+                                                    const d = new Date(event.date);
+                                                    if (!isNaN(d.getTime())) {
+                                                        setCurrentDate(d);
+                                                    }
                                                 }
                                             }}
                                             className="px-6 py-5 border-b last:border-0 hover:bg-gray-50 transition-all group relative cursor-pointer"

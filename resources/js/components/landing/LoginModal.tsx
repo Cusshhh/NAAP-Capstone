@@ -95,7 +95,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
                         <Label htmlFor="remember">Remember me</Label>
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={processing}>
+                    <Button type="submit" className="w-full bg-[#193153] hover:bg-[#152844] text-[#ffdd59] font-bold py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all border border-[#ffdd59]/30" disabled={processing}>
                         {processing && <Spinner className="mr-2" />}
                         Log in
                     </Button>

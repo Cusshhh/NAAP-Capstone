@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Interview;
 use App\Models\Application;
 use App\Models\ActivityLog;
+use Illuminate\Support\Facades\Log;
 
 class InterviewController extends Controller
 {
@@ -15,8 +16,13 @@ class InterviewController extends Controller
      */
     public function index()
     {
-        $interviews = Interview::latest()->get();
-        return response()->json($interviews);
+        try {
+            $interviews = Interview::latest()->get();
+            return response()->json($interviews);
+        } catch (\Throwable $ex) {
+            Log::error('Error fetching interviews: ' . $ex->getMessage());
+            return response()->json(['error' => 'Failed to fetch interviews'], 500);
+        }
     }
 
     /**
@@ -24,34 +30,51 @@ class InterviewController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'application_id' => 'required|exists:applications,id',
-            'date' => 'required|date',
-            'time' => 'required|string',
-            'panel_members' => 'nullable|string',
-            'venue' => 'required|string',
-            'notify_applicant' => 'boolean',
-            'result_notes' => 'nullable|string',
-            'candidate_name' => 'required|string',
-            'position' => 'required|string',
-            'applicant_email' => 'required|string',
-        ]);
+        try {
+            $validated = $request->validate([
+                'application_id' => 'required|exists:applications,id',
+                'date' => 'required|date',
+                'time' => 'required|string',
+                'panel_members' => 'nullable|string',
+                'venue' => 'required|string',
+                'notify_applicant' => 'boolean',
+                'result_notes' => 'nullable|string',
+                'candidate_name' => 'required|string',
+                'position' => 'required|string',
+                'applicant_email' => 'required|string',
+            ]);
 
-        $interview = Interview::updateOrCreate(
-            ['application_id' => $validated['application_id']],
-            $validated
-        );
+            $interview = Interview::updateOrCreate(
+                ['application_id' => $validated['application_id']],
+                $validated
+            );
 
-        // Also write activity log
-        ActivityLog::write(
-            'Interview Scheduled',
-            "Scheduled interview with {$interview->candidate_name} for {$interview->position}",
-            $interview->application ? $interview->application->campus : 'System',
-            'Calendar',
-            'text-purple-500 bg-purple-100'
-        );
+            // Update application status to Interview Scheduled
+            $application = Application::find($validated['application_id']);
+            if ($application) {
+                $application->update(['status' => 'Interview Scheduled']);
+            }
 
-        return response()->json($interview, 201);
+            // Also write activity log
+            try {
+                ActivityLog::write(
+                    'Interview Scheduled',
+                    "Scheduled interview with {$interview->candidate_name} for {$interview->position}",
+                    $interview->application ? $interview->application->campus : 'System',
+                    'Calendar',
+                    'text-purple-500 bg-purple-100'
+                );
+            } catch (\Throwable $logEx) {
+                Log::warning('ActivityLog failed: ' . $logEx->getMessage());
+            }
+
+            return response()->json($interview, 201);
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            throw $ve;
+        } catch (\Throwable $ex) {
+            Log::error('Error storing interview: ' . $ex->getMessage());
+            return response()->json(['error' => 'Failed to schedule interview: ' . $ex->getMessage()], 500);
+        }
     }
 
     /**
@@ -59,27 +82,38 @@ class InterviewController extends Controller
      */
     public function update(Request $request, Interview $interview)
     {
-        $validated = $request->validate([
-            'date' => 'required|date',
-            'time' => 'required|string',
-            'panel_members' => 'nullable|string',
-            'venue' => 'required|string',
-            'notify_applicant' => 'boolean',
-            'result_notes' => 'nullable|string',
-        ]);
+        try {
+            $validated = $request->validate([
+                'date' => 'required|date',
+                'time' => 'required|string',
+                'panel_members' => 'nullable|string',
+                'venue' => 'required|string',
+                'notify_applicant' => 'boolean',
+                'result_notes' => 'nullable|string',
+            ]);
 
-        $interview->update($validated);
+            $interview->update($validated);
 
-        // Write activity log
-        ActivityLog::write(
-            'Interview Updated',
-            "Updated interview with {$interview->candidate_name} for {$interview->position}",
-            $interview->application ? $interview->application->campus : 'System',
-            'Calendar',
-            'text-blue-500 bg-blue-100'
-        );
+            // Write activity log
+            try {
+                ActivityLog::write(
+                    'Interview Updated',
+                    "Updated interview with {$interview->candidate_name} for {$interview->position}",
+                    $interview->application ? $interview->application->campus : 'System',
+                    'Calendar',
+                    'text-blue-500 bg-blue-100'
+                );
+            } catch (\Throwable $logEx) {
+                Log::warning('ActivityLog failed: ' . $logEx->getMessage());
+            }
 
-        return response()->json($interview);
+            return response()->json($interview);
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            throw $ve;
+        } catch (\Throwable $ex) {
+            Log::error("Error updating interview ID {$interview->id}: " . $ex->getMessage());
+            return response()->json(['error' => 'Failed to update interview: ' . $ex->getMessage()], 500);
+        }
     }
 
     /**
@@ -87,21 +121,31 @@ class InterviewController extends Controller
      */
     public function destroy(Interview $interview)
     {
-        $candidate = $interview->candidate_name;
-        $position = $interview->position;
-        $campus = $interview->application ? $interview->application->campus : 'System';
+        try {
+            $candidate = $interview->candidate_name;
+            $position = $interview->position;
+            $campus = $interview->application ? $interview->application->campus : 'System';
 
-        $interview->delete();
+            $interview->delete();
 
-        // Write activity log
-        ActivityLog::write(
-            'Interview Cancelled',
-            "Cancelled interview with {$candidate} for {$position}",
-            $campus,
-            'XCircle',
-            'text-red-500 bg-red-100'
-        );
+            // Write activity log
+            try {
+                ActivityLog::write(
+                    'Interview Cancelled',
+                    "Cancelled interview with {$candidate} for {$position}",
+                    $campus,
+                    'XCircle',
+                    'text-red-500 bg-red-100'
+                );
+            } catch (\Throwable $logEx) {
+                Log::warning('ActivityLog failed: ' . $logEx->getMessage());
+            }
 
-        return response()->json(['success' => true]);
+            return response()->json(['success' => true]);
+        } catch (\Throwable $ex) {
+            Log::error("Error deleting interview ID {$interview->id}: " . $ex->getMessage());
+            return response()->json(['error' => 'Failed to delete interview: ' . $ex->getMessage()], 500);
+        }
     }
 }
+

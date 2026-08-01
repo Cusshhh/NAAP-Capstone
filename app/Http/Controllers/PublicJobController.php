@@ -9,7 +9,7 @@ class PublicJobController extends Controller
 {
     public function index()
     {
-        $query = Vacancy::latest();
+        $query = Vacancy::withCount('applications')->latest();
 
         return Inertia::render('Jobs/Index', [
             'jobs' => $query->get()->map(function ($vacancy) {
@@ -24,7 +24,7 @@ class PublicJobController extends Controller
                     'description' => $vacancy->description,
                     'postedDate' => $vacancy->created_at->toDateString(),
                     'deadline' => $vacancy->deadline ? $vacancy->deadline->toDateString() : null,
-                    'applicantCount' => $vacancy->applications()->count(),
+                    'applicantCount' => $vacancy->applications_count ?? 0,
                     'status' => $isExpired ? 'Closed' : $vacancy->status,
                 ];
             })

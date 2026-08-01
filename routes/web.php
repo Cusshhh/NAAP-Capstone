@@ -57,6 +57,7 @@ Route::get('/calendar', function () {
     $user = Auth::user();
     
     $applications = \App\Models\Application::where('email', $user->email)
+        ->select('id', 'job_title', 'job_id', 'status', 'created_at', 'phone_number', 'education', 'email')
         ->latest()
         ->get()
         ->map(function ($app) {
@@ -169,6 +170,7 @@ Route::post('/logout', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/messages/{application}', [\App\Http\Controllers\MessageController::class, 'index'])->name('messages.index');
     Route::post('/messages/{application}', [\App\Http\Controllers\MessageController::class, 'store'])->name('messages.store');
+    Route::delete('/messages/{application}', [\App\Http\Controllers\MessageController::class, 'destroy'])->name('messages.destroy');
 
     Route::post('/applications/{application}/withdraw', [\App\Http\Controllers\ApplicantController::class, 'withdraw'])->name('applications.withdraw');
     Route::delete('/applications/{application}', [\App\Http\Controllers\ApplicantController::class, 'destroy'])->name('applications.destroy');
@@ -182,9 +184,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', function () {
-            $appQuery = \App\Models\Application::query();
+            $appQuery = \App\Models\Application::query()->select('id', 'applicant_name', 'job_title', 'status', 'created_at', 'updated_at');
             $jobQuery = \App\Models\Vacancy::query();
-            $staffingQuery = \App\Models\StaffingPosition::where('status', 'Unfilled');
 
             return Inertia::render('Admin/Dashboard', [
                 'dbApplications' => $appQuery->latest()->get()->map(function ($app) {
@@ -194,6 +195,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         'jobTitle' => $app->job_title,
                         'status' => $app->status,
                         'submittedDate' => $app->created_at->toISOString(),
+                        'updatedAt' => $app->updated_at ? $app->updated_at->toISOString() : $app->created_at->toISOString(),
                         'campus' => 'Villamor Air Base, Pasay City',
                     ];
                 }),
@@ -207,7 +209,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         'status' => $vacancy->status,
                     ];
                 }),
-                'unfilledStaffingCount' => $staffingQuery->count(),
+                'unfilledStaffingCount' => 0,
             ]);
         })->name('dashboard');
 
@@ -220,21 +222,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/reports/export', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'exportReport'])->name('reports.export');
 
         Route::get('/applicants', function () {
-            $query = \App\Models\Application::query();
+            $rawApps = \App\Models\Application::query()
+                ->select('id', 'applicant_name', 'email', 'job_title', 'status', 'created_at', 'education', 'dynamic_responses')
+                ->latest()
+                ->get();
+
+            $unreadAppIds = \App\Models\Message::whereIn('application_id', $rawApps->pluck('id'))
+                ->where('sender_id', '!=', auth()->id())
+                ->where('is_read', false)
+                ->pluck('application_id')
+                ->flip();
 
             return Inertia::render('Admin/Applicants', [
-                'applications' => $query->latest()->get()->map(function ($app) {
+                'applications' => $rawApps->map(function ($app) use ($unreadAppIds) {
                     return [
                         'id' => $app->id,
                         'applicantName' => $app->applicant_name,
                         'email' => $app->email,
                         'jobTitle' => $app->job_title,
                         'status' => $app->status,
-                        'submittedDate' => $app->created_at->toIso8601String(),
-                        'hasUnreadMessages' => \App\Models\Message::where('application_id', $app->id)
-                            ->where('sender_id', '!=', auth()->id())
-                            ->where('is_read', false)
-                            ->exists(),
+                        'submittedDate' => $app->created_at ? $app->created_at->toIso8601String() : null,
+                        'hasUnreadMessages' => isset($unreadAppIds[$app->id]),
                         'campus' => $app->campus ?: 'NAAP - Villamor Campus',
                         'education' => $app->education,
                         'experience' => isset($app->dynamic_responses['experience'])
@@ -415,35 +423,74 @@ Route::middleware(['auth', 'verified'])->group(function () {
         })->name('applicants');
 
         Route::get('/messages', function () {
-            $applications = \App\Models\Application::latest()->get()->map(function ($app) {
+            $rawApps = \App\Models\Application::select('id', 'applicant_name', 'email', 'job_title', 'status', 'created_at', 'phone_number', 'education', 'dynamic_responses')->latest()->get();
+
+            $unreadAppIds = \App\Models\Message::whereIn('application_id', $rawApps->pluck('id'))
+                ->where('sender_id', '!=', auth()->id())
+                ->where('is_read', false)
+                ->pluck('application_id')
+                ->flip();
+
+            $applications = $rawApps->map(function ($app) use ($unreadAppIds) {
                 // Get last message in this application
                 $lastMsg = \App\Models\Message::where('application_id', $app->id)
                     ->latest()
                     ->first();
 
+                $userProf = $app->user && is_array($app->user->profile_data) ? $app->user->profile_data : [];
+                $avatarUrl = null;
+                if (!empty($userProf['photo'])) {
+                    $avatarUrl = str_starts_with($userProf['photo'], 'data:') || str_starts_with($userProf['photo'], 'http')
+                        ? $userProf['photo']
+                        : '/storage/' . $userProf['photo'];
+                } elseif (!empty($userProf['avatar'])) {
+                    $avatarUrl = $userProf['avatar'];
+                } elseif (!empty($app->dynamic_responses['photo'])) {
+                    $avatarUrl = $app->dynamic_responses['photo'];
+                }
+
+                $realEducation = !empty($userProf['highestEducation'])
+                    ? $userProf['highestEducation'] . (!empty($userProf['degreeCourse']) ? ' - ' . $userProf['degreeCourse'] : '')
+                    : (!empty($userProf['degreeCourse'])
+                        ? $userProf['degreeCourse']
+                        : ($app->education ?: 'N/A'));
+
+                $realExperience = !empty($userProf['workExperienceDetails'])
+                    ? $userProf['workExperienceDetails']
+                    : (!empty($userProf['yearsOfExperience'])
+                        ? $userProf['yearsOfExperience'] . ' years of relevant experience'
+                        : (isset($app->dynamic_responses['experience'])
+                            ? $app->dynamic_responses['experience']
+                            : (isset($app->dynamic_responses['yearsOfExperience'])
+                                ? $app->dynamic_responses['yearsOfExperience'] . ' years of relevant experience'
+                                : '3+ years of relevant experience in ' . $app->job_title)));
+
+                $realPhone = !empty($userProf['phone']) ? $userProf['phone'] : ($app->phone_number ?: 'N/A');
+                $realAddress = !empty($userProf['address']) ? $userProf['address'] : 'N/A';
+
                 return [
                     'id' => $app->id,
                     'applicantName' => $app->applicant_name,
+                    'avatar' => $avatarUrl,
+                    'avatar_url' => $avatarUrl,
                     'email' => $app->email,
+                    'phone' => $realPhone,
+                    'address' => $realAddress,
                     'jobTitle' => $app->job_title,
                     'status' => $app->status,
                     'submittedDate' => $app->created_at ? $app->created_at->toIso8601String() : null,
                     'campus' => 'Villamor Air Base, Pasay City',
-                    'education' => $app->education ?: 'N/A',
-                    'experience' => isset($app->dynamic_responses['experience'])
-                        ? $app->dynamic_responses['experience']
-                        : (isset($app->dynamic_responses['yearsOfExperience'])
-                            ? $app->dynamic_responses['yearsOfExperience'] . ' years of relevant experience'
-                            : "3+ years of relevant experience in {$app->job_title}"),
-                    'skills' => isset($app->dynamic_responses['skills'])
-                        ? (is_array($app->dynamic_responses['skills']) ? $app->dynamic_responses['skills'] : explode(',', $app->dynamic_responses['skills']))
-                        : ['Aviation Operations', 'Communication', 'Technical Proficiency'],
+                    'education' => $realEducation,
+                    'experience' => $realExperience,
+                    'skills' => !empty($userProf['skills'])
+                        ? (is_array($userProf['skills']) ? $userProf['skills'] : explode(',', $userProf['skills']))
+                        : (isset($app->dynamic_responses['skills'])
+                            ? (is_array($app->dynamic_responses['skills']) ? $app->dynamic_responses['skills'] : explode(',', $app->dynamic_responses['skills']))
+                            : ['Aviation Operations', 'Communication', 'Technical Proficiency']),
+                    'profile_data' => $userProf,
                     'resume_path' => $app->resume_path,
                     'pds_document' => $app->pds_document,
-                    'hasUnreadMessages' => \App\Models\Message::where('application_id', $app->id)
-                        ->where('sender_id', '!=', auth()->id())
-                        ->where('is_read', false)
-                        ->exists(),
+                    'hasUnreadMessages' => isset($unreadAppIds[$app->id]),
                     'lastMessage' => $lastMsg ? $lastMsg->content : null,
                     'lastMessageTime' => $lastMsg ? $lastMsg->created_at->toISOString() : null,
                 ];
@@ -458,7 +505,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/activity-log', function () {
             return Inertia::render('Admin/ActivityLog', [
-                'dbApplications' => \App\Models\Application::latest()->get()->map(function ($app) {
+                'dbApplications' => \App\Models\Application::select('id', 'applicant_name', 'job_title', 'status', 'created_at')->latest()->get()->map(function ($app) {
                     return [
                         'id' => $app->id,
                         'applicantName' => $app->applicant_name,

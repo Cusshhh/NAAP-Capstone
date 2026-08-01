@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getAnalyticsData, mockInterviews, getActivities, getStaffingData, getJobs, mockEvents } from '@/data/mockData';
+import axios from 'axios';
 import AdminLayout from '@/layouts/AdminLayout';
 
 export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [], unfilledStaffingCount = 16 }: { auth: any, dbApplications?: any[], dbJobs?: any[], unfilledStaffingCount?: number }) {
@@ -29,31 +30,72 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
     const [analytics, setAnalytics] = useState(() => getAnalyticsData(undefined, dbApplications, dbJobs, unfilledStaffingCount));
     const [activities, setActivities] = useState(() => getActivities(dbApplications, dbJobs));
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-    const [interviews, setInterviews] = useState<any[]>(() => {
-        if (typeof window === 'undefined') return [];
+    const [realEvents, setRealEvents] = useState<any[]>([]);
+    const [interviews, setInterviews] = useState<any[]>([]);
+
+    // Fetch real calendar events and scheduled interviews
+    const fetchDashboardEvents = React.useCallback(async () => {
         try {
-            const saved = localStorage.getItem('scheduled_interviews_custom');
-            return saved ? JSON.parse(saved) : [];
+            const [eventsRes, interviewsRes] = await Promise.all([
+                axios.get('/calendar/events').catch(() => ({ data: [] })),
+                axios.get('/admin/interviews').catch(() => ({ data: [] }))
+            ]);
+            const dbCustom = eventsRes.data || [];
+            const dbInts = interviewsRes.data || [];
+            const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(`admin_custom_events_${auth?.user?.id || 'admin'}`) || '[]') : [];
+            const localInts = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]') : [];
+
+            // Combine custom events
+            const allEvents = [...dbCustom, ...localCustom].reduce((acc: any[], item: any) => {
+                if (!acc.some(x => String(x.id) === String(item.id))) {
+                    let formattedDate = item.date;
+                    try {
+                        const d = new Date(item.date);
+                        if (!isNaN(d.getTime())) {
+                            formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        }
+                    } catch(e) {}
+                    acc.push({ ...item, date: formattedDate });
+                }
+                return acc;
+            }, []);
+
+            // Combine interviews
+            const allInterviews = [...dbInts, ...localInts].reduce((acc: any[], item: any) => {
+                const candName = item.candidateName || item.candidate_name || 'Applicant';
+                const key = item.id || (candName + '_' + item.date);
+                if (!acc.some(x => (x.id || ((x.candidateName || x.candidate_name) + '_' + x.date)) === key)) {
+                    acc.push({ ...item, candidateName: candName, position: item.position || item.jobTitle || 'Vacancy' });
+                }
+                return acc;
+            }, []);
+
+            setRealEvents(allEvents);
+            setInterviews(allInterviews);
         } catch (e) {
-            return [];
+            console.error("Dashboard events sync error", e);
         }
-    });
+    }, []);
 
     // Initial load and sync
     React.useEffect(() => {
         const handleSync = () => {
             setAnalytics(getAnalyticsData(undefined, dbApplications, dbJobs, unfilledStaffingCount));
             setActivities(getActivities(dbApplications, dbJobs));
-            try {
-                const saved = localStorage.getItem('scheduled_interviews_custom');
-                setInterviews(saved ? JSON.parse(saved) : []);
-            } catch(e) {}
+            fetchDashboardEvents();
         };
         window.addEventListener('storage', handleSync);
-        // Also refresh on mount in case things changed
         handleSync();
         return () => window.removeEventListener('storage', handleSync);
-    }, [dbApplications, dbJobs, unfilledStaffingCount]);
+    }, [dbApplications, dbJobs, unfilledStaffingCount, fetchDashboardEvents]);
+
+    // Auto-refresh admin dashboard data every 5 seconds
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            router.reload({ only: ['dbApplications', 'dbJobs', 'unfilledStaffingCount'], preserveScroll: true, preserveState: true });
+        }, 5000);
+        return () => clearInterval(interval);
+    }, []);
 
     const { campuses: activeCampuses = [] } = usePage().props as any;
     const [reportCampusId, setReportCampusId] = useState('all');
@@ -203,7 +245,7 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                     </Link>
 
                     {/* Pending Applications Card */}
-                    <Link href="/admin/applicants?status=Under Review">
+                    <Link href={`/admin/applicants?status=Pending Review${selectedCampus ? `&campus=${encodeURIComponent(selectedCampus)}` : ''}`}>
                         <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white border-0 shadow-lg cursor-pointer hover:scale-105 transition-transform">
                             <CardContent className="p-6">
                                 <div className="flex items-center justify-between">
@@ -238,7 +280,7 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                 </div>
 
                 {/* Overview Cards Row 2 (Smaller) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                     {/* Hired Candidates Card */}
                     <Link href={`/admin/applicants?status=Hired${selectedCampus ? `&campus=${encodeURIComponent(selectedCampus)}` : ''}`}>
                         <Card className="bg-white border-l-4 border-green-500 shadow-sm cursor-pointer hover:bg-green-50/30 transition-colors h-full">
@@ -271,24 +313,6 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                     </div>
                                 </div>
                                 <div className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded font-bold">+{currentData.rejectedThisMonth} this month</div>
-                            </CardContent>
-                        </Card>
-                    </Link>
-
-                    {/* Staffing Summary Card */}
-                    <Link href="/admin/staffing">
-                        <Card className="bg-white border-l-4 border-amber-400 shadow-sm cursor-pointer hover:bg-amber-50/30 transition-colors">
-                            <CardContent className="p-4 flex items-center justify-between h-full">
-                                <div className="flex items-center gap-4">
-                                    <div className="bg-amber-100 p-2 rounded-lg text-amber-600">
-                                        <Shield className="h-6 w-6" />
-                                    </div>
-                                    <div>
-                                        <p className="text-gray-500 text-xs font-bold uppercase">Unfilled Positions</p>
-                                        <p className="text-2xl font-bold text-gray-800">{currentData.unfilledPositions}</p>
-                                    </div>
-                                </div>
-                                <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded font-bold tracking-tight">Staffing Gap</div>
                             </CardContent>
                         </Card>
                     </Link>
@@ -411,9 +435,9 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                 <CardHeader>
                                     <CardTitle className="text-base text-gray-700">Hired vs Rejected</CardTitle>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="[&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none">
                                     <ResponsiveContainer width="100%" height={250}>
-                                        <LineChart data={currentData.hiringSummary}>
+                                        <LineChart data={currentData.hiringSummary} className="outline-none">
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                             <XAxis dataKey="month" axisLine={false} tickLine={false} />
                                             <YAxis axisLine={false} tickLine={false} />
@@ -544,21 +568,27 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                 </h3>
                             </div>
                             <div className="p-4 bg-gray-50 min-h-[150px] flex flex-col gap-3">
-                                {mockEvents.length > 0 ? (
-                                    mockEvents.map(event => (
-                                        <div key={event.id} className="bg-white p-3 rounded-lg border border-gray-100 flex items-start gap-3 shadow-sm hover:border-[#193153] transition-colors">
-                                            <div className="bg-blue-50 text-[#193153] p-2 rounded text-center min-w-[50px]">
-                                                <span className="block text-xs font-bold uppercase">{event.date.split(' ')[0]}</span>
-                                                <span className="block text-lg font-bold leading-none">{event.date.split(' ')[1].replace(',', '')}</span>
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-bold text-gray-900 leading-tight">{event.title}</h4>
-                                                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                                    <Clock className="w-3 h-3" /> {event.time}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))
+                                {realEvents.length > 0 ? (
+                                    realEvents.map(event => {
+                                        const dateStr = String(event.date || '');
+                                        const parts = dateStr.split(' ');
+                                        const monthStr = parts[0] || 'Jul';
+                                        const dayStr = (parts[1] || '27').replace(',', '');
+                                        return (
+                                            <Link href="/admin/calendar" key={event.id} className="bg-white p-3 rounded-lg border border-gray-100 flex items-start gap-3 shadow-sm hover:border-[#193153] hover:shadow-md cursor-pointer transition-all">
+                                                <div className="bg-blue-50 text-[#193153] p-2 rounded text-center min-w-[50px]">
+                                                    <span className="block text-xs font-bold uppercase">{monthStr}</span>
+                                                    <span className="block text-lg font-bold leading-none">{dayStr}</span>
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-gray-900 leading-tight">{event.title}</h4>
+                                                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                                        <Clock className="w-3 h-3" /> {event.time}
+                                                    </p>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })
                                 ) : (
                                     <div className="text-center py-4">
                                         <p className="text-sm text-gray-500 mb-3">No upcoming events.</p>

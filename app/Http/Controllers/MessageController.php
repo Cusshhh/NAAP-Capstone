@@ -6,36 +6,46 @@ use Illuminate\Http\Request;
 use App\Models\Message;
 use App\Models\Application;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class MessageController extends Controller
 {
     public function index($application)
     {
-        $application_id = $application;
-        $application = Application::findOrFail($application_id);
-        
-        // Ensure user is authorized
-        $user = Auth::user();
-        $adminEmails = ['admin@naap.edu.ph', 'admin@admin.com'];
-        $isAdmin = in_array($user->email, $adminEmails);
-        
-        if (!$isAdmin && $application->email !== $user->email) {
-            abort(403, 'Unauthorized access to messages.');
+        try {
+            $application_id = $application;
+            $application = Application::findOrFail($application_id);
+            
+            // Ensure user is authorized
+            $user = Auth::user();
+            $adminEmails = ['admin@naap.edu.ph', 'admin@admin.com'];
+            $isAdmin = $user->isAdmin() || in_array($user->email, $adminEmails);
+            
+            if (!$isAdmin && $application->email !== $user->email) {
+                abort(403, 'Unauthorized access to messages.');
+            }
+
+            // Mark other party's unread messages as read
+            Message::where('application_id', $application_id)
+                ->where('sender_id', '!=', $user->id)
+                ->where('is_read', false)
+                ->update(['is_read' => true]);
+
+            // Fetch messages with sender data
+            $messages = Message::with('sender:id,name,email')
+                ->where('application_id', $application_id)
+                ->oldest()
+                ->get();
+
+            return response()->json($messages);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $he) {
+            throw $he;
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $me) {
+            return response()->json(['error' => 'Application not found'], 404);
+        } catch (\Throwable $ex) {
+            Log::error('FetchMessages Error: ' . $ex->getMessage());
+            return response()->json(['error' => 'Failed to fetch messages'], 500);
         }
-
-        // Mark other party's unread messages as read
-        Message::where('application_id', $application_id)
-            ->where('sender_id', '!=', $user->id)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
-        // Fetch messages with sender data
-        $messages = Message::with('sender:id,name,email')
-            ->where('application_id', $application_id)
-            ->oldest()
-            ->get();
-
-        return response()->json($messages);
     }
 
     public function store(Request $request, $application)
@@ -45,7 +55,7 @@ class MessageController extends Controller
         $user = Auth::user();
         
         $adminEmails = ['admin@naap.edu.ph', 'admin@admin.com'];
-        $isAdmin = in_array($user->email, $adminEmails);
+        $isAdmin = $user->isAdmin() || in_array($user->email, $adminEmails);
         
         if (!$isAdmin && $application->email !== $user->email) {
             abort(403, 'Unauthorized access to messages.');
@@ -56,12 +66,8 @@ class MessageController extends Controller
         ]);
 
         // Determine receiver. If Admin sends -> Applicant. If Applicant sends -> Admin.
-        // Wait, multiple admins could exist. We can just set receiver_id to the applicant's user ID if admin sends,
-        // and if applicant sends, we set it to the primary admin's ID (or nullable, but schema requires it).
-        // Let's find the applicant's user model and the admin user model.
         
         $applicantUser = \App\Models\User::where('email', $application->email)->first();
-        // Removed the strict 404 check so Admins can still "send" messages to offline/mock applicants
 
         try {
             $adminUser = \App\Models\User::whereIn('email', $adminEmails)->first();
@@ -78,8 +84,33 @@ class MessageController extends Controller
 
             return response()->json($message->load('sender:id,name,email'), 201);
         } catch (\Exception $e) {
-            \Log::error('SendMessage Error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+            Log::error('SendMessage Error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
             return response()->json(['error' => 'Server Error: ' . $e->getMessage()], 500);
         }
     }
+
+    public function destroy($application)
+    {
+        try {
+            $user = Auth::user();
+            $adminEmails = ['admin@naap.edu.ph', 'admin@admin.com'];
+            $isAdmin = $user->isAdmin() || in_array($user->email, $adminEmails);
+            
+            if (!$isAdmin) {
+                return response()->json(['error' => 'Unauthorized action.'], 403);
+            }
+
+            // Delete all messages for this application ID
+            Message::where('application_id', $application)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Conversation cleared successfully.'
+            ]);
+        } catch (\Throwable $ex) {
+            Log::error('DeleteMessages Error: ' . $ex->getMessage());
+            return response()->json(['error' => 'Failed to clear conversation'], 500);
+        }
+    }
 }
+

@@ -21,7 +21,8 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children, auth, title, headerActions }: AdminLayoutProps) {
     const admin = auth?.user || { name: 'Admin', email: '' } as any;
-    const { url } = usePage();
+    const { url, props } = usePage<any>();
+    const unreadMessagesCount = (props as any)?.unread_messages_count || 0;
 
     const handleLogout = () => {
         router.post('/logout');
@@ -35,7 +36,6 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
         { name: 'Dashboard', href: '/admin/dashboard', icon: Shield },
         { name: 'Jobs', href: '/admin/jobs', icon: Briefcase },
         { name: 'Applicants', href: '/admin/applicants', icon: Users },
-        { name: 'Staffing', href: '/admin/staffing', icon: Shield },
         { name: 'Messages', href: '/admin/messages', icon: MessageSquare },
     ];
 
@@ -58,10 +58,10 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
                         {/* Desktop Menu */}
                         <div className="hidden md:flex items-center space-x-2">
                             {navItems.map((item) => (
-                                <a key={item.name} href={item.href}>
+                                <a key={item.name} href={item.href} className="relative">
                                     <Button 
                                         variant="ghost" 
-                                        className={`text-white transition-all duration-200 ${
+                                        className={`text-white transition-all duration-200 relative ${
                                             isActive(item.href) 
                                             ? 'bg-white/20 text-[#ffdd59] font-bold shadow-inner' 
                                             : 'hover:bg-white/10 hover:text-[#ffdd59]'
@@ -69,6 +69,11 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
                                     >
                                         <item.icon className={`h-4 w-4 mr-2 ${isActive(item.href) ? 'text-[#ffdd59]' : ''}`} />
                                         {item.name}
+                                        {item.name === 'Messages' && unreadMessagesCount > 0 && (
+                                            <span className="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-red-500 rounded-full animate-pulse shadow-md border border-white">
+                                                {unreadMessagesCount}
+                                            </span>
+                                        )}
                                     </Button>
                                 </a>
                             ))}

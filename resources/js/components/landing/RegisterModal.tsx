@@ -99,18 +99,7 @@ export default function RegisterModal({ isOpen, onClose, onSwitchToLogin }: Regi
                         <InputError message={errors.password_confirmation} />
                     </div>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="invitation_code">Invitation Code (Optional)</Label>
-                        <Input
-                            id="invitation_code"
-                            value={data.invitation_code}
-                            onChange={(e) => setData('invitation_code', e.target.value)}
-                            placeholder="NAAP-XXXX-XXXX (for Admin registration)"
-                        />
-                        <InputError message={errors.invitation_code} />
-                    </div>
-
-                    <Button type="submit" className="w-full" disabled={processing}>
+                    <Button type="submit" className="w-full bg-[#193153] hover:bg-[#152844] text-[#ffdd59] font-bold py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all border border-[#ffdd59]/30" disabled={processing}>
                         {processing && <Spinner className="mr-2" />}
                         Create account
                     </Button>

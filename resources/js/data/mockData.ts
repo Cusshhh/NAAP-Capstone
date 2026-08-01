@@ -826,56 +826,49 @@ export const getActivities = (dbApps: any[] = [], dbJobs: any[] = []) => {
         });
         
         // Status changes
+        const statusDateStr = app.updatedAt || app.updated_at || app.submittedDate;
+        const dateObj = new Date(statusDateStr);
+        const formattedStatusDate = dateObj.toISOString();
+
         if (app.status === 'Hired') {
-            const dateObj = new Date(app.submittedDate);
-            dateObj.setMinutes(dateObj.getMinutes() + 5);
-            const hiredDateStr = dateObj.toISOString();
-            
             activities.push({
                 id: `db_app_hired_${app.id}`,
                 action: 'Candidate Hired',
                 details: `${app.applicantName} has been officially hired as ${app.jobTitle}`,
-                time: getTimeAgo(hiredDateStr),
-                date: hiredDateStr,
+                time: getTimeAgo(formattedStatusDate),
+                date: formattedStatusDate,
                 icon: 'UserCheck',
                 color: 'text-green-600 bg-green-50',
                 campus: app.campus || 'Pasay City',
                 timestamp: dateObj.getTime()
             });
         } else if (app.status === 'Rejected') {
-            const dateObj = new Date(app.submittedDate);
-            dateObj.setMinutes(dateObj.getMinutes() + 3);
-            const rejectedDateStr = dateObj.toISOString();
-            
             activities.push({
                 id: `db_app_rejected_${app.id}`,
                 action: 'Application Rejected',
                 details: `${app.applicantName} - ${app.jobTitle}`,
-                time: getTimeAgo(rejectedDateStr),
-                date: rejectedDateStr,
+                time: getTimeAgo(formattedStatusDate),
+                date: formattedStatusDate,
                 icon: 'XCircle',
                 color: 'text-red-500 bg-red-100',
                 campus: app.campus || 'Pasay City',
                 timestamp: dateObj.getTime()
             });
-        } else if (app.status === 'Shortlisted' || app.status === 'Interview' || app.status === 'Under Review') {
-            const dateObj = new Date(app.submittedDate);
-            dateObj.setMinutes(dateObj.getMinutes() + 2);
-            const shortStr = dateObj.toISOString();
-            
-            const actionName = app.status === 'Interview' 
+        } else if (app.status === 'Shortlisted' || app.status === 'Interview' || app.status === 'Interview Scheduled' || app.status === 'Under Review') {
+            const isInterview = app.status === 'Interview' || app.status === 'Interview Scheduled';
+            const actionName = isInterview
                 ? 'Interview Scheduled' 
                 : app.status === 'Under Review' 
                     ? 'Application Under Review' 
                     : 'Candidate Shortlisted';
 
-            const iconName = app.status === 'Interview' 
+            const iconName = isInterview
                 ? 'Calendar' 
                 : app.status === 'Under Review' 
                     ? 'FileText' 
                     : 'Users';
 
-            const colorClass = app.status === 'Interview' 
+            const colorClass = isInterview
                 ? 'text-purple-500 bg-purple-50' 
                 : app.status === 'Under Review' 
                     ? 'text-amber-600 bg-amber-50' 
@@ -885,8 +878,8 @@ export const getActivities = (dbApps: any[] = [], dbJobs: any[] = []) => {
                 id: `db_app_short_${app.id}`,
                 action: actionName,
                 details: `${app.applicantName} status updated to ${app.status} for ${app.jobTitle}`,
-                time: getTimeAgo(shortStr),
-                date: shortStr,
+                time: getTimeAgo(formattedStatusDate),
+                date: formattedStatusDate,
                 icon: iconName,
                 color: colorClass,
                 campus: app.campus || 'Pasay City',

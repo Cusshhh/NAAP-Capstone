@@ -88,8 +88,8 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
             }
         });
 
-        // Load custom events from database & LocalStorage
-        const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('custom_calendar_events') || '[]') : [];
+        // Load custom events from database & applicant LocalStorage
+        const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(`applicant_custom_events_${user?.id || 'guest'}`) || '[]') : [];
         const formattedDbEvents = customEventsList.map((e: any) => {
             let formattedDate = e.date;
             try {
@@ -169,23 +169,44 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
             return;
         }
 
-        // Fix: Parse input YYYY-MM-DD directly to local components to avoid UTC timezone shifts
-        const [y, m, d] = newEvent.date.split('-').map(Number);
-        const dateObj = new Date(y, m - 1, d);
+        let dateObj = new Date(newEvent.date);
+        if (isNaN(dateObj.getTime()) && newEvent.date.includes('-')) {
+            const parts = newEvent.date.split('-').map(Number);
+            if (parts[0] > 1000) {
+                dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            } else {
+                dateObj = new Date(parts[2], parts[0] - 1, parts[1]);
+            }
+        } else if (isNaN(dateObj.getTime()) && newEvent.date.includes('/')) {
+            const parts = newEvent.date.split('/').map(Number);
+            if (parts[2] > 1000) {
+                dateObj = new Date(parts[2], parts[0] - 1, parts[1]);
+            } else {
+                dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            }
+        }
 
+        if (isNaN(dateObj.getTime())) {
+            dateObj = new Date();
+        }
+
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const isoDate = `${yyyy}-${mm}-${dd}`;
         const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
         let dbEvent: any = null;
         try {
             const response = await axios.post('/calendar/events', {
                 title: newEvent.title,
-                date: newEvent.date,
+                date: isoDate,
                 time: newEvent.time,
                 type: newEvent.type
             });
             dbEvent = response.data;
-        } catch (e) {
-            console.error("Failed to save event to database", e);
+        } catch (e: any) {
+            console.warn("Saving event with local fallback", e);
         }
 
         const eventToAdd = dbEvent ? {
@@ -195,20 +216,23 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
             time: dbEvent.time,
             type: dbEvent.type
         } : {
-            id: Date.now().toString(), // simple unique ID
+            id: `local_${Date.now()}`,
             title: newEvent.title,
             date: formattedDate,
             time: newEvent.time,
             type: newEvent.type
         };
 
+        const storageKey = `applicant_custom_events_${user?.id || 'guest'}`;
         if (dbEvent) {
             setDbCustomEvents([dbEvent, ...dbCustomEvents]);
         } else {
-            const localCustom = JSON.parse(localStorage.getItem('custom_calendar_events') || '[]');
-            const updated = [...localCustom, eventToAdd];
-            localStorage.setItem('custom_calendar_events', JSON.stringify(updated));
-            setEvents(buildEvents(dbCustomEvents, dbInterviews));
+            const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(storageKey) || '[]') : [];
+            const updated = [eventToAdd, ...localCustom];
+            if (typeof window !== 'undefined') {
+                localStorage.setItem(storageKey, JSON.stringify(updated));
+            }
+            setEvents(prev => [eventToAdd, ...prev]);
         }
 
         setNewEvent({ title: '', date: '', time: '', type: 'Personal' });
@@ -217,6 +241,7 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
     };
 
     const handleDeleteEvent = async (id: any) => {
+        const storageKey = `applicant_custom_events_${user?.id || 'guest'}`;
         const isDbEvent = dbCustomEvents.some(e => String(e.id) === String(id));
         if (isDbEvent) {
             try {
@@ -228,9 +253,9 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                 return;
             }
         } else {
-            const localCustom = JSON.parse(localStorage.getItem('custom_calendar_events') || '[]');
+            const localCustom = JSON.parse(localStorage.getItem(storageKey) || '[]');
             const updated = localCustom.filter((e: any) => String(e.id) !== String(id));
-            localStorage.setItem('custom_calendar_events', JSON.stringify(updated));
+            localStorage.setItem(storageKey, JSON.stringify(updated));
             setEvents(buildEvents(dbCustomEvents, dbInterviews));
         }
 
@@ -321,39 +346,45 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
         <div className="min-h-screen bg-gray-50">
             <Head title="My Calendar" />
 
-            {/* Header */}
-            <div className="bg-[#193153] text-white py-8">
-                <div className="container mx-auto px-4">
-                    <div className="flex items-center gap-4 mb-6">
-                        <a href="/dashboard">
-                            <Button variant="ghost" className="text-white hover:bg-white/10 hover:text-[#ffdd59]">
-                                <ChevronLeft className="mr-2 h-4 w-4" />
-                                Back to Dashboard
-                            </Button>
-                        </a>
-                    </div>
-                    <div className="flex justify-between items-end">
+            {/* Top Header Banner */}
+            <div className="bg-[#193153] text-white py-12 mb-8 rounded-b-3xl shadow-lg relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-8 opacity-10">
+                    <CalendarIcon className="w-32 h-32" />
+                </div>
+                <div className="container mx-auto px-4 relative z-10">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                         <div>
-                            <h1 className="text-3xl font-bold mb-2">My Schedule</h1>
-                            <p className="text-blue-200">Manage your interviews, deadlines, and upcoming events.</p>
+                            <div className="flex items-center gap-2 mb-2 text-blue-200">
+                                <a href="/dashboard" className="hover:text-white transition-colors flex items-center gap-1">
+                                    <ChevronLeft className="w-4 h-4" />
+                                    Dashboard
+                                </a>
+                                <span>/</span>
+                                <span className="text-white font-medium">Calendar</span>
+                            </div>
+                            <h1 className="text-4xl font-extrabold mb-2 tracking-tight">NAAP Schedule</h1>
+                            <p className="text-blue-100 max-w-xl text-lg">Manage interviews, deadlines, and upcoming events with ease.</p>
                         </div>
-                        <div className="hidden md:block text-right">
-                            <p className="text-lg font-semibold">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        <div className="text-left md:text-right bg-white/10 backdrop-blur-sm p-4 rounded-2xl border border-white/20">
+                            <p className="text-xl font-bold">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+                            <p className="text-blue-200 text-sm mt-1">{new Date().getFullYear()}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="container mx-auto px-4 py-8">
+            <div className="container mx-auto px-4 pb-12">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                     {/* Main Calendar Grid */}
                     <div className="lg:col-span-2">
-                        <Card className="h-full border-none shadow-md">
-                            <CardHeader className="flex flex-row items-center justify-between pb-4 border-b">
+                        <Card className="h-full border-none shadow-xl rounded-3xl overflow-hidden bg-white">
+                            <CardHeader className="flex flex-row items-center justify-between p-6 bg-gray-50/50 border-b">
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-2">
-                                        <CalendarIcon className="w-5 h-5 text-blue-600" />
+                                        <div className="p-2 bg-blue-50 rounded-lg">
+                                            <CalendarIcon className="w-5 h-5 text-blue-600" />
+                                        </div>
 
                                         {/* Month Selector */}
                                         <Select
@@ -364,7 +395,7 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                                 setCurrentDate(newDate);
                                             }}
                                         >
-                                            <SelectTrigger className="w-[130px] border-none shadow-none font-bold text-xl h-auto p-0 focus:ring-0">
+                                            <SelectTrigger className="w-auto border-none shadow-none font-bold text-2xl h-auto p-0 focus:ring-0 gap-2 bg-transparent text-[#193153]">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -385,7 +416,7 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                                 setCurrentDate(newDate);
                                             }}
                                         >
-                                            <SelectTrigger className="w-[80px] border-none shadow-none font-bold text-xl h-auto p-0 focus:ring-0 text-gray-500">
+                                            <SelectTrigger className="w-auto border-none shadow-none font-bold text-2xl h-auto p-0 focus:ring-0 text-gray-400 gap-2 bg-transparent">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent className="max-h-[300px]">
@@ -400,134 +431,136 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                 </div>
 
                                 <div className="flex gap-2 items-center">
-                                    <div className="flex mr-2">
-                                        <Button variant="outline" size="sm" onClick={handlePrevMonth} className="rounded-r-none px-2">
+                                    <div className="flex bg-white rounded-xl border p-1 shadow-sm mr-2">
+                                        <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 rounded-lg">
                                             <ChevronLeft className="h-4 w-4" />
                                         </Button>
-                                        <Button variant="outline" size="sm" onClick={handleNextMonth} className="rounded-l-none px-2 border-l-0">
+                                        <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-8 w-8 rounded-lg">
                                             <ChevronLeft className="h-4 w-4 rotate-180" />
                                         </Button>
                                     </div>
 
-                                    {/* Controlled Dialog without Trigger Button */}
+                                    {/* Add Event Dialog */}
                                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                                        <DialogContent>
+                                        <DialogContent className="sm:max-w-[425px]">
                                             <DialogHeader>
-                                                <DialogTitle>Add New Event</DialogTitle>
+                                                <DialogTitle className="text-2xl font-bold text-[#193153]">Add Calendar Event</DialogTitle>
                                             </DialogHeader>
-                                            <div className="grid gap-4 py-4">
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="title" className="text-right">Event Title</Label>
+                                            <div className="grid gap-6 py-6">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="title">Event Title</Label>
                                                     <Input
                                                         id="title"
                                                         value={newEvent.title}
                                                         onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
-                                                        className="col-span-3"
-                                                        placeholder="e.g., Technical Interview at NAAP"
+                                                        placeholder="e.g., Document Submission"
+                                                        className="h-12 border-gray-200 focus:ring-[#193153]"
                                                     />
                                                 </div>
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="date" className="text-right">Date</Label>
-                                                    <Input
-                                                        id="date"
-                                                        type="date"
-                                                        value={newEvent.date}
-                                                        onChange={e => setNewEvent({ ...newEvent, date: e.target.value })}
-                                                        className="col-span-3"
-                                                    />
-                                                </div>
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="time" className="text-right">Time</Label>
-                                                    <Input
-                                                        id="time"
-                                                        type="time"
-                                                        value={newEvent.time}
-                                                        onChange={e => setNewEvent({ ...newEvent, time: e.target.value })}
-                                                        className="col-span-3"
-                                                    />
-                                                </div>
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <Label htmlFor="type" className="text-right">Type</Label>
-                                                    <div className="col-span-3">
-                                                        <Select
-                                                            value={newEvent.type}
-                                                            onValueChange={val => setNewEvent({ ...newEvent, type: val })}
-                                                        >
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select type" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="Personal">Personal</SelectItem>
-                                                                <SelectItem value="Interview">Interview</SelectItem>
-                                                                <SelectItem value="Deadline">Deadline</SelectItem>
-                                                                <SelectItem value="Meeting">Meeting</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="date">Date</Label>
+                                                        <Input
+                                                            id="date"
+                                                            type="date"
+                                                            value={newEvent.date}
+                                                            onChange={e => setNewEvent({ ...newEvent, date: e.target.value })}
+                                                            className="h-12 border-gray-200 focus:ring-[#193153]"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="time">Time</Label>
+                                                        <Input
+                                                            id="time"
+                                                            type="time"
+                                                            value={newEvent.time}
+                                                            onChange={e => setNewEvent({ ...newEvent, time: e.target.value })}
+                                                            className="h-12 border-gray-200 focus:ring-[#193153]"
+                                                        />
                                                     </div>
                                                 </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="type">Event Category</Label>
+                                                    <Select
+                                                        value={newEvent.type}
+                                                        onValueChange={val => setNewEvent({ ...newEvent, type: val })}
+                                                    >
+                                                        <SelectTrigger className="h-12 border-gray-200 focus:ring-[#193153]">
+                                                            <SelectValue placeholder="Select type" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Personal">Personal</SelectItem>
+                                                            <SelectItem value="Interview">Interview</SelectItem>
+                                                            <SelectItem value="Deadline">Deadline</SelectItem>
+                                                            <SelectItem value="Meeting">Meeting</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
                                             </div>
-                                            <DialogFooter>
-                                                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                                                <Button onClick={handleAddEvent}>Save Event</Button>
+                                            <DialogFooter className="gap-2 sm:gap-0">
+                                                <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-12 rounded-xl">Cancel</Button>
+                                                <Button onClick={handleAddEvent} className="h-12 rounded-xl bg-[#193153] hover:bg-[#2a4a75]">Create Event</Button>
                                             </DialogFooter>
                                         </DialogContent>
                                     </Dialog>
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-6">
+                            <CardContent className="p-0">
                                 {/* Weekday Headers */}
-                                <div className="grid grid-cols-7 text-center mb-4">
+                                <div className="grid grid-cols-7 text-center border-b bg-gray-50/30">
                                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                                        <div key={day} className="text-xs font-bold text-gray-500 uppercase tracking-wider py-2">
+                                        <div key={day} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest py-4">
                                             {day}
                                         </div>
                                     ))}
                                 </div>
 
                                 {/* Calendar Days */}
-                                <div className="grid grid-cols-7 auto-rows-fr gap-2 h-[500px]">
+                                <div className="grid grid-cols-7 auto-rows-fr h-[600px]">
                                     {calendarDays.map((date, idx) => (
                                         <div
                                             key={idx}
                                             onClick={() => date && handleDateClick(date.day)}
                                             className={`
-                                                relative p-2 rounded-lg border transition-all overflow-hidden
-                                                ${!date ? 'bg-gray-50 border-transparent' : 'bg-white border-gray-100 hover:border-blue-400 hover:shadow-md cursor-pointer group'}
+                                                relative p-3 border-r border-b last:border-r-0 transition-all overflow-hidden group
+                                                ${!date ? 'bg-gray-50/50' : 'bg-white hover:bg-blue-50/30 cursor-pointer'}
                                             `}
                                         >
                                             {date && (
                                                 <>
-                                                    <div className="flex justify-between items-start">
+                                                    <div className="flex justify-between items-start mb-2">
                                                         <span className={`
-                                                            text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full
+                                                            text-sm font-bold w-7 h-7 flex items-center justify-center rounded-lg
                                                             ${(date.day === new Date().getDate() &&
                                                                 month === new Date().getMonth() &&
                                                                 year === new Date().getFullYear())
-                                                                ? 'bg-blue-100 text-blue-700' : 'text-gray-700'}
+                                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-gray-400 group-hover:text-blue-600'}
                                                         `}>
                                                             {date.day}
                                                         </span>
-                                                        <Plus className="w-0 h-0 group-hover:w-4 group-hover:h-4 text-blue-400 transition-all opacity-0 group-hover:opacity-100" />
+                                                        <div className="bg-blue-50 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Plus className="w-3 h-3 text-blue-600" />
+                                                        </div>
                                                     </div>
 
-                                                    <div className="mt-2 space-y-1">
+                                                    <div className="space-y-1.5 max-h-[100px] overflow-hidden">
                                                         {date.events.map((event, i) => {
-                                                            const content = (
+                                                            const tag = (
                                                                 <div className={`
-                                                                    text-[10px] px-1 py-0.5 rounded truncate font-medium
-                                                                    ${event.type === 'Deadline' ? 'bg-red-100 text-red-800' :
-                                                                        event.type === 'Interview' ? 'bg-blue-100 text-blue-800' :
-                                                                            'bg-gray-100 text-gray-800'}
+                                                                    text-[10px] px-2 py-1 rounded-md truncate font-semibold shadow-sm
+                                                                    ${event.type === 'Deadline' ? 'bg-red-50 text-red-700 border border-red-100' :
+                                                                        event.type === 'Interview' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                                                                            'bg-gray-50 text-gray-700 border border-gray-100'}
                                                                 `}>
                                                                     {event.title}
                                                                 </div>
                                                             );
                                                             return event.jobId ? (
                                                                 <Link key={i} href={`/jobs/${event.jobId}`} className="block">
-                                                                    {content}
+                                                                    {tag}
                                                                 </Link>
                                                             ) : (
-                                                                <div key={i}>{content}</div>
+                                                                <div key={i}>{tag}</div>
                                                             );
                                                         })}
                                                     </div>
@@ -542,79 +575,83 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
 
                     {/* Sidebar Events List */}
                     <div className="space-y-6">
-                        <Card className="border-none shadow-md">
-                            <CardHeader className="bg-gray-50 border-b pb-3">
-                                <CardTitle className="text-lg font-bold text-[#193153]">Interviews & Events</CardTitle>
+                        <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
+                            <CardHeader className="bg-[#193153] p-6">
+                                <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
+                                    <Clock className="w-5 h-5 text-blue-300" />
+                                    Schedules
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent className="p-0">
+                            <CardContent className="p-0 max-h-[700px] overflow-y-auto">
                                 {events.length === 0 ? (
-                                    <div className="p-8 text-center text-gray-500">
-                                        <p>No events scheduled.</p>
+                                    <div className="p-12 text-center text-gray-400">
+                                        <CalendarIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                                        <p className="font-medium">No events scheduled yet.</p>
+                                        <p className="text-xs mt-1">Click on a date to add one.</p>
                                     </div>
                                 ) : (
-                                    events.map((event, index) => {
-                                        const innerContent = (
-                                            <>
-                                                <div className={`flex-shrink-0 w-12 text-center rounded-lg py-2 ${event.type === 'Deadline' ? 'bg-red-100 text-red-700' :
-                                                    event.type === 'Interview' ? 'bg-blue-100 text-blue-700' :
-                                                        'bg-gray-100 text-gray-700'
-                                                    }`}>
-                                                    <span className="block text-xs font-bold uppercase">{event.date.split(' ')[0] || ''}</span>
-                                                    <span className="block text-lg font-bold leading-none">{event.date.split(' ')[1]?.replace(',', '') || ''}</span>
+                                    events.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((event, index) => (
+                                        <div 
+                                            key={index} 
+                                            onClick={() => {
+                                                if (event.jobId) {
+                                                    window.location.href = `/jobs/${event.jobId}`;
+                                                } else {
+                                                    const d = new Date(event.date);
+                                                    if (!isNaN(d.getTime())) {
+                                                        setCurrentDate(d);
+                                                    }
+                                                }
+                                            }}
+                                            className="px-6 py-5 border-b last:border-0 hover:bg-gray-50 transition-all group relative cursor-pointer"
+                                        >
+                                            <div className="flex items-start gap-5">
+                                                <div className={`flex-shrink-0 w-14 text-center rounded-2xl py-3 shadow-md ${
+                                                    event.type === 'Deadline' ? 'bg-red-600 text-white' :
+                                                    event.type === 'Interview' ? 'bg-blue-600 text-white' :
+                                                        'bg-gray-800 text-white'
+                                                }`}>
+                                                    <span className="block text-[10px] font-black uppercase tracking-tighter opacity-80">{event.date.split(' ')[0] || ''}</span>
+                                                    <span className="block text-2xl font-black leading-none">{event.date.split(' ')[1]?.replace(',', '') || ''}</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex justify-between items-start">
-                                                        <h4 className="text-sm font-bold text-gray-900 truncate pr-4 text-left">{event.title}</h4>
-                                                        <Badge variant={event.type === 'Deadline' ? 'destructive' : 'default'} className="text-[10px] px-1.5 h-5">
-                                                            {event.type}
-                                                        </Badge>
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <h4 className="text-sm font-black text-gray-900 leading-none truncate pr-6">{event.title}</h4>
                                                     </div>
-                                                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                                                        <Clock className="w-3.5 h-3.5" />
-                                                        {event.time}
-                                                    </p>
-                                                    {event.type === 'Interview' && (
-                                                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                                                            <MapPin className="w-3.5 h-3.5" />
-                                                            NAAP - Villamor Campus
+                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                        <span className="text-[10px] flex items-center gap-1 text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full">
+                                                            <Clock className="w-3 h-3" />
+                                                            {event.time}
+                                                        </span>
+                                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter
+                                                            ${event.type === 'Deadline' ? 'bg-red-100 text-red-700' :
+                                                              event.type === 'Interview' ? 'bg-blue-100 text-blue-700' :
+                                                              'bg-gray-200 text-gray-700'}`}>
+                                                            {event.type}
+                                                        </span>
+                                                    </div>
+                                                    {event.venue && (
+                                                        <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1 font-medium">
+                                                            <MapPin className="w-3 h-3" />
+                                                            {event.venue}
                                                         </p>
                                                     )}
                                                 </div>
-                                            </>
-                                        );
-
-                                        return (
-                                            <div key={index} className="p-4 border-b last:border-0 hover:bg-blue-50/50 transition-colors group relative flex items-start justify-between">
-                                                {event.jobId ? (
-                                                    <Link href={`/jobs/${event.jobId}`} className="flex items-start gap-4 flex-1 cursor-pointer">
-                                                        {innerContent}
-                                                    </Link>
-                                                ) : (
-                                                    <div 
-                                                        onClick={() => {
-                                                            const d = new Date(event.date);
-                                                            if (!isNaN(d.getTime())) {
-                                                                setCurrentDate(d);
-                                                            }
-                                                        }}
-                                                        className="flex items-start gap-4 flex-1 cursor-pointer"
-                                                    >
-                                                        {innerContent}
-                                                    </div>
-                                                )}
-                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex">
+                                            </div>
+                                            {(!event.id.toString().startsWith('real_interview_') && event.id !== 'gen_1') && (
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <Button
                                                         size="icon"
-                                                        variant="ghost"
-                                                        className="h-8 w-8 text-gray-400 hover:text-red-500"
-                                                        onClick={() => handleDeleteEvent(event.id)}
+                                                        variant="secondary"
+                                                        className="h-8 w-8 rounded-full text-red-500 hover:bg-red-50 hover:text-red-600 shadow-sm"
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </Button>
                                                 </div>
-                                            </div>
-                                        );
-                                    })
+                                            )}
+                                        </div>
+                                    ))
                                 )}
                             </CardContent>
                         </Card>

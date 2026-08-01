@@ -89,20 +89,6 @@ export default function Register() {
                                 />
                             </div>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="invitation_code">
-                                    Invitation Code (Optional)
-                                </Label>
-                                <Input
-                                    id="invitation_code"
-                                    type="text"
-                                    tabIndex={5}
-                                    name="invitation_code"
-                                    placeholder="NAAP-XXXX-XXXX (for Admin registration)"
-                                />
-                                <InputError message={errors.invitation_code} />
-                            </div>
-
                             <Button
                                 type="submit"
                                 className="mt-2 w-full"

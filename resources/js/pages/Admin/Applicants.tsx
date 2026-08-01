@@ -22,6 +22,13 @@ export default function Applicants({ auth, applications: serverApplications }: {
     const [campusFilter, setCampusFilter] = useState('all');
     const [positionFilter, setPositionFilter] = useState('all');
     const [sortBy, setSortBy] = useState('date');
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [reportStatus, setReportStatus] = useState('all');
+
+    const handleDownloadReport = () => {
+        window.location.href = `/admin/reports/export?status=${encodeURIComponent(reportStatus)}`;
+        setIsReportModalOpen(false);
+    };
     const [applications, setApplications] = useState(serverApplications || getApplications()); // Use server data if available
 
     useEffect(() => {
@@ -267,7 +274,9 @@ export default function Applicants({ auth, applications: serverApplications }: {
         const matchesSearch = app.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) || app.jobTitle.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilter === 'all'
             ? app.status !== 'Archived'
-            : app.status === statusFilter;
+            : (statusFilter === 'Pending Review' || statusFilter === 'Pending'
+                ? ['Submitted', 'Under Review'].includes(app.status)
+                : app.status === statusFilter);
         const matchesAiMatch = aiMatchFilter === 'all' || getAiMatch(app.aiScore) === aiMatchFilter;
         const matchesCampus = campusFilter === 'all' || app.campus === campusFilter;
         const matchesPosition = positionFilter === 'all' || app.jobTitle === positionFilter;
@@ -373,9 +382,9 @@ export default function Applicants({ auth, applications: serverApplications }: {
             toast.success("Interview scheduled successfully!");
         }
 
-        // Automatically update applicant status to 'Shortlisted'
+        // Automatically update applicant status to 'Interview Scheduled'
         if (selectedAppId) {
-            handleStatusUpdate(selectedAppId, 'Shortlisted');
+            handleStatusUpdate(selectedAppId, 'Interview Scheduled');
         }
 
         // Reset and Close
@@ -421,22 +430,46 @@ export default function Applicants({ auth, applications: serverApplications }: {
         setIsInterviewModalOpen(true);
     };
 
-    const handleDeleteInterview = async (index: number) => {
-        if (confirm("Are you sure you want to cancel this interview?")) {
-            const interview = scheduledInterviews[index];
-            if (interview && interview.id && !String(interview.id).startsWith('mock_') && typeof interview.id === 'number') {
-                try {
-                    await axios.delete(`/admin/interviews/${interview.id}`);
-                } catch (e: any) {
-                    console.error(e);
-                    toast.error(e.response?.data?.error || "Failed to cancel interview in the database.");
-                    return;
-                }
+    const [cancelInterviewModal, setCancelInterviewModal] = useState<{
+        isOpen: boolean;
+        index: number | null;
+        candidateName?: string;
+        position?: string;
+    }>({
+        isOpen: false,
+        index: null,
+        candidateName: '',
+        position: '',
+    });
+
+    const requestCancelInterview = (index: number) => {
+        const interview = scheduledInterviews[index];
+        setCancelInterviewModal({
+            isOpen: true,
+            index,
+            candidateName: interview?.candidateName || interview?.candidate_name || '',
+            position: interview?.position || interview?.jobTitle || '',
+        });
+    };
+
+    const confirmCancelInterview = async () => {
+        const index = cancelInterviewModal.index;
+        setCancelInterviewModal(prev => ({ ...prev, isOpen: false }));
+        if (index === null || index === undefined) return;
+
+        const interview = scheduledInterviews[index];
+        if (interview && interview.id && !String(interview.id).startsWith('mock_') && typeof interview.id === 'number') {
+            try {
+                await axios.delete(`/admin/interviews/${interview.id}`);
+            } catch (e: any) {
+                console.error(e);
+                toast.error(e.response?.data?.error || "Failed to cancel interview in the database.");
+                return;
             }
-            const updatedInterviews = scheduledInterviews.filter((_, i) => i !== index);
-            setScheduledInterviews(updatedInterviews);
-            toast.success("Interview cancelled.");
         }
+        const updatedInterviews = scheduledInterviews.filter((_, i) => i !== index);
+        setScheduledInterviews(updatedInterviews);
+        toast.success("Interview cancelled.");
     };
 
     const handleStatusUpdate = (id: any, newStatus: string, reason?: string) => {
@@ -512,9 +545,54 @@ export default function Applicants({ auth, applications: serverApplications }: {
     return (
         <AdminLayout auth={auth}>
             <div className="container mx-auto px-4 py-8">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Applicants Overview</h1>
-                    <p className="text-gray-600">Reviewing applicants as <span className="text-[#193153] font-bold">{admin.name}</span></p>
+                <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Applicants Overview</h1>
+                        <p className="text-gray-600">Reviewing applicants as <span className="text-[#193153] font-bold">{admin.name}</span></p>
+                    </div>
+
+                    <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="bg-[#193153] hover:bg-[#193153]/90 text-white font-semibold flex items-center gap-2">
+                                <Download className="w-4 h-4" /> Export Reports
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md bg-white p-6 rounded-xl border border-gray-200 shadow-2xl">
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-bold text-[#193153] flex items-center gap-2">
+                                    <FileText className="w-5 h-5 text-blue-600" />
+                                    Export Applicants Report
+                                </DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 my-4">
+                                <div className="grid gap-2">
+                                    <label htmlFor="applicant-report-status" className="font-semibold text-gray-700 text-sm">Filter by Status</label>
+                                    <Select value={reportStatus} onValueChange={setReportStatus}>
+                                        <SelectTrigger id="applicant-report-status">
+                                            <SelectValue placeholder="All Statuses" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Statuses</SelectItem>
+                                            <SelectItem value="Submitted">Submitted</SelectItem>
+                                            <SelectItem value="Under Review">Under Review</SelectItem>
+                                            <SelectItem value="Shortlisted">Shortlisted</SelectItem>
+                                            <SelectItem value="Interview Scheduled">Interview Scheduled</SelectItem>
+                                            <SelectItem value="Hired">Hired</SelectItem>
+                                            <SelectItem value="Rejected">Rejected</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <DialogFooter className="gap-2">
+                                <Button variant="outline" onClick={() => setIsReportModalOpen(false)}>
+                                    Cancel
+                                </Button>
+                                <Button onClick={handleDownloadReport} className="bg-[#193153] hover:bg-[#193153]/90 text-white font-semibold">
+                                    Download CSV
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
                 {/* Filters */}
                 <Card className="mb-6">
@@ -537,6 +615,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                 <SelectTrigger><SelectValue placeholder="All Status" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Status</SelectItem>
+                                    <SelectItem value="Pending Review">Pending Review</SelectItem>
                                     {statuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                                     <SelectItem value="Archived">Archived</SelectItem>
                                 </SelectContent>
@@ -632,11 +711,8 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                     <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                                                         <DialogHeader>
                                                             <DialogTitle className="flex items-center gap-2 text-base font-bold text-[#193153]">
-                                                                <TrendingUp className="w-5 h-5 text-blue-600" /> PDS Qualification Match - {app.applicantName}
+                                                                <TrendingUp className="w-5 h-5 text-blue-600" /> Qualification Result - {app.applicantName}
                                                             </DialogTitle>
-                                                            <p className="text-xs text-gray-500 mt-1">
-                                                                Evaluated from Applicant's Personal Data Sheet (CS Form 212) against Position Requirements.
-                                                            </p>
                                                         </DialogHeader>
                                                         <div className="space-y-4 pb-4 mt-2">
                                                             {(() => {
@@ -652,7 +728,6 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                             <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
                                                                                 <div className={`h-3 rounded-full ${scoreToPercentage(totalScore) >= 90 ? 'bg-green-500' : scoreToPercentage(totalScore) >= 80 ? 'bg-blue-500' : scoreToPercentage(totalScore) >= 70 ? 'bg-cyan-500' : scoreToPercentage(totalScore) >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${Math.min(scoreToPercentage(totalScore), 100)}%` }} />
                                                                             </div>
-                                                                            <p className="text-[11px] text-gray-500 italic">Formula: Education (30%) + Experience (35%) + Eligibility/Awards (20%) + Training (15%)</p>
                                                                         </div>
                                                                         <div className="space-y-3">
                                                                             <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">PDS Section Evaluation Breakdown</p>
@@ -1289,7 +1364,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                 <Button
                                                     variant="destructive"
                                                     size="sm"
-                                                    onClick={() => handleDeleteInterview(index)}
+                                                    onClick={() => requestCancelInterview(index)}
                                                 >
                                                     <Trash className="h-4 w-4" />
                                                 </Button>
@@ -1537,6 +1612,48 @@ export default function Applicants({ auth, applications: serverApplications }: {
                         >
                             Confirm Rejection
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* --- CANCEL INTERVIEW CONFIRMATION MODAL --- */}
+            <Dialog open={cancelInterviewModal.isOpen} onOpenChange={(open) => !open && setCancelInterviewModal(prev => ({ ...prev, isOpen: false }))}>
+                <DialogContent className="sm:max-w-md bg-[#193153] text-white border-slate-700 shadow-2xl rounded-2xl p-6">
+                    <DialogHeader className="flex flex-col items-center text-center space-y-3 pt-2">
+                        <div className="w-14 h-14 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-center">
+                            <Trash className="w-7 h-7" />
+                        </div>
+                        <DialogTitle className="text-xl font-bold text-white tracking-wide">
+                            Cancel Scheduled Interview?
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="text-center text-slate-300 text-sm py-3 space-y-2">
+                        <p>
+                            Are you sure you want to cancel the interview for{' '}
+                            <strong className="text-white font-semibold">{cancelInterviewModal.candidateName || 'this candidate'}</strong>
+                            {cancelInterviewModal.position ? <> (<span className="text-amber-400">{cancelInterviewModal.position}</span>)</> : ''}?
+                        </p>
+                        <p className="text-xs text-red-400 font-medium">
+                            This will remove the interview schedule from both the Admin portal and the Applicant's account.
+                        </p>
+                    </div>
+
+                    <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end border-t border-slate-700/60 pt-4 mt-2">
+                        <button
+                            type="button"
+                            onClick={() => setCancelInterviewModal(prev => ({ ...prev, isOpen: false }))}
+                            className="px-4 py-2 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-800 text-sm font-medium transition-colors cursor-pointer w-full sm:w-auto"
+                        >
+                            Keep Interview
+                        </button>
+                        <button
+                            type="button"
+                            onClick={confirmCancelInterview}
+                            className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-sm font-semibold transition-all shadow-md shadow-red-900/30 cursor-pointer w-full sm:w-auto"
+                        >
+                            Yes, Cancel Interview
+                        </button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

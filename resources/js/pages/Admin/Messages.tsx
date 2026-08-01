@@ -1,19 +1,24 @@
 import { Link } from '@inertiajs/react';
 import axios from 'axios';
-import { Search, Send, MessageSquare, Clock, User, Briefcase, ChevronLeft, Eye, Mail, GraduationCap, Building2, ExternalLink, FileText } from 'lucide-react';
+import { Search, Send, MessageSquare, Clock, User, Briefcase, ChevronLeft, Eye, Mail, GraduationCap, Building2, ExternalLink, FileText, Trash2 } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import AdminLayout from '@/layouts/AdminLayout';
 
 interface Application {
     id: number;
     applicantName: string;
+    avatar?: string;
+    avatar_url?: string;
     email: string;
+    phone?: string;
+    address?: string;
+    profile_data?: any;
     jobTitle: string;
     status: string;
     campus?: string;
@@ -94,7 +99,29 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [isClearModalOpen, setIsClearModalOpen] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+    const handleClearConversation = async () => {
+        if (!selectedApp) return;
+        try {
+            await axios.delete(`/messages/${selectedApp.id}`);
+            setMessages([]);
+            setApplications(prev =>
+                prev.map(a =>
+                    a.id === selectedApp.id
+                        ? { ...a, lastMessage: null, lastMessageTime: null, hasUnreadMessages: false }
+                        : a
+                )
+            );
+            toast.success("Conversation cleared.");
+            setIsClearModalOpen(false);
+        } catch (e: any) {
+            console.error("Failed to clear conversation", e);
+            toast.error(e.response?.data?.error || "Failed to clear conversation.");
+        }
+    };
 
     const filteredApps = (applications || []).filter(app => {
         const name = app.applicantName || 'Applicant';
@@ -273,14 +300,20 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
                                                 }`}
                                             >
                                                 {/* Avatar */}
-                                                <div className={`relative flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm ${
-                                                    isSelected ? 'bg-[#ffdd59] text-[#193153]' : 'bg-blue-100 text-blue-800'
-                                                }`}>
-                                                    {(app.applicantName || 'A').charAt(0)}
+                                                <div className="relative flex-shrink-0">
+                                                    <div className={`w-11 h-11 rounded-full overflow-hidden flex items-center justify-center font-bold text-sm shadow-xs ${
+                                                        isSelected ? 'bg-[#ffdd59] text-[#193153]' : 'bg-blue-100 text-blue-800'
+                                                    }`}>
+                                                        {app.avatar || app.avatar_url ? (
+                                                            <img src={app.avatar || app.avatar_url} alt={app.applicantName} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            (app.applicantName || 'A').charAt(0)
+                                                        )}
+                                                    </div>
                                                     {app.hasUnreadMessages && (
-                                                        <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                                                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 z-20">
                                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-white"></span>
+                                                            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-600 border-2 border-white"></span>
                                                         </span>
                                                     )}
                                                 </div>
@@ -323,37 +356,58 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
                         <div className={`flex-1 flex flex-col bg-white ${selectedApp ? 'flex' : 'hidden md:flex'}`}>
                             {selectedApp ? (
                                 <>
-                                    {/* Chat Header */}
-                                    <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white shadow-sm">
-                                        <div className="flex items-center gap-3">
-                                            {/* Back Button on Mobile */}
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="md:hidden text-gray-500 hover:text-gray-700 -ml-2 mr-1"
-                                                onClick={() => setSelectedApp(null)}
-                                            >
-                                                <ChevronLeft className="w-6 h-6" />
-                                            </Button>
+                                     {/* Chat Header */}
+                                     <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white shadow-sm">
+                                         <div 
+                                             className="flex items-center gap-3 cursor-pointer group hover:opacity-95 transition-opacity"
+                                             onClick={() => setIsProfileModalOpen(true)}
+                                             title="Click to view applicant profile"
+                                         >
+                                             {/* Back Button on Mobile */}
+                                             <Button 
+                                                 variant="ghost" 
+                                                 size="icon" 
+                                                 className="md:hidden text-gray-500 hover:text-gray-700 -ml-2 mr-1"
+                                                 onClick={(e) => { e.stopPropagation(); setSelectedApp(null); }}
+                                             >
+                                                 <ChevronLeft className="w-6 h-6" />
+                                             </Button>
 
-                                            <div className="w-10 h-10 rounded-full bg-[#193153] flex items-center justify-center text-[#ffdd59] font-bold text-sm">
-                                                {(selectedApp.applicantName || 'A').charAt(0)}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-[#193153] text-sm leading-tight">
-                                                    {selectedApp.applicantName}
-                                                </h3>
-                                                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                                    <Briefcase className="w-3.5 h-3.5" />
-                                                    {selectedApp.jobTitle}
-                                                </p>
-                                            </div>
-                                        </div>
+                                             <div className="w-10 h-10 rounded-full overflow-hidden bg-[#193153] flex items-center justify-center text-[#ffdd59] font-bold text-sm group-hover:ring-2 group-hover:ring-[#ffdd59] transition-all shadow-xs flex-shrink-0">
+                                                 {selectedApp.avatar || selectedApp.avatar_url ? (
+                                                     <img src={selectedApp.avatar || selectedApp.avatar_url} alt={selectedApp.applicantName} className="w-full h-full object-cover" />
+                                                 ) : (
+                                                     (selectedApp.applicantName || 'A').charAt(0)
+                                                 )}
+                                             </div>
+                                             <div>
+                                                 <h3 className="font-bold text-[#193153] text-sm leading-tight flex items-center gap-1.5 group-hover:text-blue-600 transition-colors">
+                                                     {selectedApp.applicantName}
+                                                     <Eye className="w-3.5 h-3.5 text-blue-600 inline-block opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                 </h3>
+                                                 <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                                     <Briefcase className="w-3.5 h-3.5" />
+                                                     {selectedApp.jobTitle}
+                                                 </p>
+                                             </div>
+                                         </div>
 
-                                        <Badge className={`text-xs ${getStatusColor(selectedApp.status)} border-none shadow-none`}>
-                                            {selectedApp.status}
-                                        </Badge>
-                                    </div>
+                                         <div className="flex items-center gap-2">
+                                             <Badge className={`text-xs ${getStatusColor(selectedApp.status)} border-none shadow-none`}>
+                                                 {selectedApp.status}
+                                             </Badge>
+                                             <Button
+                                                 variant="ghost"
+                                                 size="sm"
+                                                 className="text-red-500 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 h-8 text-xs flex items-center gap-1.5 rounded-lg border border-red-200 transition-colors"
+                                                 onClick={() => setIsClearModalOpen(true)}
+                                                 title="Clear conversation history"
+                                             >
+                                                 <Trash2 className="w-3.5 h-3.5" />
+                                                 <span className="hidden sm:inline font-medium">Clear Chat</span>
+                                             </Button>
+                                         </div>
+                                     </div>
 
                                     {/* Scrollable Messages Area */}
                                     <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
@@ -426,6 +480,193 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
 
                     </div>
                 </Card>
+
+                {/* APPLICANT PROFILE QUICK VIEW MODAL */}
+                {selectedApp && (
+                    <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
+                        <DialogContent className="max-w-md p-6 rounded-2xl">
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-bold text-[#193153] flex items-center gap-2">
+                                    <User className="w-5 h-5 text-[#ffdd59]" />
+                                    Applicant Profile
+                                </DialogTitle>
+                            </DialogHeader>
+
+                            <div className="space-y-5 pt-2">
+                                {/* User Header Card */}
+                                <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                    <div className="w-14 h-14 rounded-full overflow-hidden bg-[#193153] text-[#ffdd59] flex items-center justify-center font-bold text-xl ring-4 ring-blue-50 flex-shrink-0">
+                                        {selectedApp.avatar || selectedApp.avatar_url ? (
+                                            <img src={selectedApp.avatar || selectedApp.avatar_url} alt={selectedApp.applicantName} className="w-full h-full object-cover" />
+                                        ) : (
+                                            (selectedApp.applicantName || 'A').charAt(0)
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-[#193153] text-lg leading-tight">{selectedApp.applicantName}</h3>
+                                        <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5 mt-0.5">
+                                            <Mail className="w-3.5 h-3.5 text-blue-600" />
+                                            {selectedApp.email}
+                                        </p>
+                                        {selectedApp.phone && selectedApp.phone !== 'N/A' && (
+                                            <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5 mt-0.5">
+                                                <User className="w-3.5 h-3.5 text-blue-600" />
+                                                {selectedApp.phone}
+                                            </p>
+                                        )}
+                                        <Badge className={`mt-2 text-xs ${getStatusColor(selectedApp.status)} border-none shadow-none`}>
+                                            {selectedApp.status}
+                                        </Badge>
+                                    </div>
+                                </div>
+
+                                {/* Details Grid */}
+                                <div className="grid grid-cols-1 gap-3 text-sm">
+                                    <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-100">
+                                        <Briefcase className="w-4 h-4 text-[#193153] mt-0.5 flex-shrink-0" />
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-400 uppercase">Applied Position</p>
+                                            <p className="font-medium text-gray-800">{selectedApp.jobTitle}</p>
+                                            <p className="text-[11px] text-gray-500">{selectedApp.campus || 'NAAP - Villamor Campus'}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-100">
+                                        <GraduationCap className="w-4 h-4 text-[#193153] mt-0.5 flex-shrink-0" />
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-400 uppercase">Education</p>
+                                            <p className="font-medium text-gray-800">{selectedApp.education || 'N/A'}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-100">
+                                        <Clock className="w-4 h-4 text-[#193153] mt-0.5 flex-shrink-0" />
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-400 uppercase">Relevant Experience</p>
+                                            <p className="font-medium text-gray-800 whitespace-pre-line">{selectedApp.experience || 'N/A'}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Skills Section */}
+                                    {selectedApp.skills && (
+                                        <div className="p-3 bg-white rounded-lg border border-gray-100 space-y-1">
+                                            <p className="text-xs font-semibold text-gray-400 uppercase">Skills & Competencies</p>
+                                            <div className="flex flex-wrap gap-1.5 pt-1">
+                                                {(Array.isArray(selectedApp.skills) ? selectedApp.skills : String(selectedApp.skills).split(',')).map((skill: string, idx: number) => (
+                                                    <span key={idx} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded font-medium border border-blue-100">
+                                                        {skill.trim()}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Documents Attachments */}
+                                    {(selectedApp.resume_path || selectedApp.pds_document) ? (
+                                        <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100 space-y-2">
+                                            <p className="text-xs font-bold text-[#193153] uppercase flex items-center gap-1.5">
+                                                <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                                Submitted Documents
+                                            </p>
+                                            <div className="flex flex-wrap gap-2 pt-1">
+                                                {selectedApp.resume_path && (
+                                                    <a 
+                                                        href={`/storage/${selectedApp.resume_path}`} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-[#193153] rounded-md text-xs font-semibold border border-blue-200 hover:bg-blue-50 transition-colors shadow-xs"
+                                                    >
+                                                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                                        View Resume PDF
+                                                    </a>
+                                                )}
+
+                                                {selectedApp.pds_document && (
+                                                    <a 
+                                                        href={`/storage/${selectedApp.pds_document}`} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-[#193153] rounded-md text-xs font-semibold border border-blue-200 hover:bg-blue-50 transition-colors shadow-xs"
+                                                    >
+                                                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                                        View PDS CS Form 212
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                            <p className="text-xs font-semibold text-gray-400 uppercase">Submitted Documents</p>
+                                            <p className="text-xs text-gray-500 italic mt-0.5">No documents uploaded yet</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Modal Actions */}
+                                <div className="pt-2 flex gap-3">
+                                    <Button
+                                        variant="outline"
+                                        className="flex-1"
+                                        onClick={() => setIsProfileModalOpen(false)}
+                                    >
+                                        Close
+                                    </Button>
+                                    <a 
+                                        href={`/admin/applicants?search=${encodeURIComponent(selectedApp.applicantName)}`}
+                                        className="flex-1"
+                                    >
+                                        <Button className="w-full bg-[#193153] hover:bg-[#ffdd59] hover:text-[#193153] text-white font-semibold text-xs gap-1.5">
+                                            Full Applicant Evaluation
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </a>
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                )}
+
+                {/* --- CLEAR CONVERSATION CONFIRMATION MODAL --- */}
+                <Dialog open={isClearModalOpen} onOpenChange={setIsClearModalOpen}>
+                    <DialogContent className="sm:max-w-md bg-[#193153] text-white border-slate-700 shadow-2xl rounded-2xl p-6">
+                        <DialogHeader className="flex flex-col items-center text-center space-y-3 pt-2">
+                            <div className="w-14 h-14 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-center">
+                                <Trash2 className="w-7 h-7" />
+                            </div>
+                            <DialogTitle className="text-xl font-bold text-white tracking-wide">
+                                Clear Conversation History?
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="text-center text-slate-300 text-sm py-3 space-y-2">
+                            <p>
+                                Are you sure you want to delete all chat messages with{' '}
+                                <strong className="text-white font-semibold">{selectedApp?.applicantName || 'this applicant'}</strong>
+                                {selectedApp?.jobTitle ? <> for <span className="text-amber-400 font-medium">{selectedApp.jobTitle}</span></> : ''}?
+                            </p>
+                            <p className="text-xs text-red-400 font-medium">
+                                This will permanently delete the conversation history for both Admin and the Applicant.
+                            </p>
+                        </div>
+
+                        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end border-t border-slate-700/60 pt-4 mt-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsClearModalOpen(false)}
+                                className="px-4 py-2 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-800 text-sm font-medium transition-colors cursor-pointer w-full sm:w-auto"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleClearConversation}
+                                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-sm font-semibold transition-all shadow-md shadow-red-900/30 cursor-pointer w-full sm:w-auto"
+                            >
+                                Yes, Clear Chat
+                            </button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </AdminLayout>
     );

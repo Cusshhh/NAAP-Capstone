@@ -1060,8 +1060,8 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 <div className="flex items-center justify-between max-w-md mx-auto pt-2 pb-4">
                                     {[
                                         { label: 'Applied', active: true },
-                                        { label: 'Review', active: ['Under Review', 'Shortlisted', 'Hired', 'Rejected'].includes(application.status) },
-                                        { label: 'Interview', active: ['Shortlisted', 'Hired', 'Rejected'].includes(application.status) },
+                                        { label: 'Review', active: ['Under Review', 'Shortlisted', 'Interview Scheduled', 'Interview', 'Hired', 'Rejected'].includes(application.status) },
+                                        { label: 'Interview', active: ['Shortlisted', 'Interview Scheduled', 'Interview', 'Hired', 'Rejected'].includes(application.status) },
                                         { label: 'Result', active: ['Hired', 'Rejected'].includes(application.status), isEnd: true }
                                     ].map((step, i) => (
                                         <div key={i} className="flex-1 flex items-center">

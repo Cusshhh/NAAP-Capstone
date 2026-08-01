@@ -90,12 +90,12 @@ export default function Login({
 
                             <Button
                                 type="submit"
-                                className="mt-4 w-full"
+                                className="mt-4 w-full bg-[#193153] hover:bg-[#152844] text-[#ffdd59] font-bold py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all border border-[#ffdd59]/30"
                                 tabIndex={4}
                                 disabled={processing}
                                 data-test="login-button"
                             >
-                                {processing && <Spinner />}
+                                {processing && <Spinner className="mr-2" />}
                                 Log in
                             </Button>
                         </div>

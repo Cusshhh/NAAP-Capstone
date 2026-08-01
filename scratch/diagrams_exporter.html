@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAAP Capstone - System Diagrams Exporter</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            color: #193153;
+            margin: 0;
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        h1 { margin: 0 0 10px 0; color: #193153; font-size: 24px; }
+        p { color: #64748b; margin: 0; }
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 35px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 15px;
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+        .btn-secondary {
+            background-color: #0f172a;
+        }
+        .btn-secondary:hover {
+            background-color: #334155;
+        }
+        .diagram-container {
+            display: flex;
+            justify-content: center;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>NAAP Capstone System Diagrams Exporter</h1>
+        <p>National Aviation Academy of the Philippines — High-Resolution PNG/SVG Diagram Downloads for MS Word</p>
+    </div>
+
+    <!-- 0. CHEN-STYLE CONCEPTUAL DATA MODEL -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">0A. Conceptual Data Model (Chen's Classic Notation — Like Classmate's Diagram)</div>
+            <div class="btn-group">
+                <button class="btn" onclick="downloadPNG('diagram-chen', 'NAAP_Conceptual_Chen_Notation.png')">📷 Download PNG for Word</button>
+                <button class="btn btn-secondary" onclick="downloadSVG('diagram-chen', 'NAAP_Conceptual_Chen_Notation.svg')">📐 Download SVG Vector</button>
+            </div>
+        </div>
+        <div class="diagram-container" id="diagram-chen">
+            <pre class="mermaid">
+flowchart TD
+    %% ENTITIES (Rectangles)
+    E_APPLICANT["[ APPLICANT ]"]
+    E_ADMIN["[ HR ADMINISTRATOR ]"]
+    E_JOB["[ JOB VACANCY ]"]
+    E_APP["[ APPLICATION ]"]
+    E_STAFF["[ STAFFING POSITION ]"]
+    E_INTERVIEW["[ INTERVIEW SCHEDULE ]"]
+    E_MSG["[ MESSAGE LOG ]"]
+
+    %% RELATIONSHIPS (Diamonds)
+    R_SUBMITS{"SUBMITS"}
+    R_POSTS{"POSTS & MANAGES"}
+    R_REVIEWS{"REVIEWS & SCORES"}
+    R_TARGETS{"APPLIES TO"}
+    R_FILLS{"FILLS"}
+    R_SCHEDULES{"SCHEDULES"}
+    R_EXCHANGES{"EXCHANGES"}
+
+    %% ATTRIBUTES (Ovals/Nodes)
+    A_APP1("(applicant_id)") --- E_APPLICANT
+    A_APP2("(full_name)") --- E_APPLICANT
+    A_APP3("(email_address)") --- E_APPLICANT
+    A_APP4("(pds_credentials)") --- E_APPLICANT
+
+    A_ADM1("(admin_id)") --- E_ADMIN
+    A_ADM2("(employee_name)") --- E_ADMIN
+    A_ADM3("(role_privilege)") --- E_ADMIN
+
+    A_JOB1("(job_id)") --- E_JOB
+    A_JOB2("(title)") --- E_JOB
+    A_JOB3("(department)") --- E_JOB
+    A_JOB4("(salary_grade)") --- E_JOB
+
+    A_AP1("(application_id)") --- E_APP
+    A_AP2("(submitted_date)") --- E_APP
+    A_AP3("(status)") --- E_APP
+    A_AP4("(ai_match_score)") --- E_APP
+
+    A_ST1("(staffing_id)") --- E_STAFF
+    A_ST2("(plantilla_title)") --- E_STAFF
+    A_ST3("(position_status)") --- E_STAFF
+
+    A_IN1("(interview_id)") --- E_INTERVIEW
+    A_IN2("(scheduled_at)") --- E_INTERVIEW
+    A_IN3("(location)") --- E_INTERVIEW
+
+    A_MS1("(message_id)") --- E_MSG
+    A_MS2("(content)") --- E_MSG
+    A_MS3("(timestamp)") --- E_MSG
+
+    %% CONNECTIONS
+    E_APPLICANT --- R_SUBMITS --- E_APP
+    E_ADMIN --- R_POSTS --- E_JOB
+    E_ADMIN --- R_REVIEWS --- E_APP
+    E_APP --- R_TARGETS --- E_JOB
+    E_JOB --- R_FILLS --- E_STAFF
+    E_APP --- R_SCHEDULES --- E_INTERVIEW
+    E_ADMIN --- R_EXCHANGES --- E_MSG
+    E_APPLICANT --- R_EXCHANGES --- E_MSG
+
+    %% STYLING
+    style E_APPLICANT fill:#84cc16,stroke:#3f6212,stroke-width:2px,color:#000
+    style E_ADMIN fill:#84cc16,stroke:#3f6212,stroke-width:2px,color:#000
+    style E_JOB fill:#84cc16,stroke:#3f6212,stroke-width:2px,color:#000
+    style E_APP fill:#84cc16,stroke:#3f6212,stroke-width:2px,color:#000
+    style E_STAFF fill:#84cc16,stroke:#3f6212,stroke-width:2px,color:#000
+    style E_INTERVIEW fill:#84cc16,stroke:#3f6212,stroke-width:2px,color:#000
+    style E_MSG fill:#84cc16,stroke:#3f6212,stroke-width:2px,color:#000
+
+    style R_SUBMITS fill:#1d4ed8,stroke:#1e40af,stroke-width:2px,color:#fff
+    style R_POSTS fill:#1d4ed8,stroke:#1e40af,stroke-width:2px,color:#fff
+    style R_REVIEWS fill:#1d4ed8,stroke:#1e40af,stroke-width:2px,color:#fff
+    style R_TARGETS fill:#1d4ed8,stroke:#1e40af,stroke-width:2px,color:#fff
+    style R_FILLS fill:#1d4ed8,stroke:#1e40af,stroke-width:2px,color:#fff
+    style R_SCHEDULES fill:#1d4ed8,stroke:#1e40af,stroke-width:2px,color:#fff
+    style R_EXCHANGES fill:#1d4ed8,stroke:#1e40af,stroke-width:2px,color:#fff
+            </pre>
+        </div>
+    </div>
+
+    <!-- 0B. TABLE-STYLE CONCEPTUAL MODEL -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">0B. Conceptual Data Model (Table/Crow's Foot Style)</div>
+            <div class="btn-group">
+                <button class="btn" onclick="downloadPNG('diagram-conceptual', 'NAAP_Conceptual_Data_Model.png')">📷 Download PNG for Word</button>
+                <button class="btn btn-secondary" onclick="downloadSVG('diagram-conceptual', 'NAAP_Conceptual_Data_Model.svg')">📐 Download SVG Vector</button>
+            </div>
+        </div>
+        <div class="diagram-container" id="diagram-conceptual">
+            <pre class="mermaid">
+erDiagram
+    APPLICANT ||--o{ APPLICATION : "submits"
+    HR_ADMINISTRATOR ||--o{ JOB_VACANCY : "manages & posts"
+    HR_ADMINISTRATOR ||--o{ APPLICATION : "reviews & evaluates"
+    JOB_VACANCY ||--o{ APPLICATION : "receives"
+    JOB_VACANCY }o--|| STAFFING_POSITION : "fills"
+    APPLICATION ||--|| QUALIFICATION_SCORE : "evaluates into"
+    APPLICATION ||--o{ INTERVIEW_SCHEDULE : "schedules"
+    HR_ADMINISTRATOR ||--o{ MESSAGE_COMMUNICATION : "sends"
+    APPLICANT ||--o{ MESSAGE_COMMUNICATION : "exchanges"
+
+    APPLICANT {
+        string Applicant_Name
+        string Email_Address
+        string Phone_Number
+        string Civil_Service_PDS_Data
+    }
+
+    HR_ADMINISTRATOR {
+        string Employee_Name
+        string Department_Role
+        string System_Privilege
+    }
+
+    JOB_VACANCY {
+        string Job_Title
+        string Department
+        string Employment_Type
+        string Salary_Grade
+        date Application_Deadline
+    }
+
+    APPLICATION {
+        date Date_Submitted
+        string Application_Status
+        string Document_Attachments
+        string Pending_ToFollow_Docs
+    }
+
+    QUALIFICATION_SCORE {
+        number Match_Percentage
+        number Education_Points
+        number Experience_Points
+        number Award_Eligibility_Points
+        number Training_Hours_Points
+    }
+
+    INTERVIEW_SCHEDULE {
+        datetime Interview_Date_Time
+        string Venue_Location
+        string Schedule_Status
+    }
+
+    STAFFING_POSITION {
+        string Plantilla_Title
+        string Department
+        string Position_Status
+    }
+
+    MESSAGE_COMMUNICATION {
+        string Message_Content
+        datetime Timestamp
+        boolean Read_Receipt
+    }
+            </pre>
+        </div>
+    </div>
+
+    <!-- 1. LOGICAL ERD -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">1. Logical Entity Relationship Diagram (ERD)</div>
+            <div class="btn-group">
+                <button class="btn" onclick="downloadPNG('diagram-erd', 'NAAP_Logical_ERD.png')">📷 Download PNG for Word</button>
+                <button class="btn btn-secondary" onclick="downloadSVG('diagram-erd', 'NAAP_Logical_ERD.svg')">📐 Download SVG Vector</button>
+            </div>
+        </div>
+        <div class="diagram-container" id="diagram-erd">
+            <pre class="mermaid">
+erDiagram
+    USERS ||--o{ APPLICATIONS : "submits (1:N)"
+    USERS ||--o{ MESSAGES : "sends (1:N)"
+    USERS ||--o{ ACTIVITY_LOGS : "generates (1:N)"
+    VACANCIES }o--|| STAFFING_POSITIONS : "links to (N:1)"
+    VACANCIES ||--o{ APPLICATIONS : "receives (1:N)"
+    APPLICATIONS ||--o{ MESSAGES : "contains (1:N)"
+    APPLICATIONS ||--o{ INTERVIEWS : "schedules (1:N)"
+
+    USERS {
+        bigint id PK
+        string name
+        string email UK
+        string password
+        string role "super_admin | hr_admin | hr_staff | applicant"
+        json profile_data
+        timestamp two_factor_confirmed_at
+    }
+
+    VACANCIES {
+        bigint id PK
+        bigint staffing_id FK
+        string title
+        string department
+        string employment_type "Full-time | Part-time | Contractual"
+        string location
+        string salary_grade
+        text description
+        json responsibilities
+        json requirements
+        date deadline
+        string status "Open | Closed | Archived"
+    }
+
+    APPLICATIONS {
+        bigint id PK
+        bigint job_id FK
+        string email FK
+        string applicant_name
+        string phone_number
+        string education
+        string status "Submitted | Under Review | Shortlisted | Interview Scheduled | Hired | Rejected"
+        json to_follow_docs
+        json custom_file_responses
+        json dynamic_responses
+    }
+
+    MESSAGES {
+        bigint id PK
+        bigint application_id FK
+        bigint sender_id FK
+        text content
+        boolean is_read
+    }
+
+    INTERVIEWS {
+        bigint id PK
+        bigint application_id FK
+        datetime scheduled_at
+        string location
+        string status "Scheduled | Completed | Cancelled"
+    }
+
+    STAFFING_POSITIONS {
+        bigint id PK
+        string title
+        string department
+        string status "Filled | Unfilled"
+    }
+
+    ACTIVITY_LOGS {
+        bigint id PK
+        bigint user_id FK
+        string action
+        text description
+    }
+            </pre>
+        </div>
+    </div>
+
+    <!-- 2. THREE-TIER SYSTEM ARCHITECTURE -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">2. Three-Tier System Architecture Diagram</div>
+            <div class="btn-group">
+                <button class="btn" onclick="downloadPNG('diagram-arch', 'NAAP_System_Architecture.png')">📷 Download PNG for Word</button>
+                <button class="btn btn-secondary" onclick="downloadSVG('diagram-arch', 'NAAP_System_Architecture.svg')">📐 Download SVG Vector</button>
+            </div>
+        </div>
+        <div class="diagram-container" id="diagram-arch">
+            <pre class="mermaid">
+graph TD
+    subgraph Tier 1: Presentation Layer (Frontend)
+        UI["React 19 / Inertia.js Single Page Application"]
+        Styles["Tailwind CSS 4 & Radix UI Components"]
+        Charts["Recharts Analytics & Responsive Layouts"]
+    end
+
+    subgraph Tier 2: Application Programming Interface Layer (Backend Processing)
+        Kernel["Laravel 11 Kernel & Controllers"]
+        RBAC["Role-Based Access Control (RBAC)"]
+        Scoring["PDS Qualification Match Scoring Engine"]
+        Auth["Fortify Authentication & 2FA Engine"]
+    end
+
+    subgraph Tier 3: Database System (Data Management Layer)
+        DB[("MySQL / SQLite Relational Database")]
+        Storage["File Storage API (Resumes, PDS, Attachments)"]
+    end
+
+    UI <-->|"JSON Props over XHR / HTTP"| Kernel
+    Kernel --> RBAC
+    Kernel --> Auth
+    Kernel --> Scoring
+    Kernel <-->|"Eloquent ORM"| DB
+    Kernel <-->|"File Storage Manager"| Storage
+            </pre>
+        </div>
+    </div>
+
+    <!-- 3. DFD LEVEL 0 (CONTEXT DIAGRAM) -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">3. Context Data Flow Diagram (DFD Level 0)</div>
+            <div class="btn-group">
+                <button class="btn" onclick="downloadPNG('diagram-dfd0', 'NAAP_DFD_Level_0.png')">📷 Download PNG for Word</button>
+                <button class="btn btn-secondary" onclick="downloadSVG('diagram-dfd0', 'NAAP_DFD_Level_0.svg')">📐 Download SVG Vector</button>
+            </div>
+        </div>
+        <div class="diagram-container" id="diagram-dfd0">
+            <pre class="mermaid">
+graph TD
+    Applicant["Applicant Entity"]
+    HRAdmin["HR Administrator / Staff Entity"]
+    System(("HR Job Portal System"))
+    Database[("Central Database")]
+    NotificationService["Email / SMS Notification Service"]
+
+    Applicant -->|"Registration Details, PDS, Applications, Messages"| System
+    System -->|"Job Listings, Application Status, Interview Schedules, Notifications"| Applicant
+
+    HRAdmin -->|"Job Vacancies, Interview Schedules, Status Updates, Messages"| System
+    System -->|"Applicant Profiles, Match Scores, Reports, Audit Logs"| HRAdmin
+
+    System <-->|"Store & Retrieve Records"| Database
+    System -->|"Trigger Status Notifications"| NotificationService
+            </pre>
+        </div>
+    </div>
+
+    <!-- 4. DFD LEVEL 1 -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">4. Data Flow Diagram Level 1 (DFD Level 1)</div>
+            <div class="btn-group">
+                <button class="btn" onclick="downloadPNG('diagram-dfd1', 'NAAP_DFD_Level_1.png')">📷 Download PNG for Word</button>
+                <button class="btn btn-secondary" onclick="downloadSVG('diagram-dfd1', 'NAAP_DFD_Level_1.svg')">📐 Download SVG Vector</button>
+            </div>
+        </div>
+        <div class="diagram-container" id="diagram-dfd1">
+            <pre class="mermaid">
+graph TD
+    Applicant["Applicant Entity"]
+    HRAdmin["Admin Entity"]
+
+    subgraph System Processes
+        P1["1.0 Validate Credentials"]
+        P2["2.0 Manage Dashboard"]
+        P3["3.0 Search & Manage Job Listings"]
+        P4["4.0 Process Applications & Scoring"]
+    end
+
+    subgraph Data Stores
+        D1[("D1: User & Applicant Records")]
+        D2[("D2: Job Vacancy Data")]
+        D3[("D3: Applications & Messages")]
+    end
+
+    Applicant -->|"Login Credentials"| P1
+    HRAdmin -->|"Login Credentials"| P1
+    P1 <-->|"Verify User"| D1
+
+    P1 -->|"Access Granted"| P2
+    P2 <-->|"Load Dashboard Data"| D1
+    P2 <-->|"Load Vacancy Stats"| D2
+
+    Applicant -->|"Search Criteria / Apply"| P3
+    HRAdmin -->|"Create / Edit Vacancy"| P3
+    P3 <-->|"Read / Write Jobs"| D2
+
+    Applicant -->|"Submit Application & PDS"| P4
+    HRAdmin -->|"Review & Score Applicants"| P4
+    P4 <-->|"Store Applications & Scores"| D3
+            </pre>
+        </div>
+    </div>
+
+    <!-- 5. WATERFALL SDLC -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">5. Software Development Life Cycle (Waterfall SDLC)</div>
+            <div class="btn-group">
+                <button class="btn" onclick="downloadPNG('diagram-sdlc', 'NAAP_Waterfall_SDLC.png')">📷 Download PNG for Word</button>
+                <button class="btn btn-secondary" onclick="downloadSVG('diagram-sdlc', 'NAAP_Waterfall_SDLC.svg')">📐 Download SVG Vector</button>
+            </div>
+        </div>
+        <div class="diagram-container" id="diagram-sdlc">
+            <pre class="mermaid">
+flowchart TD
+    A["1. Requirements Analysis"] --> B["2. System Design"]
+    B --> C["3. Implementation (Coding)"]
+    C --> D["4. Testing & Quality Assurance"]
+    D --> E["5. Deployment & Cutover"]
+    E --> F["6. Maintenance"]
+            </pre>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+
+        function downloadSVG(containerId, filename) {
+            const container = document.getElementById(containerId);
+            const svg = container.querySelector('svg');
+            if (!svg) return alert('Diagram not rendered yet');
+
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadPNG(containerId, filename) {
+            const container = document.getElementById(containerId);
+            const svg = container.querySelector('svg');
+            if (!svg) return alert('Diagram not rendered yet');
+
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+
+            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = function () {
+                canvas.width = img.width * 2; // High DPI
+                canvas.height = img.height * 2;
+                ctx.scale(2, 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+
+                const pngUrl = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = pngUrl;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            };
+
+            img.src = url;
+        }
+    </script>
+</body>
+</html>
