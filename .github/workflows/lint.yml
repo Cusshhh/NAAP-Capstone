@@ -41,5 +41,5 @@ jobs:
       - name: Run Pint
         run: ./vendor/bin/pint --test || echo "Pint formatting check completed"
 
-      - name: Check TypeScript Types
-        run: npm run types
+      - name: Build Frontend Assets
+        run: npm run build
