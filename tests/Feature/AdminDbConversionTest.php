@@ -135,7 +135,8 @@ test('authenticated user can create, retrieve, and delete calendar events', func
     $event = CalendarEvent::where('title', 'My Interview Prep')->first();
     
     // Non-owner cannot delete
-    $this->actingAs($this->admin);
+    $otherUser = User::factory()->create();
+    $this->actingAs($otherUser);
     $deleteRes = $this->deleteJson("/calendar/events/{$event->id}");
     $deleteRes->assertStatus(403);
 
