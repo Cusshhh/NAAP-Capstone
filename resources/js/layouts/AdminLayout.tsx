@@ -23,6 +23,7 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
     const admin = auth?.user || { name: 'Admin', email: '' } as any;
     const { url, props } = usePage<any>();
     const unreadMessagesCount = (props as any)?.unread_messages_count || 0;
+    const pendingApplicantsCount = (props as any)?.pending_applicants_count || 0;
 
     const handleLogout = () => {
         router.post('/logout');
@@ -69,6 +70,11 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
                                     >
                                         <item.icon className={`h-4 w-4 mr-2 ${isActive(item.href) ? 'text-[#ffdd59]' : ''}`} />
                                         {item.name}
+                                        {item.name === 'Applicants' && pendingApplicantsCount > 0 && (
+                                            <span className="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-red-500 rounded-full animate-pulse shadow-md border border-white">
+                                                {pendingApplicantsCount}
+                                            </span>
+                                        )}
                                         {item.name === 'Messages' && unreadMessagesCount > 0 && (
                                             <span className="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-red-500 rounded-full animate-pulse shadow-md border border-white">
                                                 {unreadMessagesCount}

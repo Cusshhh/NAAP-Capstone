@@ -25,15 +25,18 @@ class MessageController extends Controller
                 abort(403, 'Unauthorized access to messages.');
             }
 
-            // Mark other party's unread messages as read
-            Message::where('application_id', $application_id)
+            // Fetch all applications belonging to this applicant to unify the conversation thread
+            $applicantAppIds = Application::where('email', $application->email)->pluck('id');
+
+            // Mark unread messages across all applicant's applications as read
+            Message::whereIn('application_id', $applicantAppIds)
                 ->where('sender_id', '!=', $user->id)
                 ->where('is_read', false)
                 ->update(['is_read' => true]);
 
-            // Fetch messages with sender data
-            $messages = Message::with('sender:id,name,email')
-                ->where('application_id', $application_id)
+            // Fetch all messages for this applicant with sender & application data
+            $messages = Message::with(['sender:id,name,email', 'application:id,job_title'])
+                ->whereIn('application_id', $applicantAppIds)
                 ->oldest()
                 ->get();
 
@@ -82,7 +85,7 @@ class MessageController extends Controller
                 'is_read' => false
             ]);
 
-            return response()->json($message->load('sender:id,name,email'), 201);
+            return response()->json($message->load(['sender:id,name,email', 'application:id,job_title']), 201);
         } catch (\Exception $e) {
             Log::error('SendMessage Error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
             return response()->json(['error' => 'Server Error: ' . $e->getMessage()], 500);

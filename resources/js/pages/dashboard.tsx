@@ -32,7 +32,7 @@ import {
     Trash2,
     Newspaper
 } from 'lucide-react';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from "@/components/ui/input";
@@ -75,17 +75,17 @@ const CustomTooltip = ({ children, content, side = 'top' }: TooltipProps) => {
     return (
         <div className="relative group/tooltip inline-block">
             {children}
-            <div className={`absolute left-1/2 -translate-x-1/2 hidden group-hover/tooltip:flex flex-col items-center z-50 pointer-events-none transition-all duration-200 ${
-                isTop ? 'bottom-full mb-2' : 'top-full mt-2'
+            <div className={`absolute left-1/2 -translate-x-1/2 hidden group-hover/tooltip:flex flex-col items-center z-50 pointer-events-none ${
+                isTop ? 'bottom-full mb-2.5' : 'top-full mt-2.5'
             }`}>
                 {!isTop && (
-                    <div className="w-2.5 h-2.5 bg-[#193153] rotate-45 -mb-1.5 border-t border-l border-blue-900/30"></div>
+                    <div className="w-2 h-2 bg-[#193153] rotate-45 -mb-1 border-t border-l border-blue-900/30 pointer-events-none"></div>
                 )}
-                <div className="bg-[#193153] text-[#ffdd59] text-[10px] font-bold py-1.5 px-3 rounded shadow-xl whitespace-nowrap border border-blue-900/30">
+                <div className="bg-[#193153] text-[#ffdd59] text-[10px] font-bold py-1.5 px-3 rounded shadow-xl whitespace-nowrap border border-blue-900/30 pointer-events-none">
                     {content}
                 </div>
                 {isTop && (
-                    <div className="w-2.5 h-2.5 bg-[#193153] rotate-45 -mt-1.5 border-r border-b border-blue-900/30"></div>
+                    <div className="w-2 h-2 bg-[#193153] rotate-45 -mt-1 border-r border-b border-blue-900/30 pointer-events-none"></div>
                 )}
             </div>
         </div>
@@ -283,18 +283,15 @@ const ChatBot = () => {
     };
 
     return (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        <div className="z-50">
             {isOpen && (
-                <div className="mb-4 w-[320px] h-[400px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 fade-in duration-300">
+                <div className="fixed bottom-0 right-24 md:right-28 z-50 w-[320px] h-[400px] bg-white border border-gray-200 shadow-2xl rounded-t-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 fade-in duration-300">
                     {/* Header */}
-                    <div className="bg-[#193153] p-4 flex justify-between items-center text-white">
+                    <div className="bg-[#193153] text-white px-4 py-3 flex items-center justify-between select-none shrink-0">
                         <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                            <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></div>
                             <span className="font-bold text-sm">NAAP Support</span>
                         </div>
-                        <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 rounded-full p-1 transition">
-                            <X className="w-4 h-4" />
-                        </button>
                     </div>
 
                     {/* Messages */}
@@ -326,7 +323,7 @@ const ChatBot = () => {
                     </div>
 
                     {/* Input */}
-                    <div className="p-3 bg-white border-t border-gray-100 flex gap-2">
+                    <div className="p-3 bg-white border-t border-gray-100 flex gap-2 shrink-0">
                         <input
                             type="text"
                             value={input}
@@ -344,7 +341,7 @@ const ChatBot = () => {
 
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="h-14 w-14 rounded-full bg-[#ffdd59] text-[#193153] shadow-lg hover:bg-[#eac545] hover:scale-105 transition-all flex items-center justify-center"
+                className="fixed bottom-4 right-6 z-50 h-14 w-14 rounded-full bg-[#ffdd59] text-[#193153] shadow-lg hover:bg-[#eac545] hover:scale-105 transition-all flex items-center justify-center"
             >
                 {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-7 h-7" />}
             </button>
@@ -388,8 +385,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     };
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const mechanicJob = [...jobs, ...getJobs()].find(j => j.title.toLowerCase().includes('mechanic'));
-    const instructorJob = [...jobs, ...getJobs()].find(j => j.title.toLowerCase().includes('instructor') && !j.title.toLowerCase().includes('flight'));
+
     const [hrNews, setHrNews] = useState<HRNewsItem[]>(() => getHRNews());
 
     // Profile Data State
@@ -582,6 +578,16 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             setMyApplications(dbAppsMapped);
         }
     }, [propApplications]);
+
+    const recommendedJobs = useMemo(() => {
+        const combined = [...(jobs || []), ...getJobs()];
+        const unique = combined.filter((job, index, self) =>
+            index === self.findIndex((j) => String(j.id) === String(job.id))
+        );
+        const appliedTitles = (myApplications || propApplications || []).map(a => (a.jobTitle || '').toLowerCase());
+        const unapplied = unique.filter(j => !appliedTitles.includes((j.title || '').toLowerCase()));
+        return (unapplied.length > 0 ? unapplied : unique).slice(0, 4);
+    }, [jobs, myApplications, propApplications]);
 
     // Auto-refresh applications every 5 seconds so status changes show up automatically
     useEffect(() => {
@@ -1433,10 +1439,15 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                     </div>
 
 
-                                    {/* Application List */}
+                                     {/* Application List */}
                                     <div>
                                         <div className="flex justify-between items-center mb-4">
                                             <h2 className="text-xl font-bold text-[#193153]">History</h2>
+                                            {filteredApplications.length > 0 && (
+                                                <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+                                                    {filteredApplications.length} {filteredApplications.length === 1 ? 'record' : 'records'}
+                                                </span>
+                                            )}
                                         </div>
 
                                         {filteredApplications.length === 0 ? (
@@ -1451,73 +1462,260 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 </Link>
                                             </div>
                                         ) : (
-                                            <div className="space-y-3">
-                                                {filteredApplications.map(app => (
-                                                    <div key={app.id} className="group border border-gray-200 rounded-xl p-5 hover:border-[#193153] hover:shadow-md transition-all bg-white flex flex-col md:flex-row items-center gap-4">
-
-                                                        <div className="p-3 bg-blue-50 rounded-lg group-hover:bg-[#193153] group-hover:text-[#ffdd59] transition-colors text-[#193153]">
-                                                            <Briefcase className="w-6 h-6" />
-                                                        </div>
-
-                                                        <div className="flex-1 text-center md:text-left">
-                                                            <h3 className="font-bold text-gray-900">{app.jobTitle}</h3>
-                                                            <div className="flex items-center justify-center md:justify-start gap-4 text-sm text-gray-500 mt-1">
-                                                                <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {app.location || 'Pasay City'}</span>
-                                                                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {safeFormatDate(app.submittedDate)}</span>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-center gap-4">
-                                                            {getStatusBadge(app.status, app.jobTitle)}
-                                                            <CustomTooltip content="View Details">
-                                                                <Link href={`/jobs/${app.jobId}`}>
-                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
-                                                                        <ChevronRight className="w-5 h-5" />
-                                                                    </Button>
-                                                                </Link>
-                                                            </CustomTooltip>
-                                                            <div className="relative inline-block">
-                                                                 <CustomTooltip content="Message">
-                                                                     <Button
-                                                                         variant="ghost"
-                                                                         size="sm"
-                                                                         className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                                                                         onClick={() => openMessages(app.id, app.jobTitle)}
-                                                                     >
-                                                                         <MessageCircle className="w-4 h-4" />
-                                                                     </Button>
-                                                                 </CustomTooltip>
-                                                                 {app.hasUnreadMessages && (
-                                                                     <span className="absolute top-0 right-0 flex h-2 w-2">
-                                                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                                                         <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 border border-white"></span>
-                                                                     </span>
-                                                                 )}
-                                                             </div>
-                                                            {app.status === 'Withdrawn' ? (
-                                                                <CustomTooltip content="Delete">
-                                                                    <Trash2
-                                                                        className="w-4 h-4 text-red-500 hover:text-red-700 cursor-pointer transition-colors"
-                                                                        onClick={() => requestDelete(app.id, app.jobTitle)}
-                                                                    />
-                                                                </CustomTooltip>
-                                                            ) : (
-                                                                <CustomTooltip content="Withdraw">
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                                        onClick={() => requestWithdraw(app.id, app.jobTitle)}
-                                                                    >
-                                                                        <LogOut className="w-4 h-4" />
-                                                                    </Button>
-                                                                </CustomTooltip>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                            <div className="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
+                                                <div className="max-h-[280px] overflow-y-auto overflow-x-hidden">
+                                                    <table className="w-full text-left border-collapse">
+                                                        <thead className="bg-[#193153] text-white text-xs font-bold uppercase tracking-wider sticky top-0 z-10">
+                                                            <tr>
+                                                                <th className="py-3 px-4">Position</th>
+                                                                <th className="py-3 px-4">Date Applied</th>
+                                                                <th className="py-3 px-4 text-center">Status</th>
+                                                                <th className="py-3 px-4 text-right">Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-gray-100 text-sm bg-white">
+                                                            {filteredApplications.map(app => (
+                                                                <tr key={app.id} className="hover:bg-blue-50/50 transition-colors group">
+                                                                    <td className="py-3.5 px-4">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="p-2 bg-blue-50 text-[#193153] rounded-lg group-hover:bg-[#193153] group-hover:text-[#ffdd59] transition-colors shrink-0">
+                                                                                <Briefcase className="w-4 h-4" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <h3 className="font-bold text-gray-900 text-sm">{app.jobTitle}</h3>
+                                                                                <span className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                                                                                    <MapPin className="w-3 h-3" /> {app.location || 'Pasay City'}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="py-3.5 px-4 text-xs font-medium text-gray-600 whitespace-nowrap">
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                                                                            {safeFormatDate(app.submittedDate)}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                                                                        {getStatusBadge(app.status, app.jobTitle)}
+                                                                    </td>
+                                                                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                                                        <div className="flex items-center justify-end gap-1.5">
+                                                                            <CustomTooltip content="View Details" side="top">
+                                                                                <Link href={`/jobs/${app.jobId}`}>
+                                                                                    <Button variant="ghost" size="sm" className="text-slate-600 hover:text-[#193153] hover:bg-slate-100 h-9 w-9 p-0">
+                                                                                        <FileText className="w-5 h-5" />
+                                                                                    </Button>
+                                                                                </Link>
+                                                                            </CustomTooltip>
+                                                                            <div className="relative inline-block">
+                                                                                <CustomTooltip content="Message" side="top">
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-9 w-9 p-0"
+                                                                                        onClick={() => openMessages(app.id, app.jobTitle)}
+                                                                                    >
+                                                                                        <MessageCircle className="w-5 h-5" />
+                                                                                    </Button>
+                                                                                </CustomTooltip>
+                                                                                {app.hasUnreadMessages && (
+                                                                                    <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
+                                                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            {app.status === 'Withdrawn' ? (
+                                                                                <CustomTooltip content="Delete" side="top">
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 h-9 w-9 p-0"
+                                                                                        onClick={() => requestDelete(app.id, app.jobTitle)}
+                                                                                    >
+                                                                                        <Trash2 className="w-5 h-5 text-red-500 hover:text-red-700 cursor-pointer transition-colors" />
+                                                                                    </Button>
+                                                                                </CustomTooltip>
+                                                                            ) : (
+                                                                                <CustomTooltip content="Withdraw" side="top">
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 h-9 w-9 p-0"
+                                                                                        onClick={() => requestWithdraw(app.id, app.jobTitle)}
+                                                                                    >
+                                                                                        <LogOut className="w-5 h-5" />
+                                                                                    </Button>
+                                                                                </CustomTooltip>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
                                         )}
+                                    </div>
+
+                                    {/* Bottom Grid: Latest News, Saved Jobs, & Recommended Jobs */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-gray-100">
+                                        
+                                        {/* Latest News Preview */}
+                                        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
+                                            <div>
+                                                <div className="bg-[#193153] p-3 text-white">
+                                                    <h3 className="font-bold text-sm flex items-center gap-2">
+                                                        <Newspaper className="w-4 h-4 text-[#ffdd59]" />
+                                                        Latest News
+                                                    </h3>
+                                                </div>
+                                                <div className="p-3 bg-gray-50">
+                                                    {hrNews.length > 0 ? (
+                                                        <div className="rounded-lg overflow-hidden border border-gray-100 bg-white shadow-xs">
+                                                            {hrNews[0].image ? (
+                                                                <img src={hrNews[0].image} alt={hrNews[0].title} className="w-full h-28 object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-28 bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                                                                    No image available
+                                                                </div>
+                                                            )}
+                                                            <div className="p-3">
+                                                                <h4 className="text-xs font-bold text-[#193153] line-clamp-2">{hrNews[0].title}</h4>
+                                                                <p className="text-[11px] text-gray-500 mt-1 line-clamp-2">{hrNews[0].summary}</p>
+                                                                <Link href={`/hr-news/${hrNews[0].id}`} className="mt-2 inline-flex text-[11px] font-bold text-[#193153] hover:text-blue-600">
+                                                                    Read Article
+                                                                    <ArrowRight className="w-3 h-3 ml-1" />
+                                                                </Link>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-xs text-gray-500 py-4 text-center">
+                                                            No news available right now.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="p-3 bg-gray-50 border-t border-gray-100">
+                                                <Link href="/hr-news" className="w-full block">
+                                                    <Button variant="outlineDark" size="sm" className="text-xs bg-white w-full h-8">View All News</Button>
+                                                </Link>
+                                            </div>
+                                        </Card>
+
+                                        {/* Saved Jobs Card */}
+                                        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
+                                            <div>
+                                                <div className="bg-[#193153] p-3 text-white flex justify-between items-center">
+                                                    <h3 className="font-bold text-sm flex items-center gap-2">
+                                                        <Bookmark className="w-4 h-4 text-[#ffdd59] fill-[#ffdd59]" />
+                                                        Saved Jobs
+                                                    </h3>
+                                                    <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">
+                                                        {savedJobDetails.length}
+                                                    </span>
+                                                </div>
+                                                <div className="p-3 bg-gray-50 max-h-56 overflow-y-auto space-y-2">
+                                                    {savedJobDetails.length === 0 ? (
+                                                        <div className="text-center py-6 text-gray-500">
+                                                            <Bookmark className="w-6 h-6 mx-auto text-gray-300 mb-1" />
+                                                            <p className="text-xs">No saved jobs yet.</p>
+                                                            <Link href="/jobs" className="text-[11px] text-blue-600 hover:underline mt-1 block">
+                                                                Browse positions
+                                                            </Link>
+                                                        </div>
+                                                    ) : (
+                                                        savedJobDetails.map(job => (
+                                                            <div key={job.id} className="relative bg-white p-2.5 rounded-lg border border-gray-100 shadow-xs hover:border-[#193153] transition-colors group">
+                                                                <Link href={`/jobs/${job.id}`} className="block pr-6">
+                                                                    <h4 className="font-bold text-xs text-[#193153] line-clamp-1 group-hover:text-blue-600 transition-colors">{job.title}</h4>
+                                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                                        <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                                            <Briefcase className="w-3 h-3" /> {job.department}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="mt-1 flex items-center justify-between">
+                                                                        <span className="text-[9px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">
+                                                                            {job.employmentType}
+                                                                        </span>
+                                                                        <span className="text-[10px] text-green-600 font-bold hover:underline">
+                                                                            View
+                                                                        </span>
+                                                                    </div>
+                                                                </Link>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        removeSavedJob(job.id);
+                                                                    }}
+                                                                    className="absolute top-2.5 right-2.5 text-gray-300 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50"
+                                                                    title="Remove bookmark"
+                                                                >
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
+                                                <Link href="/jobs" className="text-xs font-bold text-[#193153] hover:underline">
+                                                    Browse More Jobs
+                                                </Link>
+                                            </div>
+                                        </Card>
+
+                                        {/* Job Recommendations */}
+                                        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
+                                            <div>
+                                                <div className="bg-[#193153] p-3 text-white flex justify-between items-center">
+                                                    <h3 className="font-bold text-sm flex items-center gap-2">
+                                                        <Bell className="w-4 h-4 text-[#ffdd59]" />
+                                                        Recommended Jobs
+                                                    </h3>
+                                                    <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">
+                                                        {recommendedJobs.length}
+                                                    </span>
+                                                </div>
+                                                <div className="p-3 bg-gray-50 max-h-56 overflow-y-auto space-y-2">
+                                                    {recommendedJobs.length === 0 ? (
+                                                        <div className="text-center py-6 text-gray-500">
+                                                            <Bell className="w-6 h-6 mx-auto text-gray-300 mb-1" />
+                                                            <p className="text-xs">No job recommendations right now.</p>
+                                                        </div>
+                                                    ) : (
+                                                        recommendedJobs.map(job => (
+                                                            <Link
+                                                                key={job.id}
+                                                                href={`/jobs/${job.id}`}
+                                                                className="block p-2.5 bg-white border border-gray-100 rounded-lg hover:border-[#193153] transition-colors group text-left shadow-xs"
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <h4 className="font-bold text-xs text-gray-800 group-hover:text-[#193153] line-clamp-1 flex-1 pr-2">
+                                                                        {job.title}
+                                                                    </h4>
+                                                                    <span className="text-[9px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 shrink-0">
+                                                                        {job.type || job.employmentType || 'Full-time'}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-2">
+                                                                    <span>{job.department || 'Aviation'}</span>
+                                                                    <span>•</span>
+                                                                    <span className="text-gray-400">{job.location || 'Pasay City'}</span>
+                                                                </p>
+                                                            </Link>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
+                                                <Link href="/jobs" className="text-xs font-bold text-[#193153] hover:underline">
+                                                    See All Positions
+                                                </Link>
+                                            </div>
+                                        </Card>
+
                                     </div>
                                 </div>
 
@@ -1577,143 +1775,6 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 <Button variant="outlineDark" size="sm" className="text-xs bg-white w-full mt-2">View Full Calendar</Button>
                                             </Link>
                                         </div>
-                                    </Card>
-
-                                    {/* Latest News Preview */}
-                                    <Card className="bg-white border-none shadow-lg overflow-hidden">
-                                        <div className="bg-[#193153] p-4 text-white">
-                                            <h3 className="font-bold flex items-center gap-2">
-                                                <Newspaper className="w-4 h-4 text-[#ffdd59]" />
-                                                Latest News
-                                            </h3>
-                                        </div>
-                                        <div className="p-4 bg-gray-50">
-                                            {hrNews.length > 0 ? (
-                                                <div className="rounded-xl overflow-hidden border border-gray-100 bg-white shadow-sm">
-                                                    {hrNews[0].image ? (
-                                                        <img src={hrNews[0].image} alt={hrNews[0].title} className="w-full h-40 object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-40 bg-gray-200 flex items-center justify-center text-sm text-gray-500">
-                                                            No image available
-                                                        </div>
-                                                    )}
-                                                    <div className="p-4">
-                                                        <h4 className="text-sm font-bold text-[#193153] line-clamp-2">{hrNews[0].title}</h4>
-                                                        <p className="text-xs text-gray-500 mt-2 line-clamp-3">{hrNews[0].summary}</p>
-                                                        <Link href={`/hr-news/${hrNews[0].id}`} className="mt-4 inline-flex text-xs font-bold text-[#193153] hover:text-blue-600">
-                                                            Read Article
-                                                            <ArrowRight className="w-3 h-3 ml-1" />
-                                                        </Link>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="text-sm text-gray-500">
-                                                    No news available right now.
-                                                </div>
-                                            )}
-                                            <Link href="/hr-news" className="w-full block mt-3">
-                                                <Button variant="outlineDark" size="sm" className="text-xs bg-white w-full">View All News</Button>
-                                            </Link>
-                                        </div>
-                                    </Card>
-
-                                    {/* Saved Jobs Card */}
-                                    <Card className="bg-white border-none shadow-lg overflow-hidden mb-6">
-                                        <div className="bg-[#193153] p-4 text-white flex justify-between items-center">
-                                            <h3 className="font-bold flex items-center gap-2">
-                                                <Bookmark className="w-4 h-4 text-[#ffdd59] fill-[#ffdd59]" />
-                                                Saved Jobs
-                                            </h3>
-                                            <span className="text-xs font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">
-                                                {savedJobDetails.length}
-                                            </span>
-                                        </div>
-                                        <div className="p-4 bg-gray-50 max-h-75 overflow-y-auto space-y-3">
-                                            {savedJobDetails.length === 0 ? (
-                                                <div className="text-center py-6 text-gray-500">
-                                                    <Bookmark className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-                                                    <p className="text-sm">No saved jobs yet.</p>
-                                                    <Link href="/jobs" className="text-xs text-blue-600 hover:underline mt-1 block">
-                                                        Browse available positions
-                                                    </Link>
-                                                </div>
-                                            ) : (
-                                                savedJobDetails.map(job => (
-                                                    <div key={job.id} className="relative bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:border-[#193153] transition-colors group">
-                                                        <Link href={`/jobs/${job.id}`} className="block pr-6">
-                                                            <h4 className="font-bold text-sm text-[#193153] line-clamp-1 group-hover:text-blue-600 transition-colors">{job.title}</h4>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <span className="text-xs text-gray-500 flex items-center gap-1">
-                                                                    <Briefcase className="w-3 h-3" /> {job.department}
-                                                                </span>
-                                                            </div>
-                                                            <div className="mt-2 flex items-center justify-between">
-                                                                <span className="text-[10px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">
-                                                                    {job.employmentType}
-                                                                </span>
-                                                                <span className="text-[10px] text-green-600 font-bold hover:underline">
-                                                                    View
-                                                                </span>
-                                                            </div>
-                                                        </Link>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                removeSavedJob(job.id);
-                                                            }}
-                                                            className="absolute top-3 right-3 text-gray-300 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50"
-                                                            title="Remove bookmark"
-                                                        >
-                                                            <X className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                        {savedJobDetails.length > 0 && (
-                                            <div className="p-3 bg-white border-t border-gray-100 text-center">
-                                                <Link href="/jobs" className="text-xs font-bold text-[#193153] hover:underline">
-                                                    Browse More Jobs
-                                                </Link>
-                                            </div>
-                                        )}
-                                    </Card>
-
-                                    {/* Job Recommendations */}
-                                    <Card>
-                                        <CardHeader>
-                                            <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                                                <Bell className="w-4 h-4 text-[#193153]" />
-                                                Recommended Jobs
-                                            </h3>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4 pt-0">
-                                            {mechanicJob ? (
-                                                <Link href={`/jobs/${mechanicJob.id}`} className="block p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors group text-left">
-                                                    <h4 className="font-bold text-sm text-gray-800 group-hover:text-[#193153]">{mechanicJob.title}</h4>
-                                                    <p className="text-xs text-gray-500 mt-1">{mechanicJob.department} • {mechanicJob.employmentType}</p>
-                                                </Link>
-                                            ) : (
-                                                <div className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group text-left">
-                                                    <h4 className="font-bold text-sm text-gray-800 group-hover:text-[#193153]">Aviation Mechanic</h4>
-                                                    <p className="text-xs text-gray-500 mt-1">Engineering • Full-time</p>
-                                                </div>
-                                            )}
-                                            {instructorJob ? (
-                                                <Link href={`/jobs/${instructorJob.id}`} className="block p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors group text-left">
-                                                    <h4 className="font-bold text-sm text-gray-800 group-hover:text-[#193153]">{instructorJob.title}</h4>
-                                                    <p className="text-xs text-gray-500 mt-1">{instructorJob.department} • {instructorJob.employmentType}</p>
-                                                </Link>
-                                            ) : (
-                                                <div className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group text-left">
-                                                    <h4 className="font-bold text-sm text-gray-800 group-hover:text-[#193153]">Ground Instructor</h4>
-                                                    <p className="text-xs text-gray-500 mt-1">Academics • Contract</p>
-                                                </div>
-                                            )}
-                                            <Link href="/jobs" className="block text-center text-xs font-bold text-[#193153] hover:underline mt-2">
-                                                See All
-                                            </Link>
-                                        </CardContent>
                                     </Card>
 
                                 </div>
@@ -2045,14 +2106,19 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 {isMessageModalOpen && (
                     <div className="fixed bottom-0 right-4 md:right-10 z-50 flex flex-col w-[320px] h-[400px] bg-white border border-gray-200 shadow-2xl rounded-t-2xl overflow-hidden transition-all duration-300">
                         {/* Header */}
-                        <div className="bg-[#193153] text-white px-4 py-3 flex items-center justify-between select-none shrink-0">
-                            <div className="flex items-center gap-2 max-w-[85%]">
-                                <span className="bg-blue-600 text-[#ffdd59] p-1 rounded-full shrink-0">
+                        <div className="bg-[#193153] text-white px-4 py-2.5 flex items-center justify-between select-none shrink-0 border-b border-white/10">
+                            <div className="flex items-center gap-2.5 max-w-[85%]">
+                                <span className="bg-blue-600 text-[#ffdd59] p-1.5 rounded-full shrink-0 shadow-xs">
                                     <MessageCircle className="h-4 w-4" />
                                 </span>
-                                <span className="font-bold text-sm truncate" title={activeMessageJobTitle}>
-                                    {activeMessageJobTitle}
-                                </span>
+                                <div className="truncate">
+                                    <h4 className="font-bold text-xs leading-tight text-white">NAAP HR Support</h4>
+                                    {activeMessageJobTitle && (
+                                        <p className="text-[10px] text-blue-200 truncate flex items-center gap-1 font-medium mt-0.5" title={`Re: ${activeMessageJobTitle}`}>
+                                            <span className="text-[#ffdd59]">📌</span> Re: {activeMessageJobTitle}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                             <div className="flex items-center">
                                 {/* Close Button */}
@@ -2074,10 +2140,19 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                         <Mail className="h-6 w-6" />
                                     </div>
                                     <p className="text-xs">No messages yet.</p>
+                                    {activeMessageJobTitle && (
+                                        <p className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                                            Topic: {activeMessageJobTitle}
+                                        </p>
+                                    )}
                                 </div>
                             ) : (
                                 messages.map((msg, idx) => {
                                     const isSenderApplicant = msg.sender?.id === user.id;
+                                    const msgJobTitle = msg.application?.job_title || msg.jobTitle || (idx === 0 ? activeMessageJobTitle : null);
+                                    const prevMsgJobTitle = idx > 0 ? (messages[idx - 1].application?.job_title || messages[idx - 1].jobTitle) : null;
+                                    const showTopicDivider = msgJobTitle && msgJobTitle !== prevMsgJobTitle;
+
                                     const formatTime = (timeStr?: string) => {
                                         if (!timeStr) return '';
                                         try {
@@ -2088,22 +2163,31 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                         }
                                     };
                                     return (
-                                        <div key={idx} className={`flex flex-col max-w-[85%] ${isSenderApplicant ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-                                            <div className={`p-2.5 rounded-2xl ${isSenderApplicant
-                                                ? 'bg-blue-600 text-white rounded-tr-sm'
-                                                : 'bg-white border text-gray-800 rounded-tl-sm shadow-sm'
-                                                }`}>
-                                                <div className="flex items-center gap-2 mb-0.5">
-                                                    <span className={`text-[9px] font-bold uppercase tracking-wider ${isSenderApplicant ? 'text-blue-200' : 'text-gray-500'}`}>
-                                                        {isSenderApplicant ? 'You' : (msg.sender?.name || 'Admin')}
+                                        <React.Fragment key={idx}>
+                                            {showTopicDivider && (
+                                                <div className="my-1.5 flex items-center justify-center">
+                                                    <span className="text-[9px] font-bold text-[#193153] bg-blue-100/70 px-2.5 py-0.5 rounded-full border border-blue-200/60 shadow-2xs">
+                                                        📌 Topic: {msgJobTitle}
                                                     </span>
                                                 </div>
-                                                <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                            )}
+                                            <div className={`flex flex-col max-w-[85%] ${isSenderApplicant ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+                                                <div className={`p-2.5 rounded-2xl ${isSenderApplicant
+                                                    ? 'bg-blue-600 text-white rounded-tr-sm'
+                                                    : 'bg-white border text-gray-800 rounded-tl-sm shadow-sm'
+                                                    }`}>
+                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isSenderApplicant ? 'text-blue-200' : 'text-gray-500'}`}>
+                                                            {isSenderApplicant ? 'You' : (msg.sender?.name || 'Admin')}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                                </div>
+                                                <span className="text-[8px] text-gray-400 mt-0.5 px-1">
+                                                    {formatTime(msg.created_at || new Date().toISOString())}
+                                                </span>
                                             </div>
-                                            <span className="text-[8px] text-gray-400 mt-0.5 px-1">
-                                                {formatTime(msg.created_at || new Date().toISOString())}
-                                            </span>
-                                        </div>
+                                        </React.Fragment>
                                     );
                                 })
                             )}

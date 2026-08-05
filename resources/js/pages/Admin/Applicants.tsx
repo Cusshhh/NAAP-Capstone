@@ -31,6 +31,29 @@ export default function Applicants({ auth, applications: serverApplications }: {
     };
     const [applications, setApplications] = useState(serverApplications || getApplications()); // Use server data if available
 
+    const [viewedAppIds, setViewedAppIds] = useState<Set<any>>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const saved = localStorage.getItem('viewed_applicant_ids');
+                return saved ? new Set(JSON.parse(saved)) : new Set();
+            } catch (e) {
+                return new Set();
+            }
+        }
+        return new Set();
+    });
+
+    const markAsViewed = (appId: any) => {
+        setViewedAppIds(prev => {
+            const next = new Set(prev);
+            next.add(String(appId));
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('viewed_applicant_ids', JSON.stringify(Array.from(next)));
+            }
+            return next;
+        });
+    };
+
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const statusParam = params.get('status');
@@ -689,9 +712,17 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                     {filteredApplications.map((app) => (
                                         <TableRow key={app.id}>
                                             <TableCell>
-                                                <div>
-                                                    <p className="font-medium">{app.applicantName}</p>
-                                                    <p className="text-sm text-gray-500">{app.email}</p>
+                                                <div className="flex items-center gap-2.5">
+                                                    {app.status === 'Submitted' && !viewedAppIds.has(String(app.id)) && (
+                                                        <span className="relative flex h-2.5 w-2.5 shrink-0" title="New Application">
+                                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
+                                                        </span>
+                                                    )}
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">{app.applicantName}</p>
+                                                        <p className="text-xs text-gray-500">{app.email}</p>
+                                                    </div>
                                                 </div>
                                             </TableCell>
                                             <TableCell>{app.jobTitle}</TableCell>
@@ -864,12 +895,15 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                             <TableCell>
                                                 <div className="flex gap-2">
                                                     <Dialog onOpenChange={(open) => {
-                                                         if (open && app.status === 'Submitted') {
-                                                             handleStatusUpdate(app.id, 'Under Review');
+                                                         if (open) {
+                                                             markAsViewed(app.id);
+                                                             if (app.status === 'Submitted') {
+                                                                 handleStatusUpdate(app.id, 'Under Review');
+                                                             }
                                                          }
                                                      }}>
                                                         <DialogTrigger asChild>
-                                                            <Button variant="outline" size="sm">View</Button>
+                                                            <Button variant="outline" size="sm" onClick={() => markAsViewed(app.id)}>View</Button>
                                                         </DialogTrigger>
                                                         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                                                             <DialogHeader>
@@ -1128,63 +1162,105 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                         </div>
                                                                     </TabsContent>
                                                                 </Tabs>
-                                                                <div className="flex gap-2 pt-2 border-t mt-2">
-                                                                    <Button
-                                                                        size="sm"
-                                                                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
-                                                                        onClick={() => {
-                                                                            handleStatusUpdate(app.id, 'Shortlisted');
-                                                                        }}
-                                                                    >
-                                                                        Shortlist
-                                                                    </Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-                                                                        onClick={() => handleStatusUpdate(app.id, 'Hired')}
-                                                                    >
-                                                                        Hire
-                                                                    </Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="destructive"
-                                                                        className="flex-1"
-                                                                        onClick={() => {
-                                                                            setRejectionAppId(app.id);
-                                                                            setRejectionReason('Minimum educational requirements not met');
-                                                                            setCustomRejectionReason('');
-                                                                            setIsRejectionModalOpen(true);
-                                                                        }}
-                                                                    >
-                                                                        Reject
-                                                                    </Button>
-                                                                </div>
-                                                                <div className="pt-2 border-t flex flex-col gap-2">
-                                                                    <div className="flex gap-2">
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="flex-1 border-gray-300 text-gray-500 hover:bg-gray-100"
-                                                                            onClick={() => handleStatusUpdate(app.id, 'Archived')}
-                                                                        >
-                                                                            <Trash className="mr-2 h-3.5 w-3.5" />
-                                                                            Archive
-                                                                        </Button>
-                                                                        <Button
-                                                                            className="flex-2 bg-purple-600 hover:bg-purple-700 text-white font-bold"
-                                                                            onClick={() => {
-                                                                                setCandidateName(app.applicantName);
-                                                                                setPosition(app.jobTitle);
-                                                                                setSelectedAppId(app.id);
-                                                                                setSelectedAppEmail(app.email || app.applicantEmail || '');
-                                                                                setIsInterviewModalOpen(true);
-                                                                            }}
-                                                                        >
-                                                                            <Calendar className="mr-2 h-4 w-4" />
-                                                                            Schedule Interview
-                                                                        </Button>
-                                                                    </div>
-                                                                </div>
+                                                                {(() => {
+                                                                     const isHired = app.status === 'Hired';
+                                                                     const isRejected = app.status === 'Rejected';
+                                                                     const isShortlisted = app.status === 'Shortlisted';
+                                                                     const isTerminal = isHired || isRejected;
+
+                                                                     return (
+                                                                         <>
+                                                                             {isHired && (
+                                                                                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-center text-xs font-semibold text-emerald-800 flex items-center justify-center gap-1.5 mt-2">
+                                                                                     <span>🎉</span> Applicant has been officially Hired! Status actions locked.
+                                                                                 </div>
+                                                                             )}
+                                                                             {isRejected && (
+                                                                                 <div className="bg-red-50 border border-red-200 rounded-lg p-2.5 text-center text-xs font-semibold text-red-800 flex items-center justify-center gap-1.5 mt-2">
+                                                                                     <span>🚫</span> Application is Rejected. Status actions locked.
+                                                                                 </div>
+                                                                             )}
+                                                                             <div className="flex gap-2 pt-2 border-t mt-2">
+                                                                                 <Button
+                                                                                     size="sm"
+                                                                                     disabled={isTerminal || isShortlisted}
+                                                                                     className={`flex-1 ${
+                                                                                         (isTerminal || isShortlisted)
+                                                                                             ? 'bg-gray-200 text-gray-400 hover:bg-gray-200 cursor-not-allowed border-none shadow-none'
+                                                                                             : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                                                                     }`}
+                                                                                     onClick={() => {
+                                                                                         handleStatusUpdate(app.id, 'Shortlisted');
+                                                                                     }}
+                                                                                 >
+                                                                                     Shortlist
+                                                                                 </Button>
+                                                                                 <Button
+                                                                                     size="sm"
+                                                                                     disabled={isTerminal}
+                                                                                     className={`flex-1 font-bold ${
+                                                                                         isTerminal
+                                                                                             ? 'bg-gray-200 text-gray-400 hover:bg-gray-200 cursor-not-allowed border-none shadow-none'
+                                                                                             : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                                                                     }`}
+                                                                                     onClick={() => handleStatusUpdate(app.id, 'Hired')}
+                                                                                 >
+                                                                                     {isHired ? 'Hired' : 'Hire'}
+                                                                                 </Button>
+                                                                                 <Button
+                                                                                     size="sm"
+                                                                                     variant="destructive"
+                                                                                     disabled={isTerminal}
+                                                                                     className={`flex-1 ${
+                                                                                         isTerminal
+                                                                                             ? 'bg-gray-200 text-gray-400 hover:bg-gray-200 cursor-not-allowed border-none shadow-none'
+                                                                                             : ''
+                                                                                     }`}
+                                                                                     onClick={() => {
+                                                                                         setRejectionAppId(app.id);
+                                                                                         setRejectionReason('Minimum educational requirements not met');
+                                                                                         setCustomRejectionReason('');
+                                                                                         setIsRejectionModalOpen(true);
+                                                                                     }}
+                                                                                 >
+                                                                                     Reject
+                                                                                 </Button>
+                                                                             </div>
+                                                                             <div className="pt-2 border-t flex flex-col gap-2">
+                                                                                 <div className="flex gap-2">
+                                                                                     <Button
+                                                                                         variant="outline"
+                                                                                         size="sm"
+                                                                                         disabled={app.status === 'Archived'}
+                                                                                         className="flex-1 border-gray-300 text-gray-500 hover:bg-gray-100"
+                                                                                         onClick={() => handleStatusUpdate(app.id, 'Archived')}
+                                                                                     >
+                                                                                         <Trash className="mr-2 h-3.5 w-3.5" />
+                                                                                         Archive
+                                                                                     </Button>
+                                                                                     <Button
+                                                                                         disabled={isTerminal}
+                                                                                         className={`flex-2 font-bold ${
+                                                                                             isTerminal
+                                                                                                 ? 'bg-gray-200 text-gray-400 hover:bg-gray-200 cursor-not-allowed border-none shadow-none'
+                                                                                                 : 'bg-purple-600 hover:bg-purple-700 text-white'
+                                                                                         }`}
+                                                                                         onClick={() => {
+                                                                                             setCandidateName(app.applicantName);
+                                                                                             setPosition(app.jobTitle);
+                                                                                             setSelectedAppId(app.id);
+                                                                                             setSelectedAppEmail(app.email || app.applicantEmail || '');
+                                                                                             setIsInterviewModalOpen(true);
+                                                                                         }}
+                                                                                     >
+                                                                                         <Calendar className="mr-2 h-4 w-4" />
+                                                                                         Schedule Interview
+                                                                                     </Button>
+                                                                                 </div>
+                                                                             </div>
+                                                                         </>
+                                                                     );
+                                                                 })()}
                                                             </div>
                                                         </DialogContent>
                                                     </Dialog>

@@ -1,0 +1,76 @@
+﻿Dear Respondent,
+A blessed day!
+This questionnaire is part of an undergraduate capstone study conducted by students of the Bachelor of Science in Information Technology with Specialization in Aviation Information Technology at the National Aviation Academy of the Philippines (NAAP) to evaluate the system titled â€œHuman Resource Department Web-Based Job Portal System for National Aviation Academy of the Philippines.â€
+This study aims to modernize NAAPâ€™s recruitment workflows, eliminate manual screening bottlenecks, and centralize applicant record management through AI-driven candidate screening, automated match scoring, and real-time status tracking. Your technical expertise is essential to validate the system's structural integrity, performance efficiency, maintainability, and security under standard software quality characteristics.
+Very truly yours,
+Alarcio, Charles John S.    Cacacho, Marcus Angelo T.
+alarciocharles@gmail.com /09287714576    marcusangelocacacho2525@gmail.com
+Noted by:    Noted by:
+Dr. Alan Lino Silverio J. Agustin, DAEM       Assoc. Prof. Mary Ann Aballiar-Vista, MEAM
+Capstone Adviser   Academic Adviser
+Data Privacy and Confidentiality Statement
+Participation in this study is voluntary. All information collected will be used solely for academic and research purposes. No personally identifiable information is required unless explicitly stated. All responses will be treated with strict confidentiality and will be anonymized before analysis. Data will be securely stored and will only be accessible to the researchers, research statistician, and the project adviser. This study complies with the provisions of the Data Privacy Act of 2012 (Republic Act No. 10173). Participants may withdraw at any time before submission without any consequences.
+Consent Declaration 
+By signing below and completing this questionnaire, I attest that my participation is voluntary, I understand the scope of this study, and the responses provided reflect my honest and unbiased evaluation of the system based on my direct operational experience.
+â˜ I have read and understood the Data Privacy and Confidentiality Statement.
+â˜ I voluntarily agree to participate in this research study.
+Signature of  Respondent
+â€œHUMAN RESOURCE DEPARTMENT WEB-BASED JOB PORTAL SYSTEM FOR NATIONAL AVIATION ACADEMY OF THE PHILIPPINES.â€
+SURVEY QUESTIONNAIRE
+PART I. RESPONDENT PROFILE 
+Directions: Please provide the following information by entering the data or by placing a check mark next to your response.
+Name (Optional):
+[ ]Â HR Administrator / StaffÂ 
+[ ]Â NAAP Faculty / DepartmentÂ 
+[ ]Â User
+PART II. TECHNICAL QUALITY EVALUATION (ISO/IEC 25010) 
+Directions: To indicate your level of agreement that best describes how you evaluate the system based on the ISO/IEC 25010:2023 software quality characteristics, please tick the appropriate box using the coded scale for your response.
+Scale
+Description
+5
+Strongly Agree - The system consistently delivers an excellent user experience. All features exceed expectations, are very easy to use, and work perfectly.
+4
+Agree - The system delivers a good user experience and functions properly. Features operate satisfactorily with minor or negligible issues.
+3
+Neutral- The system delivers an average user experience. Features function adequately but may occasionally require minor effort or clarification.
+2
+Disagree - The system delivers a poor user experience. Features are confusing, difficult to navigate, or require significant improvement.
+1
+Strongly Disagree - The system delivers a very poor user experience. Features are unusable, frustrating, or broken.
+Parameter / Evaluation Statement
+Description
+5
+4
+3
+2
+1
+Ease of Use: The portal is easy to navigate, and I can quickly find job postings or application tracking tools.
+Application Process: Uploading credentials and submitting job applications is straightforward and hassle-free.
+Visual Appeal: The visual design, colors, fonts, and layout look professional, clean, and pleasant to use.
+Speed & Response: The pages load quickly, and actions (button clicks, form saves) respond immediately without lag.
+Status Transparency: Real-time status updates (Submitted, Shortlisted, Interview) give me clear visibility over application progress.
+Error Guidance: The system provides clear error messages if I forget required fields or upload incorrect files.
+Data Trust & Privacy: I feel confident that my personal information and documents are stored securely and privately.
+Overall Satisfaction: Overall, the NAAP HR Web-Based Job Portal significantly improves the recruitment and application experience.
+Data Privacy & Trust: I feel confident that my personal information and submitted documents are stored securely in compliance with data privacy.
+Overall Satisfaction: Overall, the NAAP HR Web-Based Job Portal significantly improves the hiring and job application experience.
+PART III. QUALITATIVE INSIGHTS & TECHNICAL RECOMMENDATIONS 
+1. What features of the system did you find most helpful in your daily tasks?
+2. What changes or improvements would you suggest we add to make the system better?
+3. Did you experience any errors or difficulties while using the system? (If yes, please explain):
+(We assure you that your responses will be treated with the utmost confidentiality and used strictly for academic purposes only.)
+        Signature of  Respondent                                                                                     
+â€œHuman Resource Department Web-Based Job Portal System for National Aviation Academy of the Philippines.â€
+Capstone Title
+Objectives of the Study
+The main objective of this study is to design, develop, and implement an AI-Powered Human Resource Department Web-Based Job Portal System for the National Aviation Academy of the Philippines (NAAP) to enhance recruitment efficiency, screening speed, and data organization.
+Specifically, this study aims to:
+1. Develop a web-based platform that allows the HR Department to publish and manage job vacancies efficiently.
+2. Design a user registration and application portal where job seekers can submit applications and upload required credentials online.
+3. Integrate an AI-driven candidate screening and scoring engine that parses submitted requirements and automatically scores applicant suitability against job specifications.
+4. Implement an applicant tracking module enabling HR staff and applicants to monitor real-time application and qualification statuses.
+5. Ensure candidate data security and privacy through password encryption, input validation, and Role-Based Access Control (RBAC) 
+6. Construct an administrative analytics dashboard to support data-driven shortlisting and recruitment reporting.
+7. Evaluate the system's performance by benchmarking manual versus digital screening speed, measuring automated qualification scoring accuracy, and assessing software quality based on the ISO/IEC 25010 standard.
+Achieving these objectives directly aligns software development processes with empirical research methodology. Objectives 1 through 6 address system design and engineering requirements within the Software Development Life Cycle, systematically resolving operational issues such as manual review delays, fragmented paper records, and untracked status inquiries at NAAP.
+Objective 7 covers the evaluative phase by providing a scientific, multi-dimensional validation of the platform. Technical metrics are measured using ISO/IEC 25010. Results confirm that the portal offers high technical reliability, speed, and security, as well as practical utility for NAAP HR personnel and job applicants.

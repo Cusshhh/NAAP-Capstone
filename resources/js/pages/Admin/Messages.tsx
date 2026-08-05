@@ -417,26 +417,38 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
                                                 <p className="text-sm">No messages yet. Send a greeting to begin the chat!</p>
                                             </div>
                                         ) : (
-                                            messages.map(msg => {
+                                            messages.map((msg, idx) => {
                                                 const isMe = msg.sender_id === admin.id;
+                                                const msgJobTitle = msg.application?.job_title || msg.jobTitle || (idx === 0 ? selectedApp.jobTitle : null);
+                                                const prevMsgJobTitle = idx > 0 ? (messages[idx - 1].application?.job_title || messages[idx - 1].jobTitle) : null;
+                                                const showTopicDivider = msgJobTitle && msgJobTitle !== prevMsgJobTitle;
+
                                                 return (
-                                                    <div
-                                                        key={msg.id}
-                                                        className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
-                                                    >
-                                                        <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm text-sm ${
-                                                            isMe
-                                                                ? 'bg-[#193153] text-white rounded-tr-none'
-                                                                : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'
-                                                        }`}>
-                                                            <p className="leading-relaxed whitespace-pre-line">{msg.content}</p>
-                                                            <div className={`text-[9px] mt-1 text-right ${
-                                                                isMe ? 'text-blue-200' : 'text-gray-400'
+                                                    <React.Fragment key={msg.id || idx}>
+                                                        {showTopicDivider && (
+                                                            <div className="my-2 flex items-center justify-center">
+                                                                <span className="text-[10px] font-bold text-[#193153] bg-blue-100/70 px-3 py-1 rounded-full border border-blue-200/60 shadow-2xs">
+                                                                    📌 Topic: {msgJobTitle}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        <div
+                                                            className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                                                        >
+                                                            <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm text-sm ${
+                                                                isMe
+                                                                    ? 'bg-[#193153] text-white rounded-tr-none'
+                                                                    : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'
                                                             }`}>
-                                                                {formatTime(msg.created_at)}
+                                                                <p className="leading-relaxed whitespace-pre-line">{msg.content}</p>
+                                                                <div className={`text-[9px] mt-1 text-right ${
+                                                                    isMe ? 'text-blue-200' : 'text-gray-400'
+                                                                }`}>
+                                                                    {formatTime(msg.created_at)}
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
+                                                    </React.Fragment>
                                                 );
                                             })
                                         )}

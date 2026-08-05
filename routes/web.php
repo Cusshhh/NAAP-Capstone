@@ -218,6 +218,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/jobs/{vacancy}', [\App\Http\Controllers\Admin\JobController::class, 'update'])->name('jobs.update');
         Route::delete('/jobs/{vacancy}', [\App\Http\Controllers\Admin\JobController::class, 'destroy'])->name('jobs.destroy');
 
+        Route::post('/departments', [\App\Http\Controllers\Admin\JobController::class, 'storeDepartment'])->name('departments.store');
+        Route::delete('/departments/{department}', [\App\Http\Controllers\Admin\JobController::class, 'destroyDepartment'])->name('departments.destroy');
+
         Route::post('/applications/{application}/status', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'updateStatus'])->name('applications.status');
         Route::get('/reports/export', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'exportReport'])->name('reports.export');
 

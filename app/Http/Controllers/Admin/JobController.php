@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 use App\Models\Vacancy;
+use App\Models\Department;
 
 class JobController extends Controller
 {
@@ -17,7 +18,16 @@ class JobController extends Controller
     {
         $query = Vacancy::query();
 
+        // Ensure all departments present in vacancies exist in departments table
+        $existingDeptNames = Vacancy::whereNotNull('department')->pluck('department')->unique();
+        foreach ($existingDeptNames as $deptName) {
+            if (!empty(trim($deptName))) {
+                Department::firstOrCreate(['name' => trim($deptName)]);
+            }
+        }
+
         return Inertia::render('Admin/JobManagement', [
+            'dbDepartments' => Department::orderBy('name')->get(),
             'jobs' => $query->latest()->get()->map(function ($vacancy) {
                 return [
                     'id' => $vacancy->id,
@@ -136,6 +146,48 @@ class JobController extends Controller
         } catch (\Throwable $ex) {
             \Illuminate\Support\Facades\Log::error("Error deleting vacancy ID {$vacancy->id}: " . $ex->getMessage());
             return back()->withErrors(['error' => 'Failed to delete job vacancy: ' . $ex->getMessage()]);
+        }
+    }
+
+    /**
+     * Store a newly created Department folder in MySQL.
+     */
+    public function storeDepartment(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255|unique:departments,name',
+            ]);
+
+            $name = trim($validated['name']);
+            $code = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $name), 0, 4));
+
+            Department::create([
+                'name' => $name,
+                'code' => $code,
+            ]);
+
+            return back()->with('message', "Department folder '{$name}' created successfully.");
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            throw $ve;
+        } catch (\Throwable $ex) {
+            \Illuminate\Support\Facades\Log::error("Error creating department folder: " . $ex->getMessage());
+            return back()->withErrors(['error' => 'Failed to create department folder: ' . $ex->getMessage()]);
+        }
+    }
+
+    /**
+     * Remove the specified Department folder from MySQL.
+     */
+    public function destroyDepartment(Department $department)
+    {
+        try {
+            $deptName = $department->name;
+            $department->delete();
+            return back()->with('message', "Department folder '{$deptName}' deleted successfully.");
+        } catch (\Throwable $ex) {
+            \Illuminate\Support\Facades\Log::error("Error deleting department ID {$department->id}: " . $ex->getMessage());
+            return back()->withErrors(['error' => 'Failed to delete department folder: ' . $ex->getMessage()]);
         }
     }
 }
