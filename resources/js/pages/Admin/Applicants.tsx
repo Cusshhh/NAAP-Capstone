@@ -1538,14 +1538,19 @@ export default function Applicants({ auth, applications: serverApplications }: {
             {isMessageModalOpen && (
                 <div className="fixed bottom-0 right-4 md:right-10 z-50 flex flex-col w-[320px] h-[400px] bg-white border border-gray-200 shadow-2xl rounded-t-2xl overflow-hidden transition-all duration-300">
                     {/* Header */}
-                    <div className="bg-[#193153] text-white px-4 py-3 flex items-center justify-between select-none shrink-0">
-                        <div className="flex items-center gap-2 max-w-[85%]">
-                            <span className="bg-blue-600 text-[#ffdd59] p-1 rounded-full shrink-0">
+                    <div className="bg-[#193153] text-white px-4 py-2.5 flex items-center justify-between select-none shrink-0 border-b border-white/10">
+                        <div className="flex items-center gap-2.5 max-w-[85%]">
+                            <span className="bg-blue-600 text-[#ffdd59] p-1.5 rounded-full shrink-0 shadow-xs">
                                 <Users className="h-4 w-4" />
                             </span>
-                            <span className="font-bold text-sm truncate" title={activeMessageAppName}>
-                                Messages with {activeMessageAppName}
-                            </span>
+                            <div className="truncate">
+                                <h4 className="font-bold text-xs leading-tight text-white">{activeMessageAppName || 'Applicant'}</h4>
+                                {activeMessageJobTitle && (
+                                    <p className="text-[10px] text-blue-200 truncate flex items-center gap-1 font-medium mt-0.5" title={`Re: ${activeMessageJobTitle}`}>
+                                        <span className="text-[#ffdd59]">📌</span> Re: {activeMessageJobTitle}
+                                    </p>
+                                )}
+                            </div>
                         </div>
                         <div className="flex items-center">
                             {/* Close Button */}
@@ -1571,6 +1576,10 @@ export default function Applicants({ auth, applications: serverApplications }: {
                         ) : (
                             messages.map((msg, idx) => {
                                 const isSenderAdmin = msg.sender?.email === admin.email || ['admin@naap.edu.ph', 'admin@admin.com'].includes(msg.sender?.email);
+                                const msgJobTitle = msg.application?.job_title || msg.jobTitle || (idx === 0 ? activeMessageJobTitle : null);
+                                const prevMsgJobTitle = idx > 0 ? (messages[idx - 1].application?.job_title || messages[idx - 1].jobTitle) : null;
+                                const showTopicDivider = msgJobTitle && msgJobTitle !== prevMsgJobTitle;
+
                                 const formatTime = (timeStr?: string) => {
                                     if (!timeStr) return '';
                                     try {
@@ -1581,22 +1590,31 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                     }
                                 };
                                 return (
-                                    <div key={idx} className={`flex flex-col max-w-[85%] ${isSenderAdmin ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-                                        <div className={`p-2.5 rounded-2xl ${isSenderAdmin
-                                            ? 'bg-blue-600 text-white rounded-tr-sm'
-                                            : 'bg-white border text-gray-800 rounded-tl-sm shadow-sm'
-                                            }`}>
-                                            <div className="flex items-center gap-2 mb-0.5">
-                                                <span className={`text-[9px] font-bold uppercase tracking-wider ${isSenderAdmin ? 'text-blue-200' : 'text-gray-500'}`}>
-                                                    {isSenderAdmin ? 'You' : msg.sender?.name}
+                                    <React.Fragment key={idx}>
+                                        {showTopicDivider && (
+                                            <div className="my-1.5 flex items-center justify-center">
+                                                <span className="text-[9px] font-bold text-[#193153] bg-blue-100/70 px-2.5 py-0.5 rounded-full border border-blue-200/60 shadow-2xs">
+                                                    📌 Topic: {msgJobTitle}
                                                 </span>
                                             </div>
-                                            <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                        )}
+                                        <div className={`flex flex-col max-w-[85%] ${isSenderAdmin ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+                                            <div className={`p-2.5 rounded-2xl ${isSenderAdmin
+                                                ? 'bg-blue-600 text-white rounded-tr-sm'
+                                                : 'bg-white border text-gray-800 rounded-tl-sm shadow-sm'
+                                                }`}>
+                                                <div className="flex items-center gap-2 mb-0.5">
+                                                    <span className={`text-[9px] font-bold uppercase tracking-wider ${isSenderAdmin ? 'text-blue-200' : 'text-gray-500'}`}>
+                                                        {isSenderAdmin ? 'You' : msg.sender?.name}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                            </div>
+                                            <span className="text-[8px] text-gray-400 mt-0.5 px-1">
+                                                {formatTime(msg.created_at || new Date().toISOString())}
+                                            </span>
                                         </div>
-                                        <span className="text-[8px] text-gray-400 mt-0.5 px-1">
-                                            {formatTime(msg.created_at || new Date().toISOString())}
-                                        </span>
-                                    </div>
+                                    </React.Fragment>
                                 );
                             })
                         )}

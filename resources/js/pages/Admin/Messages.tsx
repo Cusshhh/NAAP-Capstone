@@ -123,12 +123,33 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
         }
     };
 
-    const filteredApps = (applications || []).filter(app => {
-        const name = app.applicantName || 'Applicant';
-        const title = app.jobTitle || '';
-        return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-               title.toLowerCase().includes(searchTerm.toLowerCase());
-    });
+    const filteredApps = React.useMemo(() => {
+        const list = (applications || []).filter(app => {
+            const name = app.applicantName || 'Applicant';
+            const title = app.jobTitle || '';
+            const email = app.email || '';
+            return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                   title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                   email.toLowerCase().includes(searchTerm.toLowerCase());
+        });
+
+        // Group by applicant email so each applicant has 1 continuous thread
+        const map = new Map<string, Application>();
+        list.forEach(app => {
+            const key = app.email?.toLowerCase().trim() || String(app.id);
+            if (!map.has(key)) {
+                map.set(key, app);
+            } else {
+                const existing = map.get(key)!;
+                if (app.hasUnreadMessages) existing.hasUnreadMessages = true;
+                if (app.lastMessageTime && (!existing.lastMessageTime || new Date(app.lastMessageTime) > new Date(existing.lastMessageTime))) {
+                    existing.lastMessage = app.lastMessage;
+                    existing.lastMessageTime = app.lastMessageTime;
+                }
+            }
+        });
+        return Array.from(map.values());
+    }, [applications, searchTerm]);
 
     // Scroll to the bottom of the chat area
     const scrollToBottom = () => {
@@ -385,9 +406,8 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
                                                      {selectedApp.applicantName}
                                                      <Eye className="w-3.5 h-3.5 text-blue-600 inline-block opacity-0 group-hover:opacity-100 transition-opacity" />
                                                  </h3>
-                                                 <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                                     <Briefcase className="w-3.5 h-3.5" />
-                                                     {selectedApp.jobTitle}
+                                                 <p className="text-xs text-blue-950 bg-blue-50/90 px-2 py-0.5 rounded-md border border-blue-100/80 inline-flex items-center gap-1 font-medium mt-0.5" title={`Re: ${selectedApp.jobTitle}`}>
+                                                     <span className="text-amber-500">📌</span> Re: {selectedApp.jobTitle}
                                                  </p>
                                              </div>
                                          </div>
