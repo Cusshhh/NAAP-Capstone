@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getJobs, SALARY_GRADE_MAP } from '@/data/mockData';
+import CustomTooltip from '@/components/ui/custom-tooltip';
 
 export default function JobBoardSection() {
     const { auth } = usePage().props as any;
@@ -198,14 +199,16 @@ export default function JobBoardSection() {
                                             <Badge variant="secondary" className="bg-blue-50 text-[#193153] hover:bg-blue-100">
                                                 {job.employmentType}
                                             </Badge>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className={`h-8 w-8 rounded-full ${savedJobIds.includes(job.id) ? 'text-[#ffdd59]' : 'text-gray-300 hover:text-[#193153]'}`}
-                                                onClick={(e) => toggleSaveJob(e, job.id)}
-                                            >
-                                                <Bookmark className={`h-5 w-5 ${savedJobIds.includes(job.id) ? 'fill-[#ffdd59]' : ''}`} />
-                                            </Button>
+                                            <CustomTooltip content={savedJobIds.includes(job.id) ? "Saved Job" : "Save Job"} side="top">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className={`h-9 w-9 rounded-full transition-all border cursor-pointer ${savedJobIds.includes(job.id) ? 'bg-[#193153] border-[#193153] text-[#ffdd59]' : 'bg-white border-gray-200 text-gray-400 hover:text-[#ffdd59] hover:border-[#193153] hover:bg-[#193153]'}`}
+                                                    onClick={(e) => toggleSaveJob(e, job.id)}
+                                                >
+                                                    <Bookmark className={`h-4.5 w-4.5 ${savedJobIds.includes(job.id) ? 'fill-[#ffdd59]' : ''}`} />
+                                                </Button>
+                                            </CustomTooltip>
                                         </div>
 
                                         <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-[#193153] transition-colors line-clamp-2">

@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mockJobs, getJobs, SALARY_GRADE_MAP } from '@/data/mockData';
+import CustomTooltip from '@/components/ui/custom-tooltip';
 
 interface JobIndexProps {
     auth: {
@@ -299,15 +300,16 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                                             )}
                                         </div>
                                         <div className="flex flex-col items-end gap-3 ml-4">
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                className={`h-10 w-10 rounded-full transition-all border shadow-sm ${savedJobIds.includes(job.id) ? 'bg-[#193153] border-[#193153] text-[#ffdd59]' : 'bg-white border-gray-200 text-gray-400 hover:text-[#193153] hover:border-[#193153] hover:bg-blue-50'}`}
-                                                onClick={(e) => toggleSaveJob(e, job.id)}
-                                                title={savedJobIds.includes(job.id) ? "Remove from saved" : "Save job"}
-                                            >
-                                                <Bookmark className={`h-5 w-5 ${savedJobIds.includes(job.id) ? 'fill-[#ffdd59]' : ''}`} />
-                                            </Button>
+                                            <CustomTooltip content={savedJobIds.includes(job.id) ? "Saved Job" : "Save Job"} side="top">
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className={`h-10 w-10 rounded-full transition-all border shadow-xs cursor-pointer ${savedJobIds.includes(job.id) ? 'bg-[#193153] border-[#193153] text-[#ffdd59]' : 'bg-white border-gray-200 text-gray-400 hover:text-[#ffdd59] hover:border-[#193153] hover:bg-[#193153]'}`}
+                                                    onClick={(e) => toggleSaveJob(e, job.id)}
+                                                >
+                                                    <Bookmark className={`h-5 w-5 ${savedJobIds.includes(job.id) ? 'fill-[#ffdd59]' : ''}`} />
+                                                </Button>
+                                            </CustomTooltip>
                                             <Badge variant="outline" className="text-xs text-gray-500 font-normal border-gray-200 bg-gray-50">
                                                 {job.applicantCount} applicants
                                             </Badge>
