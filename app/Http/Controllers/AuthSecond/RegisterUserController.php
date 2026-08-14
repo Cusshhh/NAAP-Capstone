@@ -7,9 +7,9 @@ use App\Models\User;                          // Fixed capitalization (App vs ap
 use Illuminate\Auth\Events\Registered;        // Added for event(new Registered)
 use Illuminate\Http\RedirectResponse;         // Added for return type
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;          // Added for Hash::make
-use Illuminate\Validation\Rules;              // Added for Password rules
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Auth;          // Added for Hash::make
+use Illuminate\Support\Facades\Hash;              // Added for Password rules
+use Illuminate\Validation\Rules;
 
 class RegisterUserController extends Controller
 {

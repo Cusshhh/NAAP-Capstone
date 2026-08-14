@@ -1,10 +1,9 @@
 <?php
 
-use App\Http\Controllers\Admin\JobController;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
 use App\Http\Controllers\AuthSecond\RegisterUserController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
@@ -21,16 +20,18 @@ Route::get('/', function () {
         if ($user->isAdmin() || in_array($user->email, ['admin@naap.edu.ph', 'admin@admin.com'])) {
             return redirect()->route('admin.dashboard');
         }
+
         return redirect()->route('dashboard');
     }
-    return Inertia::render('ProfessionalsHired'); 
+
+    return Inertia::render('ProfessionalsHired');
 })->name('home');
 
 Route::get('/cms-content/{key}', [\App\Http\Controllers\CmsContentController::class, 'show'])->name('cms-content.show');
 
-Route::get('/api/open-jobs', function() {
+Route::get('/api/open-jobs', function () {
     $query = \App\Models\Vacancy::where('status', 'Open')->latest();
-    
+
     return response()->json(
         $query->get()->map(function ($vacancy) {
             return [
@@ -55,7 +56,7 @@ Route::post('/profile/save', [\App\Http\Controllers\ApplicantController::class, 
 
 Route::get('/calendar', function () {
     $user = Auth::user();
-    
+
     $applications = \App\Models\Application::where('email', $user->email)
         ->select('id', 'job_title', 'job_id', 'status', 'created_at', 'phone_number', 'education', 'email')
         ->latest()
@@ -97,12 +98,12 @@ Route::get('/calendar', function () {
 
 Route::get('/login', function () {
     // Points to resources/js/Pages/auth/login.tsx
-    return Inertia::render('auth/login'); 
+    return Inertia::render('auth/login');
 })->name('login'); // Name must be 'login' for route('login') to work
 
 // resources/js/Pages/auth/forgot-password.tsx
 Route::get('/forgot-password', function () {
-    return Inertia::render('auth/forgot-password'); 
+    return Inertia::render('auth/forgot-password');
 })->name('password.request');
 
 // Handle the Registration Form Submission (POST)
@@ -114,7 +115,7 @@ Route::post('/applications', [\App\Http\Controllers\ApplicantController::class, 
 
 // Register Page (GET)
 Route::get('/register', function () {
-    return Inertia::render('auth/register'); 
+    return Inertia::render('auth/register');
 })->name('register');
 
 // Public Job Board (Restored)
@@ -149,11 +150,6 @@ Route::get('/admin-login', function () {
     ]);
 })->name('admin.login');
 
-
-
-
-
-
 // --- 2. Authentication Routes ---
 
 // Custom Logout (Fixes the React router issue)
@@ -161,9 +157,9 @@ Route::post('/logout', function () {
     Auth::logout();
     request()->session()->invalidate();
     request()->session()->regenerateToken();
+
     return redirect('/');
 })->name('logout');
-
 
 // --- 3. Admin / Authenticated Routes ---
 
@@ -251,20 +247,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         'experience' => isset($app->dynamic_responses['experience'])
                             ? $app->dynamic_responses['experience']
                             : (isset($app->dynamic_responses['yearsOfExperience'])
-                                ? $app->dynamic_responses['yearsOfExperience'] . ' years of relevant experience'
-                                : (function($name, $title) {
+                                ? $app->dynamic_responses['yearsOfExperience'].' years of relevant experience'
+                                : (function ($name, $title) {
                                     $years = (crc32($name) % 8) + 2;
+
                                     return "{$years} years of relevant experience in {$title} fields, with solid achievements.";
                                 })($app->applicant_name, $app->job_title)),
                         'skills' => isset($app->dynamic_responses['skills'])
                             ? $app->dynamic_responses['skills']
-                            : (function($title) {
+                            : (function ($title) {
                                 $skillsList = ['CPL', 'Instrument', 'Safety Management', 'AMT License', 'Troubleshooting', 'Logbook', 'MS Office', 'Organization', 'Communication', 'Customer Service', 'Public Speaking', 'Aviation Law', 'Project Management', 'Team Leadership'];
                                 $seed = crc32($title);
+
                                 return [
                                     $skillsList[$seed % count($skillsList)],
                                     $skillsList[($seed + 3) % count($skillsList)],
-                                    $skillsList[($seed + 7) % count($skillsList)]
+                                    $skillsList[($seed + 7) % count($skillsList)],
                                 ];
                             })($app->job_title),
                         'documents' => isset($app->dynamic_responses['documents'])
@@ -282,9 +280,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
                                 ],
                             ],
                         // Dynamic, Balanced PDS Qualification Match Score (0-100%)
-                        'aiScore' => (function($app) {
+                        'aiScore' => (function ($app) {
                             $dyn = $app->dynamic_responses ?? [];
-                            
+
                             // 1. Education (Max 30 pts)
                             $eduScore = 15; // default bachelor
                             $eduLvl = $dyn['educationLevel'] ?? ($app->education ?? '');
@@ -301,71 +299,120 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             }
 
                             // 2. Experience (Max 35 pts)
-                            $yrs = isset($dyn['yearsOfExperience']) ? (int)$dyn['yearsOfExperience'] : 2;
-                            if ($yrs >= 6) $expScore = 35;
-                            elseif ($yrs >= 4) $expScore = 30;
-                            elseif ($yrs >= 2) $expScore = 22;
-                            elseif ($yrs >= 1) $expScore = 14;
-                            else $expScore = 6;
+                            $yrs = isset($dyn['yearsOfExperience']) ? (int) $dyn['yearsOfExperience'] : 2;
+                            if ($yrs >= 6) {
+                                $expScore = 35;
+                            } elseif ($yrs >= 4) {
+                                $expScore = 30;
+                            } elseif ($yrs >= 2) {
+                                $expScore = 22;
+                            } elseif ($yrs >= 1) {
+                                $expScore = 14;
+                            } else {
+                                $expScore = 6;
+                            }
 
                             // 3. Eligibility & Accomplishments / Awards (Max 20 pts)
                             $awds = $dyn['awards'] ?? [];
                             $eligs = $dyn['eligibilities'] ?? [];
                             $awdScore = 8;
-                            if (!empty($awds) || !empty($eligs)) {
-                                if (in_array('national', $awds) || in_array('csc', $awds) || !empty($eligs)) $awdScore = 20;
-                                elseif (in_array('president', $awds)) $awdScore = 16;
-                                elseif (in_array('ngo', $awds)) $awdScore = 12;
+                            if (! empty($awds) || ! empty($eligs)) {
+                                if (in_array('national', $awds) || in_array('csc', $awds) || ! empty($eligs)) {
+                                    $awdScore = 20;
+                                } elseif (in_array('president', $awds)) {
+                                    $awdScore = 16;
+                                } elseif (in_array('ngo', $awds)) {
+                                    $awdScore = 12;
+                                }
                             }
 
                             // 4. Training & L&D Hours (Max 15 pts)
-                            $hrs = isset($dyn['trainingHours']) ? (int)$dyn['trainingHours'] : 0;
-                            if ($hrs >= 100) $trScore = 15;
-                            elseif ($hrs >= 40) $trScore = 11;
-                            elseif ($hrs >= 16) $trScore = 7;
-                            elseif ($hrs >= 8) $trScore = 4;
-                            else $trScore = 2;
+                            $hrs = isset($dyn['trainingHours']) ? (int) $dyn['trainingHours'] : 0;
+                            if ($hrs >= 100) {
+                                $trScore = 15;
+                            } elseif ($hrs >= 40) {
+                                $trScore = 11;
+                            } elseif ($hrs >= 16) {
+                                $trScore = 7;
+                            } elseif ($hrs >= 8) {
+                                $trScore = 4;
+                            } else {
+                                $trScore = 2;
+                            }
 
                             // 5. Document Completeness Adjustments (-10 penalty for to-follow, +5 for complete attachments)
                             $missingPenalty = count($app->to_follow_docs ?? []) * 5;
                             $attachmentBonus = count($app->custom_file_responses ?? []) * 2;
 
                             $rawTotal = $eduScore + $expScore + $awdScore + $trScore + $attachmentBonus - $missingPenalty;
+
                             return min(100, max(25, $rawTotal));
                         })($app),
                         'aiScoreBreakdown' => [
-                            'education' => (function($app) {
+                            'education' => (function ($app) {
                                 $dyn = $app->dynamic_responses ?? [];
                                 $eduLvl = $dyn['educationLevel'] ?? ($app->education ?? '');
-                                if (in_array($eduLvl, ['doctoral_graduate', 'doctoral_27+', 'doctoral_18-24', 'doctoral_15-18', 'doctoral_9-15', 'Doctorate', 'PhD'])) return 5;
-                                if (in_array($eduLvl, ['masters', 'Post-Graduate', 'Masterate'])) return 4;
-                                if (in_array($eduLvl, ['bachelor', 'College Graduate', 'College'])) return 3;
+                                if (in_array($eduLvl, ['doctoral_graduate', 'doctoral_27+', 'doctoral_18-24', 'doctoral_15-18', 'doctoral_9-15', 'Doctorate', 'PhD'])) {
+                                    return 5;
+                                }
+                                if (in_array($eduLvl, ['masters', 'Post-Graduate', 'Masterate'])) {
+                                    return 4;
+                                }
+                                if (in_array($eduLvl, ['bachelor', 'College Graduate', 'College'])) {
+                                    return 3;
+                                }
+
                                 return 2;
                             })($app),
-                            'experience' => (function($app) {
+                            'experience' => (function ($app) {
                                 $dyn = $app->dynamic_responses ?? [];
-                                $yrs = isset($dyn['yearsOfExperience']) ? (int)$dyn['yearsOfExperience'] : 2;
-                                if ($yrs >= 6) return 25;
-                                if ($yrs >= 4) return 20;
-                                if ($yrs >= 2) return 15;
-                                if ($yrs >= 1) return 10;
+                                $yrs = isset($dyn['yearsOfExperience']) ? (int) $dyn['yearsOfExperience'] : 2;
+                                if ($yrs >= 6) {
+                                    return 25;
+                                }
+                                if ($yrs >= 4) {
+                                    return 20;
+                                }
+                                if ($yrs >= 2) {
+                                    return 15;
+                                }
+                                if ($yrs >= 1) {
+                                    return 10;
+                                }
+
                                 return 5;
                             })($app),
-                            'accomplishments' => (function($app) {
+                            'accomplishments' => (function ($app) {
                                 $dyn = $app->dynamic_responses ?? [];
                                 $awds = $dyn['awards'] ?? [];
-                                if (in_array('national', $awds) || in_array('csc', $awds)) return 5;
-                                if (in_array('president', $awds)) return 4;
-                                if (in_array('ngo', $awds)) return 3;
+                                if (in_array('national', $awds) || in_array('csc', $awds)) {
+                                    return 5;
+                                }
+                                if (in_array('president', $awds)) {
+                                    return 4;
+                                }
+                                if (in_array('ngo', $awds)) {
+                                    return 3;
+                                }
+
                                 return 2;
                             })($app),
-                            'training' => (function($app) {
+                            'training' => (function ($app) {
                                 $dyn = $app->dynamic_responses ?? [];
-                                $hrs = isset($dyn['trainingHours']) ? (int)$dyn['trainingHours'] : 0;
-                                if ($hrs >= 100) return 10;
-                                if ($hrs >= 40) return 8;
-                                if ($hrs >= 16) return 5;
-                                if ($hrs >= 8) return 3;
+                                $hrs = isset($dyn['trainingHours']) ? (int) $dyn['trainingHours'] : 0;
+                                if ($hrs >= 100) {
+                                    return 10;
+                                }
+                                if ($hrs >= 40) {
+                                    return 8;
+                                }
+                                if ($hrs >= 16) {
+                                    return 5;
+                                }
+                                if ($hrs >= 8) {
+                                    return 3;
+                                }
+
                                 return 1;
                             })($app),
                         ],
@@ -383,16 +430,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             : 0,
                         'toFollowDocs' => $app->to_follow_docs ?? [],
                         'custom_file_responses' => $app->custom_file_responses ?? [],
-                        'dynamic_responses' => (function($app) {
+                        'dynamic_responses' => (function ($app) {
                             $dyn = $app->dynamic_responses ?? [];
                             $userProfile = $app->user && $app->user->profile_data ? $app->user->profile_data : [];
-                            
+
                             $parts = explode(' ', $app->applicant_name);
                             $firstName = $parts[0] ?? 'Applicant';
                             $middleName = '';
                             $lastName = '';
                             $extensionName = '';
-                            
+
                             $c = count($parts);
                             if ($c > 3) {
                                 $middleName = $parts[1];
@@ -404,7 +451,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             } elseif ($c === 2) {
                                 $lastName = $parts[1];
                             }
-                            
+
                             $defaults = [
                                 'firstName' => $firstName,
                                 'lastName' => $lastName,
@@ -417,7 +464,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                                 'isIP' => 'No',
                                 'isPWD' => 'No',
                             ];
-                            
+
                             return array_merge($defaults, $userProfile, $dyn);
                         })($app),
                     ];
@@ -442,34 +489,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
                 $userProf = $app->user && is_array($app->user->profile_data) ? $app->user->profile_data : [];
                 $avatarUrl = null;
-                if (!empty($userProf['photo'])) {
+                if (! empty($userProf['photo'])) {
                     $avatarUrl = str_starts_with($userProf['photo'], 'data:') || str_starts_with($userProf['photo'], 'http')
                         ? $userProf['photo']
-                        : '/storage/' . $userProf['photo'];
-                } elseif (!empty($userProf['avatar'])) {
+                        : '/storage/'.$userProf['photo'];
+                } elseif (! empty($userProf['avatar'])) {
                     $avatarUrl = $userProf['avatar'];
-                } elseif (!empty($app->dynamic_responses['photo'])) {
+                } elseif (! empty($app->dynamic_responses['photo'])) {
                     $avatarUrl = $app->dynamic_responses['photo'];
                 }
 
-                $realEducation = !empty($userProf['highestEducation'])
-                    ? $userProf['highestEducation'] . (!empty($userProf['degreeCourse']) ? ' - ' . $userProf['degreeCourse'] : '')
-                    : (!empty($userProf['degreeCourse'])
+                $realEducation = ! empty($userProf['highestEducation'])
+                    ? $userProf['highestEducation'].(! empty($userProf['degreeCourse']) ? ' - '.$userProf['degreeCourse'] : '')
+                    : (! empty($userProf['degreeCourse'])
                         ? $userProf['degreeCourse']
                         : ($app->education ?: 'N/A'));
 
-                $realExperience = !empty($userProf['workExperienceDetails'])
+                $realExperience = ! empty($userProf['workExperienceDetails'])
                     ? $userProf['workExperienceDetails']
-                    : (!empty($userProf['yearsOfExperience'])
-                        ? $userProf['yearsOfExperience'] . ' years of relevant experience'
+                    : (! empty($userProf['yearsOfExperience'])
+                        ? $userProf['yearsOfExperience'].' years of relevant experience'
                         : (isset($app->dynamic_responses['experience'])
                             ? $app->dynamic_responses['experience']
                             : (isset($app->dynamic_responses['yearsOfExperience'])
-                                ? $app->dynamic_responses['yearsOfExperience'] . ' years of relevant experience'
-                                : '3+ years of relevant experience in ' . $app->job_title)));
+                                ? $app->dynamic_responses['yearsOfExperience'].' years of relevant experience'
+                                : '3+ years of relevant experience in '.$app->job_title)));
 
-                $realPhone = !empty($userProf['phone']) ? $userProf['phone'] : ($app->phone_number ?: 'N/A');
-                $realAddress = !empty($userProf['address']) ? $userProf['address'] : 'N/A';
+                $realPhone = ! empty($userProf['phone']) ? $userProf['phone'] : ($app->phone_number ?: 'N/A');
+                $realAddress = ! empty($userProf['address']) ? $userProf['address'] : 'N/A';
 
                 return [
                     'id' => $app->id,
@@ -485,7 +532,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'campus' => 'Villamor Air Base, Pasay City',
                     'education' => $realEducation,
                     'experience' => $realExperience,
-                    'skills' => !empty($userProf['skills'])
+                    'skills' => ! empty($userProf['skills'])
                         ? (is_array($userProf['skills']) ? $userProf['skills'] : explode(',', $userProf['skills']))
                         : (isset($app->dynamic_responses['skills'])
                             ? (is_array($app->dynamic_responses['skills']) ? $app->dynamic_responses['skills'] : explode(',', $app->dynamic_responses['skills']))
@@ -541,9 +588,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/landing-page', function () {
             $user = auth()->user();
-            if (!$user || !$user->isAdmin()) {
+            if (! $user || ! $user->isAdmin()) {
                 abort(403, 'Unauthorized. Only Administrators can manage the landing page.');
             }
+
             return Inertia::render('Admin/LandingPageManager');
         })->name('landing-page');
 
@@ -557,7 +605,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/activity-logs', [\App\Http\Controllers\Admin\ActivityLogController::class, 'index'])->name('activity-logs.index');
     });
 });
-
 
 require __DIR__.'/settings.php';
 

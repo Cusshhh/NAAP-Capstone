@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Message;
 use App\Models\Application;
+use App\Models\Message;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -15,13 +15,13 @@ class MessageController extends Controller
         try {
             $application_id = $application;
             $application = Application::findOrFail($application_id);
-            
+
             // Ensure user is authorized
             $user = Auth::user();
             $adminEmails = ['admin@naap.edu.ph', 'admin@admin.com'];
             $isAdmin = $user->isAdmin() || in_array($user->email, $adminEmails);
-            
-            if (!$isAdmin && $application->email !== $user->email) {
+
+            if (! $isAdmin && $application->email !== $user->email) {
                 abort(403, 'Unauthorized access to messages.');
             }
 
@@ -46,7 +46,8 @@ class MessageController extends Controller
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $me) {
             return response()->json(['error' => 'Application not found'], 404);
         } catch (\Throwable $ex) {
-            Log::error('FetchMessages Error: ' . $ex->getMessage());
+            Log::error('FetchMessages Error: '.$ex->getMessage());
+
             return response()->json(['error' => 'Failed to fetch messages'], 500);
         }
     }
@@ -56,20 +57,20 @@ class MessageController extends Controller
         $application_id = $application;
         $application = Application::findOrFail($application_id);
         $user = Auth::user();
-        
+
         $adminEmails = ['admin@naap.edu.ph', 'admin@admin.com'];
         $isAdmin = $user->isAdmin() || in_array($user->email, $adminEmails);
-        
-        if (!$isAdmin && $application->email !== $user->email) {
+
+        if (! $isAdmin && $application->email !== $user->email) {
             abort(403, 'Unauthorized access to messages.');
         }
 
         $validated = $request->validate([
-            'content' => 'required|string|max:1000'
+            'content' => 'required|string|max:1000',
         ]);
 
         // Determine receiver. If Admin sends -> Applicant. If Applicant sends -> Admin.
-        
+
         $applicantUser = \App\Models\User::where('email', $application->email)->first();
 
         try {
@@ -82,13 +83,14 @@ class MessageController extends Controller
                 'sender_id' => $user->id,
                 'receiver_id' => $receiverId,
                 'content' => $validated['content'],
-                'is_read' => false
+                'is_read' => false,
             ]);
 
             return response()->json($message->load(['sender:id,name,email', 'application:id,job_title']), 201);
         } catch (\Exception $e) {
-            Log::error('SendMessage Error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
-            return response()->json(['error' => 'Server Error: ' . $e->getMessage()], 500);
+            Log::error('SendMessage Error: '.$e->getMessage().' | Trace: '.$e->getTraceAsString());
+
+            return response()->json(['error' => 'Server Error: '.$e->getMessage()], 500);
         }
     }
 
@@ -98,8 +100,8 @@ class MessageController extends Controller
             $user = Auth::user();
             $adminEmails = ['admin@naap.edu.ph', 'admin@admin.com'];
             $isAdmin = $user->isAdmin() || in_array($user->email, $adminEmails);
-            
-            if (!$isAdmin) {
+
+            if (! $isAdmin) {
                 return response()->json(['error' => 'Unauthorized action.'], 403);
             }
 
@@ -108,12 +110,12 @@ class MessageController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Conversation cleared successfully.'
+                'message' => 'Conversation cleared successfully.',
             ]);
         } catch (\Throwable $ex) {
-            Log::error('DeleteMessages Error: ' . $ex->getMessage());
+            Log::error('DeleteMessages Error: '.$ex->getMessage());
+
             return response()->json(['error' => 'Failed to clear conversation'], 500);
         }
     }
 }
-

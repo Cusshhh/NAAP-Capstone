@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\CalendarEvent;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class CalendarEventController extends Controller
@@ -14,7 +14,7 @@ class CalendarEventController extends Controller
     public function index()
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return response()->json([]);
         }
 
@@ -63,7 +63,7 @@ class CalendarEventController extends Controller
                 $validated,
                 [
                     'date' => $dateStr,
-                    'user_id' => Auth::id()
+                    'user_id' => Auth::id(),
                 ]
             ));
 
@@ -71,7 +71,8 @@ class CalendarEventController extends Controller
         } catch (\Illuminate\Validation\ValidationException $ve) {
             return response()->json(['errors' => $ve->errors(), 'message' => $ve->getMessage()], 422);
         } catch (\Throwable $ex) {
-            \Log::error('CalendarEvent Store Error: ' . $ex->getMessage());
+            \Log::error('CalendarEvent Store Error: '.$ex->getMessage());
+
             return response()->json(['error' => $ex->getMessage(), 'message' => $ex->getMessage()], 500);
         }
     }
@@ -82,7 +83,7 @@ class CalendarEventController extends Controller
     public function destroy(CalendarEvent $calendarEvent)
     {
         $user = Auth::user();
-        if (!$user->isAdmin() && $calendarEvent->user_id !== $user->id) {
+        if (! $user->isAdmin() && $calendarEvent->user_id !== $user->id) {
             return response()->json(['error' => 'Unauthorized action.'], 403);
         }
 

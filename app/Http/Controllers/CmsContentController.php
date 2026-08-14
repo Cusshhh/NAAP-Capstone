@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\CmsContent;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class CmsContentController extends Controller
@@ -18,9 +18,11 @@ class CmsContentController extends Controller
             if ($content) {
                 return response()->json(json_decode($content->value));
             }
+
             return response()->json(['error' => 'CMS content not found'], 404);
         } catch (\Throwable $ex) {
-            Log::error("Error fetching CMS content for key {$key}: " . $ex->getMessage());
+            Log::error("Error fetching CMS content for key {$key}: ".$ex->getMessage());
+
             return response()->json(['error' => 'Failed to fetch CMS content'], 500);
         }
     }
@@ -32,7 +34,7 @@ class CmsContentController extends Controller
     {
         try {
             $user = auth()->user();
-            if (!$user || !$user->isAdmin()) {
+            if (! $user || ! $user->isAdmin()) {
                 return response()->json(['error' => 'Unauthorized. Only Administrators can manage CMS content.'], 403);
             }
 
@@ -50,14 +52,14 @@ class CmsContentController extends Controller
 
             return response()->json([
                 'key' => $content->key,
-                'value' => json_decode($content->value)
+                'value' => json_decode($content->value),
             ]);
         } catch (\Illuminate\Validation\ValidationException $ve) {
             throw $ve;
         } catch (\Throwable $ex) {
-            Log::error('Error saving CMS content: ' . $ex->getMessage());
-            return response()->json(['error' => 'Failed to save CMS content: ' . $ex->getMessage()], 500);
+            Log::error('Error saving CMS content: '.$ex->getMessage());
+
+            return response()->json(['error' => 'Failed to save CMS content: '.$ex->getMessage()], 500);
         }
     }
 }
-

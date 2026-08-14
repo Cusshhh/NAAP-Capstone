@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Department;
+use App\Models\Vacancy;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-
-use App\Models\Vacancy;
-use App\Models\Department;
 
 class JobController extends Controller
 {
@@ -21,7 +20,7 @@ class JobController extends Controller
         // Ensure all departments present in vacancies exist in departments table
         $existingDeptNames = Vacancy::whereNotNull('department')->pluck('department')->unique();
         foreach ($existingDeptNames as $deptName) {
-            if (!empty(trim($deptName))) {
+            if (! empty(trim($deptName))) {
                 Department::firstOrCreate(['name' => trim($deptName)]);
             }
         }
@@ -88,8 +87,9 @@ class JobController extends Controller
         } catch (\Illuminate\Validation\ValidationException $ve) {
             throw $ve;
         } catch (\Throwable $ex) {
-            \Illuminate\Support\Facades\Log::error('Error creating vacancy: ' . $ex->getMessage());
-            return back()->withErrors(['error' => 'Failed to post job vacancy: ' . $ex->getMessage()]);
+            \Illuminate\Support\Facades\Log::error('Error creating vacancy: '.$ex->getMessage());
+
+            return back()->withErrors(['error' => 'Failed to post job vacancy: '.$ex->getMessage()]);
         }
     }
 
@@ -129,8 +129,9 @@ class JobController extends Controller
         } catch (\Illuminate\Validation\ValidationException $ve) {
             throw $ve;
         } catch (\Throwable $ex) {
-            \Illuminate\Support\Facades\Log::error("Error updating vacancy ID {$vacancy->id}: " . $ex->getMessage());
-            return back()->withErrors(['error' => 'Failed to update job vacancy: ' . $ex->getMessage()]);
+            \Illuminate\Support\Facades\Log::error("Error updating vacancy ID {$vacancy->id}: ".$ex->getMessage());
+
+            return back()->withErrors(['error' => 'Failed to update job vacancy: '.$ex->getMessage()]);
         }
     }
 
@@ -142,10 +143,12 @@ class JobController extends Controller
         try {
             \App\Models\Application::where('job_id', $vacancy->id)->delete();
             $vacancy->delete();
+
             return back()->with('message', 'Job deleted successfully.');
         } catch (\Throwable $ex) {
-            \Illuminate\Support\Facades\Log::error("Error deleting vacancy ID {$vacancy->id}: " . $ex->getMessage());
-            return back()->withErrors(['error' => 'Failed to delete job vacancy: ' . $ex->getMessage()]);
+            \Illuminate\Support\Facades\Log::error("Error deleting vacancy ID {$vacancy->id}: ".$ex->getMessage());
+
+            return back()->withErrors(['error' => 'Failed to delete job vacancy: '.$ex->getMessage()]);
         }
     }
 
@@ -171,8 +174,9 @@ class JobController extends Controller
         } catch (\Illuminate\Validation\ValidationException $ve) {
             throw $ve;
         } catch (\Throwable $ex) {
-            \Illuminate\Support\Facades\Log::error("Error creating department folder: " . $ex->getMessage());
-            return back()->withErrors(['error' => 'Failed to create department folder: ' . $ex->getMessage()]);
+            \Illuminate\Support\Facades\Log::error('Error creating department folder: '.$ex->getMessage());
+
+            return back()->withErrors(['error' => 'Failed to create department folder: '.$ex->getMessage()]);
         }
     }
 
@@ -184,10 +188,12 @@ class JobController extends Controller
         try {
             $deptName = $department->name;
             $department->delete();
+
             return back()->with('message', "Department folder '{$deptName}' deleted successfully.");
         } catch (\Throwable $ex) {
-            \Illuminate\Support\Facades\Log::error("Error deleting department ID {$department->id}: " . $ex->getMessage());
-            return back()->withErrors(['error' => 'Failed to delete department folder: ' . $ex->getMessage()]);
+            \Illuminate\Support\Facades\Log::error("Error deleting department ID {$department->id}: ".$ex->getMessage());
+
+            return back()->withErrors(['error' => 'Failed to delete department folder: '.$ex->getMessage()]);
         }
     }
 }

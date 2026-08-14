@@ -13,7 +13,8 @@ class PublicJobController extends Controller
 
         return Inertia::render('Jobs/Index', [
             'jobs' => $query->get()->map(function ($vacancy) {
-                $isExpired = $vacancy->deadline && $vacancy->deadline->isPast() && !$vacancy->deadline->isToday();
+                $isExpired = $vacancy->deadline && $vacancy->deadline->isPast() && ! $vacancy->deadline->isToday();
+
                 return [
                     'id' => $vacancy->id,
                     'title' => $vacancy->title,
@@ -27,20 +28,20 @@ class PublicJobController extends Controller
                     'applicantCount' => $vacancy->applications_count ?? 0,
                     'status' => $isExpired ? 'Closed' : $vacancy->status,
                 ];
-            })
+            }),
         ]);
     }
 
     public function show($id)
     {
         $vacancy = Vacancy::find($id);
-        
-        if (!$vacancy) {
+
+        if (! $vacancy) {
             return redirect()->route('welcome')->with('error', 'The requested job posting was not found or has been closed.');
         }
-        
-        $isExpired = $vacancy->deadline && $vacancy->deadline->isPast() && !$vacancy->deadline->isToday();
-        
+
+        $isExpired = $vacancy->deadline && $vacancy->deadline->isPast() && ! $vacancy->deadline->isToday();
+
         $application = null;
         $interview = null;
         if (auth()->check()) {
@@ -51,7 +52,7 @@ class PublicJobController extends Controller
                 $interview = \App\Models\Interview::where('application_id', $application->id)->first();
             }
         }
-        
+
         return Inertia::render('Jobs/Show', [
             'id' => (string) $vacancy->id,
             'job' => [
@@ -87,7 +88,7 @@ class PublicJobController extends Controller
                 'venue' => $interview->venue,
                 'panel_members' => $interview->panel_members,
                 'result_notes' => $interview->result_notes,
-            ] : null
+            ] : null,
         ]);
     }
 }

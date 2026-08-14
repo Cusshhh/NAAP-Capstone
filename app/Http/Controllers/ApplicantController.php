@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
+use App\Models\Application;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use App\Models\Application; 
-use App\Models\ActivityLog;
+use Inertia\Inertia;
 
 class ApplicantController extends Controller
 {
@@ -42,7 +42,7 @@ class ApplicantController extends Controller
             }
 
             $dyn = $validated['dynamic_responses'] ?? [];
-            if (empty($dyn['contactNumber']) && !empty($validated['phone_number'])) {
+            if (empty($dyn['contactNumber']) && ! empty($validated['phone_number'])) {
                 $dyn['contactNumber'] = $validated['phone_number'];
             }
             if (empty($dyn['firstName']) || empty($dyn['lastName'])) {
@@ -68,24 +68,24 @@ class ApplicantController extends Controller
 
             try {
                 ActivityLog::write(
-                    "New Application Submitted",
+                    'New Application Submitted',
                     "{$application->applicant_name} submitted application for {$application->job_title}",
-                    "Villamor Campus",
-                    "FileText",
-                    "text-blue-600 bg-blue-50"
+                    'Villamor Campus',
+                    'FileText',
+                    'text-blue-600 bg-blue-50'
                 );
             } catch (\Exception $ex) {
-                Log::warning("ActivityLog write failed: " . $ex->getMessage());
+                Log::warning('ActivityLog write failed: '.$ex->getMessage());
             }
 
             return redirect()->route('dashboard')->with('message', 'Application submitted successfully!');
         } catch (\Exception $e) {
-            Log::error('Application creation failed: ' . $e->getMessage(), [
+            Log::error('Application creation failed: '.$e->getMessage(), [
                 'exception' => $e,
                 'request' => $request->all(),
             ]);
-            
-            return redirect()->back()->withErrors(['error' => 'Failed to submit application: ' . $e->getMessage()])->withInput();
+
+            return redirect()->back()->withErrors(['error' => 'Failed to submit application: '.$e->getMessage()])->withInput();
         }
     }
 
@@ -93,7 +93,7 @@ class ApplicantController extends Controller
     public function dashboard()
     {
         $user = Auth::user();
-        
+
         // Safety check for admins
         if ($user->isAdmin() || in_array($user->email, ['admin@naap.edu.ph', 'admin@admin.com'])) {
             return redirect()->route('admin.dashboard');
@@ -158,7 +158,7 @@ class ApplicantController extends Controller
                     'applicantEmail' => $int->applicant_email,
                 ];
             });
-            
+
         return Inertia::render('dashboard', [
             'applications' => $applications,
             'jobs' => $jobs,
@@ -175,35 +175,35 @@ class ApplicantController extends Controller
         try {
             $user = Auth::user();
             $profile = $request->input('profile_data');
-            
+
             Log::info("Saving profile data for user: {$user->email}");
-            
+
             $user->profile_data = $profile;
             $user->save();
 
-            Log::info("User profile saved successfully");
+            Log::info('User profile saved successfully');
 
             // Sync with existing applications
             $applications = Application::where('email', $user->email)->get();
             foreach ($applications as $app) {
                 $dyn = $app->dynamic_responses ?? [];
-                
+
                 // Merge profile fields into dynamic_responses
                 foreach ($profile as $key => $value) {
                     $dyn[$key] = $value;
                 }
-                
+
                 if (isset($profile['phone'])) {
                     $app->phone_number = $profile['phone'];
                     $dyn['phone_number'] = $profile['phone'];
                 }
-                
+
                 if (isset($profile['firstName']) || isset($profile['lastName'])) {
                     $first = $profile['firstName'] ?? '';
                     $middle = $profile['middleName'] ?? '';
                     $last = $profile['lastName'] ?? '';
                     $ext = $profile['extensionName'] ?? '';
-                    $fullName = trim("{$first} " . ($middle ? "{$middle} " : "") . $last . ($ext ? " {$ext}" : ""));
+                    $fullName = trim("{$first} ".($middle ? "{$middle} " : '').$last.($ext ? " {$ext}" : ''));
                     if ($fullName) {
                         $app->applicant_name = $fullName;
                     }
@@ -213,15 +213,15 @@ class ApplicantController extends Controller
                 $app->save();
             }
 
-            Log::info("All applications updated with profile data");
+            Log::info('All applications updated with profile data');
 
             return redirect()->back()->with('message', 'Profile updated successfully!');
         } catch (\Exception $e) {
-            Log::error('Profile data save failed: ' . $e->getMessage(), [
+            Log::error('Profile data save failed: '.$e->getMessage(), [
                 'exception' => $e,
             ]);
-            
-            return redirect()->back()->withErrors(['error' => 'Failed to update profile: ' . $e->getMessage()]);
+
+            return redirect()->back()->withErrors(['error' => 'Failed to update profile: '.$e->getMessage()]);
         }
     }
 
@@ -239,10 +239,11 @@ class ApplicantController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Application withdrawn successfully.'
+                'message' => 'Application withdrawn successfully.',
             ]);
         } catch (\Throwable $ex) {
-            Log::error("Error withdrawing application ID {$application->id}: " . $ex->getMessage());
+            Log::error("Error withdrawing application ID {$application->id}: ".$ex->getMessage());
+
             return response()->json(['error' => 'Failed to withdraw application'], 500);
         }
     }
@@ -261,10 +262,11 @@ class ApplicantController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Application deleted permanently.'
+                'message' => 'Application deleted permanently.',
             ]);
         } catch (\Throwable $ex) {
-            Log::error("Error deleting application ID {$application->id}: " . $ex->getMessage());
+            Log::error("Error deleting application ID {$application->id}: ".$ex->getMessage());
+
             return response()->json(['error' => 'Failed to delete application'], 500);
         }
     }

@@ -1,11 +1,11 @@
 <?php
 
+use App\Models\ActivityLog;
+use App\Models\Application;
+use App\Models\CalendarEvent;
+use App\Models\Interview;
 use App\Models\User;
 use App\Models\Vacancy;
-use App\Models\Application;
-use App\Models\Interview;
-use App\Models\CalendarEvent;
-use App\Models\ActivityLog;
 
 beforeEach(function () {
 
@@ -133,7 +133,7 @@ test('authenticated user can create, retrieve, and delete calendar events', func
     $getRes->assertJsonFragment(['title' => 'My Interview Prep']);
 
     $event = CalendarEvent::where('title', 'My Interview Prep')->first();
-    
+
     // Non-owner cannot delete
     $otherUser = User::factory()->create();
     $this->actingAs($otherUser);

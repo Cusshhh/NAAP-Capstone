@@ -45,7 +45,10 @@ class Application extends Model
 
     public function getApplicantNameAttribute($value)
     {
-        if ($value) return $value;
+        if ($value) {
+            return $value;
+        }
+
         return $this->user ? $this->user->name : 'Valued Applicant';
     }
 }

@@ -13,6 +13,7 @@ class ActivityLogController extends Controller
     public function index()
     {
         $logs = ActivityLog::with('user')->latest()->get();
+
         return response()->json($logs);
     }
 }

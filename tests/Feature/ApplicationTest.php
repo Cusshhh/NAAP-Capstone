@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\User;
 use App\Models\Application;
 use App\Models\Message;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -32,7 +32,7 @@ test('authenticated user can withdraw their own application', function () {
 test('authenticated user cannot withdraw someone else application', function () {
     $user1 = User::factory()->create();
     $user2 = User::factory()->create();
-    
+
     $application = Application::create([
         'job_id' => 1,
         'job_title' => 'Test Job',
@@ -75,7 +75,7 @@ test('authenticated user can delete their own application permanently', function
 test('authenticated user cannot delete someone else application', function () {
     $user1 = User::factory()->create();
     $user2 = User::factory()->create();
-    
+
     $application = Application::create([
         'job_id' => 1,
         'job_title' => 'Test Job',
@@ -96,7 +96,7 @@ test('authenticated user cannot delete someone else application', function () {
 test('deleting an application cascades and deletes related messages', function () {
     $user = User::factory()->create();
     $admin = User::factory()->create(['email' => 'admin@naap.edu.ph']);
-    
+
     $this->actingAs($user);
 
     $application = Application::create([

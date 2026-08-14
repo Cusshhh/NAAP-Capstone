@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Interview;
-use App\Models\Application;
 use App\Models\ActivityLog;
+use App\Models\Application;
+use App\Models\Interview;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class InterviewController extends Controller
@@ -18,9 +18,11 @@ class InterviewController extends Controller
     {
         try {
             $interviews = Interview::latest()->get();
+
             return response()->json($interviews);
         } catch (\Throwable $ex) {
-            Log::error('Error fetching interviews: ' . $ex->getMessage());
+            Log::error('Error fetching interviews: '.$ex->getMessage());
+
             return response()->json(['error' => 'Failed to fetch interviews'], 500);
         }
     }
@@ -65,15 +67,16 @@ class InterviewController extends Controller
                     'text-purple-500 bg-purple-100'
                 );
             } catch (\Throwable $logEx) {
-                Log::warning('ActivityLog failed: ' . $logEx->getMessage());
+                Log::warning('ActivityLog failed: '.$logEx->getMessage());
             }
 
             return response()->json($interview, 201);
         } catch (\Illuminate\Validation\ValidationException $ve) {
             throw $ve;
         } catch (\Throwable $ex) {
-            Log::error('Error storing interview: ' . $ex->getMessage());
-            return response()->json(['error' => 'Failed to schedule interview: ' . $ex->getMessage()], 500);
+            Log::error('Error storing interview: '.$ex->getMessage());
+
+            return response()->json(['error' => 'Failed to schedule interview: '.$ex->getMessage()], 500);
         }
     }
 
@@ -104,15 +107,16 @@ class InterviewController extends Controller
                     'text-blue-500 bg-blue-100'
                 );
             } catch (\Throwable $logEx) {
-                Log::warning('ActivityLog failed: ' . $logEx->getMessage());
+                Log::warning('ActivityLog failed: '.$logEx->getMessage());
             }
 
             return response()->json($interview);
         } catch (\Illuminate\Validation\ValidationException $ve) {
             throw $ve;
         } catch (\Throwable $ex) {
-            Log::error("Error updating interview ID {$interview->id}: " . $ex->getMessage());
-            return response()->json(['error' => 'Failed to update interview: ' . $ex->getMessage()], 500);
+            Log::error("Error updating interview ID {$interview->id}: ".$ex->getMessage());
+
+            return response()->json(['error' => 'Failed to update interview: '.$ex->getMessage()], 500);
         }
     }
 
@@ -138,14 +142,14 @@ class InterviewController extends Controller
                     'text-red-500 bg-red-100'
                 );
             } catch (\Throwable $logEx) {
-                Log::warning('ActivityLog failed: ' . $logEx->getMessage());
+                Log::warning('ActivityLog failed: '.$logEx->getMessage());
             }
 
             return response()->json(['success' => true]);
         } catch (\Throwable $ex) {
-            Log::error("Error deleting interview ID {$interview->id}: " . $ex->getMessage());
-            return response()->json(['error' => 'Failed to delete interview: ' . $ex->getMessage()], 500);
+            Log::error("Error deleting interview ID {$interview->id}: ".$ex->getMessage());
+
+            return response()->json(['error' => 'Failed to delete interview: '.$ex->getMessage()], 500);
         }
     }
 }
-

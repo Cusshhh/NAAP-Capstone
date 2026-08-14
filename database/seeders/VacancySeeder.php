@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Vacancy;
+use Illuminate\Database\Seeder;
 
 class VacancySeeder extends Seeder
 {
@@ -38,13 +38,13 @@ class VacancySeeder extends Seeder
                     'Conduct instrument flight training.',
                     'Perform stage checks.',
                     'Mentor student pilots.',
-                    'Assist Chief Flight Instructor.'
+                    'Assist Chief Flight Instructor.',
                 ],
                 'requirements' => [
                     'CPL with Instrument Rating.',
                     'Flight Instructor License.',
                     'Minimum 1,500 flight hours.',
-                    'Class 1 Medical.'
+                    'Class 1 Medical.',
                 ],
                 'salary_grade' => 23,
                 'deadline' => '2026-03-15',
@@ -62,13 +62,13 @@ class VacancySeeder extends Seeder
                     'Teach basic flight maneuvers.',
                     'Conduct pre-flight briefings.',
                     'Ensure safe flight operations.',
-                    'Grade student performance.'
+                    'Grade student performance.',
                 ],
                 'requirements' => [
                     'CPL holder.',
                     'Flight Instructor License.',
                     'Minimum 500 flight hours.',
-                    'Passion for teaching.'
+                    'Passion for teaching.',
                 ],
                 'salary_grade' => 21,
                 'deadline' => '2026-03-15',
@@ -86,13 +86,13 @@ class VacancySeeder extends Seeder
                     'Conduct multi-engine training.',
                     'Teach asymmetric flight procedures.',
                     'Verify student proficiency.',
-                    'Safety management.'
+                    'Safety management.',
                 ],
                 'requirements' => [
                     'CPL with Multi-Engine Rating.',
                     'Flight Instructor License.',
                     'Minimum 1,000 flight hours.',
-                    'Multi-engine teaching experience.'
+                    'Multi-engine teaching experience.',
                 ],
                 'salary_grade' => 24,
                 'deadline' => '2026-03-15',
@@ -110,13 +110,13 @@ class VacancySeeder extends Seeder
                     'Riveting and sheet metal repair.',
                     'Composite material repair.',
                     'Corrosion control.',
-                    'Landing gear maintenance.'
+                    'Landing gear maintenance.',
                 ],
                 'requirements' => [
                     'AMT License (Airframe rating).',
                     '3 years aviation experience.',
                     'Ability to read blueprints.',
-                    'Physical fitness.'
+                    'Physical fitness.',
                 ],
                 'salary_grade' => 15,
                 'deadline' => '2026-03-15',
@@ -134,13 +134,13 @@ class VacancySeeder extends Seeder
                     'Engine inspection and tuning.',
                     'Propeller balancing.',
                     'Oil system analysis.',
-                    'Troubleshooting engine issues.'
+                    'Troubleshooting engine issues.',
                 ],
                 'requirements' => [
                     'AMT License (Powerplant rating).',
                     'Experience with Lycoming engines.',
                     'Safety conscious.',
-                    'Troubleshooting skills.'
+                    'Troubleshooting skills.',
                 ],
                 'salary_grade' => 15,
                 'deadline' => '2026-03-15',
@@ -158,13 +158,13 @@ class VacancySeeder extends Seeder
                     'Test radio and navigation equipment.',
                     'Repair wiring and electrical systems.',
                     'Calibrate flight instruments.',
-                    'Software updates.'
+                    'Software updates.',
                 ],
                 'requirements' => [
                     'AMS License (Avionics).',
                     'Electronics knowledge.',
                     'Experience with Garmin G1000 is a plus.',
-                    'Detail oriented.'
+                    'Detail oriented.',
                 ],
                 'salary_grade' => 15,
                 'deadline' => '2026-03-15',
@@ -182,13 +182,13 @@ class VacancySeeder extends Seeder
                     'Schedule maintenance shifts.',
                     'Manage spare parts inventory.',
                     'Sign off maintenance releases.',
-                    'Supervise mechanics.'
+                    'Supervise mechanics.',
                 ],
                 'requirements' => [
                     'AMT License with Airframe & Powerplant.',
                     '5+ years experience.',
                     'Leadership skills.',
-                    'Knowledge of CAAP airworthiness regs.'
+                    'Knowledge of CAAP airworthiness regs.',
                 ],
                 'salary_grade' => 18,
                 'deadline' => '2026-03-15',
@@ -206,13 +206,13 @@ class VacancySeeder extends Seeder
                     'Lecture on performing weather analysis.',
                     'Teach METAR/TAF decoding.',
                     'Explain hazardous weather phenomena.',
-                    'Prepare exams.'
+                    'Prepare exams.',
                 ],
                 'requirements' => [
                     'Ground Instructor License.',
                     'Meteorology background preferred.',
                     'Teaching experience.',
-                    'Good presentation skills.'
+                    'Good presentation skills.',
                 ],
                 'salary_grade' => 16,
                 'deadline' => '2026-03-15',
@@ -230,13 +230,13 @@ class VacancySeeder extends Seeder
                     'Teach PCARs and ICAO annexes.',
                     'Discuss license privileges and limitations.',
                     'Explain air traffic rules.',
-                    'Conduct assessments.'
+                    'Conduct assessments.',
                 ],
                 'requirements' => [
                     'Ground Instructor License.',
                     'Deep knowledge of aviation law.',
                     'Attention to detail.',
-                    'Communication skills.'
+                    'Communication skills.',
                 ],
                 'salary_grade' => 16,
                 'deadline' => '2026-03-15',
@@ -254,13 +254,13 @@ class VacancySeeder extends Seeder
                     'Perform daily simulator qualification tests.',
                     'Troubleshoot hardware and software issues.',
                     'Replace faulty components.',
-                    'Assist instructors with sim setup.'
+                    'Assist instructors with sim setup.',
                 ],
                 'requirements' => [
                     'Electronics or Computer Engineering degree.',
                     'Experience with simulation systems.',
                     'Networking skills.',
-                    'Shift work required.'
+                    'Shift work required.',
                 ],
                 'salary_grade' => 15,
                 'deadline' => '2026-03-15',
@@ -278,13 +278,13 @@ class VacancySeeder extends Seeder
                     'Maintain Safety Management System.',
                     'Investigate hazards and incidents.',
                     'Promote safety awareness.',
-                    'Audit compliance.'
+                    'Audit compliance.',
                 ],
                 'requirements' => [
                     'Aviation Safety certification.',
                     'Knowledge of SMS.',
                     'Analytical mindset.',
-                    'Experience in flight ops.'
+                    'Experience in flight ops.',
                 ],
                 'salary_grade' => 18,
                 'deadline' => '2026-03-15',
@@ -302,13 +302,13 @@ class VacancySeeder extends Seeder
                     'File flight plans with ATS.',
                     'Check NOTAMs and weather.',
                     'Coordinate aircraft refueling.',
-                    'Track fleet movement.'
+                    'Track fleet movement.',
                 ],
                 'requirements' => [
                     'Flight Dispatcher License or training.',
                     'Radio Operator License.',
                     'Computer literate.',
-                    'Ability to work under pressure.'
+                    'Ability to work under pressure.',
                 ],
                 'salary_grade' => 14,
                 'deadline' => '2026-03-15',
@@ -326,13 +326,13 @@ class VacancySeeder extends Seeder
                     'Review application documents.',
                     'Answer student inquiries.',
                     'Organize orientation events.',
-                    'Maintain applicant database.'
+                    'Maintain applicant database.',
                 ],
                 'requirements' => [
                     'Bachelor’s degree.',
                     'Customer service experience.',
                     'Organized and friendly.',
-                    'Communication skills.'
+                    'Communication skills.',
                 ],
                 'salary_grade' => 11,
                 'deadline' => '2026-03-15',
@@ -350,13 +350,13 @@ class VacancySeeder extends Seeder
                     'Maintain student 201 files.',
                     'Process transcript requests.',
                     'Liaise with CAAP Licensing department.',
-                    'Ensure data privacy.'
+                    'Ensure data privacy.',
                 ],
                 'requirements' => [
                     'Bachelor’s degree.',
                     'Experience in records management.',
                     'Strict attention to detail.',
-                    'Integrity.'
+                    'Integrity.',
                 ],
                 'salary_grade' => 14,
                 'deadline' => '2026-03-15',
@@ -374,13 +374,13 @@ class VacancySeeder extends Seeder
                     'Manage campus clinic.',
                     'Provide first aid.',
                     'Monitor student health records.',
-                    'Assist in annual medical exams.'
+                    'Assist in annual medical exams.',
                 ],
                 'requirements' => [
                     'Registered Nurse (RN).',
                     'BLS/ACLS certified.',
                     'Experience in school setting preferred.',
-                    'Caring attitude.'
+                    'Caring attitude.',
                 ],
                 'salary_grade' => 11,
                 'deadline' => '2026-03-15',
@@ -398,13 +398,13 @@ class VacancySeeder extends Seeder
                     'Conduct individual counseling.',
                     'Assess student mental fitness.',
                     'Facilitate stress management workshops.',
-                    'Support student retention.'
+                    'Support student retention.',
                 ],
                 'requirements' => [
                     'Registered Guidance Counselor (RGC).',
                     'Experience with students.',
                     'Empathy and confidentiality.',
-                    'Understanding of aviation stress factors.'
+                    'Understanding of aviation stress factors.',
                 ],
                 'salary_grade' => 15,
                 'deadline' => '2026-03-15',
@@ -422,13 +422,13 @@ class VacancySeeder extends Seeder
                     'Catalog books and manuals.',
                     'Assist students with research.',
                     'Update technical library subscriptions.',
-                    'Maintain quiet study environment.'
+                    'Maintain quiet study environment.',
                 ],
                 'requirements' => [
                     'Licensed Librarian.',
                     'Organizational skills.',
                     'Computer literate.',
-                    'Interest in aviation.'
+                    'Interest in aviation.',
                 ],
                 'salary_grade' => 11,
                 'deadline' => '2026-03-15',
@@ -446,13 +446,13 @@ class VacancySeeder extends Seeder
                     'Troubleshoot PC and network issues.',
                     'Maintain classroom AV equipment.',
                     'Install software updates.',
-                    'Assist users with technical problems.'
+                    'Assist users with technical problems.',
                 ],
                 'requirements' => [
                     'IT-related degree.',
                     'Networking knowledge.',
                     'Problem-solving skills.',
-                    'Customer service oriented.'
+                    'Customer service oriented.',
                 ],
                 'salary_grade' => 11,
                 'deadline' => '2026-03-15',
@@ -470,13 +470,13 @@ class VacancySeeder extends Seeder
                     'Create social media content.',
                     'Design brochures and flyers.',
                     'Coordinate school visits.',
-                    'Analyze marketing metrics.'
+                    'Analyze marketing metrics.',
                 ],
                 'requirements' => [
                     'Marketing degree.',
                     'Graphic design skills (Canva/Adobe).',
                     'Social media savvy.',
-                    'Creativity.'
+                    'Creativity.',
                 ],
                 'salary_grade' => 15,
                 'deadline' => '2026-03-15',
@@ -494,13 +494,13 @@ class VacancySeeder extends Seeder
                     'Enforce dorm rules and regulations.',
                     'Manage room assignments.',
                     'Coordinate cleaning and repairs.',
-                    'Ensure resident safety.'
+                    'Ensure resident safety.',
                 ],
                 'requirements' => [
                     'Experience in property or hospitality management.',
                     'Strong leadership.',
                     'Ability to handle discipline.',
-                    'Live-in option available.'
+                    'Live-in option available.',
                 ],
                 'salary_grade' => 11,
                 'deadline' => '2026-02-25',
@@ -518,13 +518,13 @@ class VacancySeeder extends Seeder
                     'Clean hangars and classrooms.',
                     'Assist in moving equipment.',
                     'Groundskeeping duties.',
-                    'Dispose of waste properly.'
+                    'Dispose of waste properly.',
                 ],
                 'requirements' => [
                     'High school diploma.',
                     'Hardworking and reliable.',
                     'Physically fit.',
-                    'Honest.'
+                    'Honest.',
                 ],
                 'salary_grade' => 6,
                 'deadline' => '2026-03-30',

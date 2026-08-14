@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Application;
 use App\Mail\ApplicantHiredMail;
+use App\Models\Application;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AdminApplicationController extends Controller
 {
@@ -20,7 +20,7 @@ class AdminApplicationController extends Controller
             ]);
 
             $oldStatus = $application->status;
-            
+
             $updateData = [
                 'status' => $validated['status'],
             ];
@@ -37,12 +37,12 @@ class AdminApplicationController extends Controller
                 \App\Models\ActivityLog::write(
                     "Status Updated: {$validated['status']}",
                     "{$application->applicant_name}'s application status for {$application->job_title} was updated to {$validated['status']}",
-                    "Villamor Campus",
-                    "UserCheck",
-                    "text-indigo-600 bg-indigo-50"
+                    'Villamor Campus',
+                    'UserCheck',
+                    'text-indigo-600 bg-indigo-50'
                 );
             } catch (\Exception $ex) {
-                Log::warning('Failed writing ActivityLog: ' . $ex->getMessage());
+                Log::warning('Failed writing ActivityLog: '.$ex->getMessage());
             }
 
             // Trigger email if status changed to Hired
@@ -50,7 +50,7 @@ class AdminApplicationController extends Controller
                 try {
                     Mail::to($application->email)->send(new ApplicantHiredMail($application));
                 } catch (\Throwable $mailEx) {
-                    Log::error("Failed sending Hired email to {$application->email}: " . $mailEx->getMessage());
+                    Log::error("Failed sending Hired email to {$application->email}: ".$mailEx->getMessage());
                 }
             }
 
@@ -58,8 +58,9 @@ class AdminApplicationController extends Controller
         } catch (\Illuminate\Validation\ValidationException $ve) {
             throw $ve;
         } catch (\Throwable $ex) {
-            Log::error("Error updating status for application ID {$application->id}: " . $ex->getMessage());
-            return back()->withErrors(['error' => 'Failed to update application status: ' . $ex->getMessage()]);
+            Log::error("Error updating status for application ID {$application->id}: ".$ex->getMessage());
+
+            return back()->withErrors(['error' => 'Failed to update application status: '.$ex->getMessage()]);
         }
     }
 
@@ -77,7 +78,7 @@ class AdminApplicationController extends Controller
 
             $headers = [
                 'Content-Type' => 'text/csv; charset=UTF-8',
-                'Content-Disposition' => 'attachment; filename="naap_hr_applications_report_' . date('Y-m-d') . '.csv"',
+                'Content-Disposition' => 'attachment; filename="naap_hr_applications_report_'.date('Y-m-d').'.csv"',
                 'Pragma' => 'no-cache',
                 'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
                 'Expires' => '0',
@@ -85,7 +86,7 @@ class AdminApplicationController extends Controller
 
             $callback = function () use ($applications) {
                 $file = fopen('php://output', 'w');
-                
+
                 // Add UTF-8 BOM so Excel opens special characters correctly
                 fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
 
@@ -120,7 +121,7 @@ class AdminApplicationController extends Controller
 
                     // Clean phone number formatting for Excel text display (prevents 9.22E+09)
                     $rawPhone = $app->phone_number ?? ($dyn['contactNumber'] ?? 'N/A');
-                    $phoneFormatted = ($rawPhone !== 'N/A') ? ' ' . $rawPhone : 'N/A';
+                    $phoneFormatted = ($rawPhone !== 'N/A') ? ' '.$rawPhone : 'N/A';
 
                     // Standardize capitalization (Male/Female, Married/Single)
                     $sexFormatted = isset($dyn['sex']) && $dyn['sex'] ? ucfirst(strtolower($dyn['sex'])) : 'N/A';
@@ -160,8 +161,9 @@ class AdminApplicationController extends Controller
 
             return response()->stream($callback, 200, $headers);
         } catch (\Throwable $ex) {
-            Log::error('Error exporting application CSV report: ' . $ex->getMessage());
-            return back()->withErrors(['error' => 'Failed to export CSV report: ' . $ex->getMessage()]);
+            Log::error('Error exporting application CSV report: '.$ex->getMessage());
+
+            return back()->withErrors(['error' => 'Failed to export CSV report: '.$ex->getMessage()]);
         }
     }
 }

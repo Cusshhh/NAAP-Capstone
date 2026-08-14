@@ -14,5 +14,4 @@ class StaffingController extends Controller
             'staffingData' => StaffingPosition::all(),
         ]);
     }
-
 }
