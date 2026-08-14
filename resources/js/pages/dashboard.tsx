@@ -1373,7 +1373,10 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
                             <div className="flex gap-3">
                                 <Link href="/jobs">
-                                    <Button variant="outline" className="text-white border-white/30 hover:bg-white/10">Find Jobs</Button>
+                                    <Button className="bg-[#193153] text-white border-2 border-[#ffdd59] hover:bg-[#ffdd59] hover:text-[#193153] font-bold px-5 py-2 rounded-xl shadow-md transition-all duration-200 flex items-center gap-2 group cursor-pointer">
+                                        <Search className="w-4 h-4 text-[#ffdd59] group-hover:text-[#193153] transition-colors" />
+                                        <span>Find Jobs</span>
+                                    </Button>
                                 </Link>
                             </div>
                         </div>
