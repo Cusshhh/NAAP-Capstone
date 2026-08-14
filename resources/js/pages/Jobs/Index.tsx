@@ -1,5 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { Search, Filter, MapPin, Briefcase, Clock, ArrowLeft, User, LogOut, LayoutDashboard, Bookmark } from 'lucide-react';
+import { Search, Filter, MapPin, Briefcase, Clock, ArrowLeft, User, LogOut, LayoutDashboard, Bookmark, X } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -226,24 +226,23 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                     <p className="text-gray-600">
                         <span className="font-semibold text-gray-900">{filteredJobs.length}</span> positions found
                     </p>
-                    <div className="flex items-center text-gray-600">
-                        <Filter className="h-4 w-4 mr-2" />
-                        {(departmentFilter !== 'all' || employmentFilter !== 'all' || statusFilter !== 'all' || searchTerm) && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                    setSearchTerm('');
-                                    setDepartmentFilter('all');
-                                    setEmploymentFilter('all');
-                                    setStatusFilter('all');
-                                    setShowSavedOnly(false);
-                                }}
-                            >
-                                Clear Filters
-                            </Button>
-                        )}
-                    </div>
+                    {(departmentFilter !== 'all' || employmentFilter !== 'all' || statusFilter !== 'all' || searchTerm || showSavedOnly) && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 flex items-center gap-1.5"
+                            onClick={() => {
+                                setSearchTerm('');
+                                setDepartmentFilter('all');
+                                setEmploymentFilter('all');
+                                setStatusFilter('all');
+                                setShowSavedOnly(false);
+                            }}
+                        >
+                            <X className="h-3.5 w-3.5" />
+                            Clear Filters
+                        </Button>
+                    )}
                 </div>
 
                 {/* Job Cards */}
