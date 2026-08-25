@@ -369,7 +369,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 applicationId: int.applicationId,
                 applicantEmail: int.applicantEmail,
                 candidateName: int.candidateName,
-                panelMembers: int.panelMembers,
+                panelMembers: int.panelMembers || int.panel_members,
                 resultNotes: int.resultNotes,
             }));
             return [...formattedDb, ...localSaved].reduce((acc: any[], item: any) => {

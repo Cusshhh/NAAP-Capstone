@@ -1122,7 +1122,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-blue-200 text-xs font-medium">Interview Panel Members</span>
-                                            <span className="font-bold text-white mt-0.5">{interview.panelMembers || 'HR Committee Panel'}</span>
+                                            <span className="font-bold text-white mt-0.5">{interview.panelMembers || interview.panel_members || 'HR Committee Panel'}</span>
                                         </div>
                                     </div>
                                 </div>

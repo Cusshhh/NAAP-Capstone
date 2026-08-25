@@ -86,6 +86,7 @@ class PublicJobController extends Controller
                 'date' => $interview->date,
                 'time' => $interview->time,
                 'venue' => $interview->venue,
+                'panelMembers' => $interview->panel_members,
                 'panel_members' => $interview->panel_members,
                 'result_notes' => $interview->result_notes,
             ] : null,

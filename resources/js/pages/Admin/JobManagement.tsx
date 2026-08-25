@@ -845,7 +845,7 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
                   {departments.map((dept: any) => {
                     const deptJobsCount = jobs.filter((j: any) => j.department === dept).length;
                     const isSelected = selectedDepartment === dept;
-                    const dbObj = dbDepartments.find((d: any) => d.name === dept);
+                    const dbObj = dbDepartments.find((d: any) => d.name === dept) || { name: dept };
 
                     return (
                       <div
@@ -864,18 +864,16 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
                           <span className="truncate">{dept}</span>
                         </button>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-md font-mono">
+                          <span className="text-[10px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-md font-mono font-bold">
                             {deptJobsCount}
                           </span>
-                          {dbObj && deptJobsCount === 0 && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDeleteConfirmDept(dbObj); }}
-                              className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity"
-                              title={`Delete ${dept} folder`}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeleteConfirmDept(dbObj); }}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity"
+                            title={`Delete ${dept} folder`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
                         </div>
                       </div>
                     );
@@ -1310,10 +1308,23 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
             <p>
               Are you sure you want to delete the department folder <span className="font-bold text-gray-900">"{deleteConfirmDept?.name}"</span>?
             </p>
-            <div className="text-xs text-red-700 font-medium bg-red-50 border border-red-200 p-3 rounded-lg flex items-start gap-2">
-              <span className="text-sm leading-none">⚠️</span>
-              <span>This folder will be permanently deleted from your MySQL database.</span>
-            </div>
+            {(() => {
+              const count = jobs.filter((j: any) => j.department === deleteConfirmDept?.name).length;
+              if (count > 0) {
+                return (
+                  <div className="text-xs text-amber-800 font-medium bg-amber-50 border border-amber-300 p-3 rounded-lg flex items-start gap-2">
+                    <span className="text-sm leading-none">⚠️</span>
+                    <span>This folder currently contains <strong>{count} active {count === 1 ? 'job posting' : 'job postings'}</strong>. Deleting this folder will permanently remove it from your system.</span>
+                  </div>
+                );
+              }
+              return (
+                <div className="text-xs text-red-700 font-medium bg-red-50 border border-red-200 p-3 rounded-lg flex items-start gap-2">
+                  <span className="text-sm leading-none">⚠️</span>
+                  <span>This folder will be permanently deleted from your System.</span>
+                </div>
+              );
+            })()}
           </div>
           <DialogFooter className="flex gap-2 justify-end pt-2 border-t border-gray-100">
             <Button variant="outline" onClick={() => setDeleteConfirmDept(null)}>

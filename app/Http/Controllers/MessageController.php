@@ -105,8 +105,13 @@ class MessageController extends Controller
                 return response()->json(['error' => 'Unauthorized action.'], 403);
             }
 
-            // Delete all messages for this application ID
-            Message::where('application_id', $application)->delete();
+            $app = Application::findOrFail($application);
+
+            // Fetch all applications belonging to this applicant to clear entire unified conversation thread
+            $applicantAppIds = Application::where('email', $app->email)->pluck('id');
+
+            // Delete all messages for this applicant across all their applications
+            Message::whereIn('application_id', $applicantAppIds)->delete();
 
             return response()->json([
                 'success' => true,
