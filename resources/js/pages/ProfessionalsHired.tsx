@@ -91,7 +91,7 @@ const PRIME_PILLARS = [
     { title: "Rewards & Recognition", desc: "Recognizing excellence and service through a structured and transparent awards system." },
 ];
 
-export default function ProfessionalsHired() {
+export default function ProfessionalsHired({ serverStats }: { serverStats?: any }) {
     const [cmsContent, setCmsContent] = useState<any>(() => getLandingPageContent());
     const cmsHiredPosts = cmsContent?.hired?.posts || [];
     const allApps = getApplications();
@@ -141,14 +141,17 @@ export default function ProfessionalsHired() {
         return () => window.removeEventListener('storage', handleStorage);
     }, []);
 
-    // --- DYNAMIC STATS STRIP CALCULATIONS ---
-    const hiredCount = allApps.filter((a: any) => a.status === 'Hired').length;
-    const totalProcessed = allApps.filter((a: any) => ['Hired', 'Rejected'].includes(a.status)).length;
-    const employmentRate = totalProcessed > 0 ? Math.round((hiredCount / totalProcessed) * 100) : 0;
+    // --- DYNAMIC STATS STRIP CALCULATIONS (Live DB + Fallback) ---
+    const localHired = allApps.filter((a: any) => a.status === 'Hired').length;
+    const hiredCount = (serverStats?.hiredCount && serverStats.hiredCount > 0) ? serverStats.hiredCount : localHired;
 
-    // Count unique campuses as 'Industry Partners' for the dynamic metric
-    const uniqueCampuses = new Set(allApps.map((a: any) => a.campus)).size;
-    const industryPartnersCount = uniqueCampuses > 0 ? uniqueCampuses * 12 : 50;
+    const localTotalProcessed = allApps.filter((a: any) => ['Hired', 'Rejected'].includes(a.status)).length;
+    const localRate = localTotalProcessed > 0 ? Math.round((localHired / localTotalProcessed) * 100) : 0;
+    const employmentRate = (serverStats?.employmentRate !== undefined && serverStats.employmentRate > 0) 
+        ? serverStats.employmentRate 
+        : localRate;
+
+    const industryPartnersCount = serverStats?.industryPartnersCount ?? 50;
 
     // --- CAROUSEL LOGIC ---
 

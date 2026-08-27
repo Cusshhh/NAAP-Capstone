@@ -56,21 +56,37 @@ class User extends Authenticatable
 
     public function isSuperAdmin(): bool
     {
-        return $this->role === 'super_admin' || $this->email === 'admin@naap.edu.ph';
+        $role = is_array($this->profile_data) ? ($this->profile_data['role'] ?? null) : $this->role;
+        return $role === 'super_admin' || $this->email === 'admin@naap.edu.ph';
     }
 
     public function isHrAdmin(): bool
     {
-        return $this->role === 'hr_admin' || $this->isAdmin();
+        $role = is_array($this->profile_data) ? ($this->profile_data['role'] ?? null) : $this->role;
+        return $role === 'hr_admin' || $this->isAdmin();
     }
 
     public function isHrStaff(): bool
     {
-        return $this->role === 'hr_staff' || $this->isAdmin();
+        $role = is_array($this->profile_data) ? ($this->profile_data['role'] ?? null) : $this->role;
+        return $role === 'hr_staff' || $this->isAdmin();
     }
 
     public function isAdmin(): bool
     {
-        return in_array($this->role, ['super_admin', 'hr_admin', 'hr_staff', 'admin']) || $this->email === 'admin@naap.edu.ph';
+        if ($this->email === 'admin@naap.edu.ph') {
+            return true;
+        }
+
+        $role = is_array($this->profile_data) ? ($this->profile_data['role'] ?? null) : $this->role;
+        if (in_array($role, ['super_admin', 'hr_admin', 'hr_staff', 'admin'])) {
+            return true;
+        }
+
+        if (is_array($this->profile_data) && !empty($this->profile_data['is_admin'])) {
+            return true;
+        }
+
+        return false;
     }
 }

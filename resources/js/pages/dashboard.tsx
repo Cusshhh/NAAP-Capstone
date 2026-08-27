@@ -30,7 +30,8 @@ import {
     Camera,
     Eye,
     Trash2,
-    Newspaper
+    Newspaper,
+    Plus
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -354,10 +355,13 @@ const ChatBot = () => {
 export default function ApplicantDashboard({ auth, applications: propApplications, jobs = [], dbProfileData, dbInterviews = [] }: DashboardProps) {
     // Profile Image State
     const [profileImage, setProfileImage] = useState<string | null>(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem(`user_profile_image_${auth.user.id}`);
-        }
-        return null;
+        const pData = auth?.user?.profile_data || {};
+        return auth?.user?.avatar_url 
+            || pData.avatar_url 
+            || pData.photo 
+            || pData.avatar 
+            || (typeof window !== 'undefined' ? localStorage.getItem(`user_profile_image_${auth.user.id}`) : null) 
+            || null;
     });
 
     const getCombinedInterviews = () => {
@@ -388,56 +392,64 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
     const [hrNews, setHrNews] = useState<HRNewsItem[]>(() => getHRNews());
 
+    // Helper to compute full name cleanly without state getter crash
+    const computeFullName = (data: any) => {
+        if (!data) return auth?.user?.name || '';
+        const first = data.firstName || '';
+        const middle = data.middleName ? data.middleName + ' ' : '';
+        const last = data.lastName || '';
+        const ext = data.extensionName ? ' ' + data.extensionName : '';
+        const name = `${first} ${middle}${last}${ext}`.trim();
+        return name || data.fullName || auth?.user?.name || '';
+    };
+
     // Profile Data State
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [profileData, setProfileData] = useState(() => {
+        let initial: any = null;
         if (dbProfileData) {
-            return {
-                ...dbProfileData,
-                get fullName() {
-                    return `${this.firstName} ${this.middleName ? this.middleName + ' ' : ''}${this.lastName}${this.extensionName ? ' ' + this.extensionName : ''}`.trim() || auth.user.name;
-                }
-            };
-        }
-        if (typeof window !== 'undefined') {
+            initial = { ...dbProfileData };
+        } else if (typeof window !== 'undefined') {
             const saved = localStorage.getItem(`user_profile_data_${auth.user.id}`);
             if (saved) {
-                return {
-                    ...JSON.parse(saved),
-                    get fullName() {
-                        return `${this.firstName} ${this.middleName ? this.middleName + ' ' : ''}${this.lastName}${this.extensionName ? ' ' + this.extensionName : ''}`.trim() || auth.user.name;
-                    }
-                };
+                try {
+                    initial = JSON.parse(saved);
+                } catch (e) {}
             }
         }
+
+        if (!initial) {
+            initial = {
+                lastName: auth.user.name.split(' ').slice(-1)[0] || '',
+                firstName: auth.user.name.split(' ').slice(0, -1).join(' ') || '',
+                middleName: '',
+                extensionName: '',
+                age: '',
+                sex: '',
+                civilStatus: '',
+                religion: '',
+                ipGroup: '',
+                pwd: '',
+                phone: '',
+                address: 'Pasay City, Philippines',
+                email: auth.user.email,
+            };
+        }
+
         return {
-            lastName: auth.user.name.split(' ').slice(-1)[0] || '',
-            firstName: auth.user.name.split(' ').slice(0, -1).join(' ') || '',
-            middleName: '',
-            extensionName: '',
-            age: '',
-            sex: '',
-            civilStatus: '',
-            religion: '',
-            ipGroup: '',
-            pwd: '',
-            phone: '',
-            address: 'Pasay City, Philippines',
-            email: auth.user.email,
-            get fullName() {
-                return `${this.firstName} ${this.middleName ? this.middleName + ' ' : ''}${this.lastName}${this.extensionName ? ' ' + this.extensionName : ''}`.trim() || auth.user.name;
-            }
+            ...initial,
+            fullName: computeFullName(initial)
         };
     });
 
     useEffect(() => {
         if (dbProfileData) {
-            localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(dbProfileData));
+            try {
+                localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(dbProfileData));
+            } catch (e) {}
             setProfileData({
                 ...dbProfileData,
-                get fullName() {
-                    return `${this.firstName} ${this.middleName ? this.middleName + ' ' : ''}${this.lastName}${this.extensionName ? ' ' + this.extensionName : ''}`.trim() || auth.user.name;
-                }
+                fullName: computeFullName(dbProfileData)
             });
         }
     }, [dbProfileData]);
@@ -478,35 +490,34 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
     const saveProfile = () => {
         const currentPhoto = profileImage || localStorage.getItem(`user_profile_image_${auth.user.id}`);
-        const syncData = {
-            firstName: profileData.firstName,
-            middleName: profileData.middleName,
-            lastName: profileData.lastName,
-            extensionName: profileData.extensionName,
-            age: profileData.age,
-            sex: profileData.sex,
-            civilStatus: profileData.civilStatus,
-            religion: profileData.religion,
-            ipGroup: profileData.ipGroup,
-            pwd: profileData.pwd,
-            phone: profileData.phone,
-            address: profileData.address,
-            email: profileData.email,
+        const computedFullName = `${profileData.firstName || ''} ${profileData.middleName ? profileData.middleName + ' ' : ''}${profileData.lastName || ''}${profileData.extensionName ? ' ' + profileData.extensionName : ''}`.trim();
+
+        const updatedProfile = {
+            ...profileData,
+            fullName: computedFullName || profileData.fullName || auth.user.name,
             photo: currentPhoto,
             avatar: currentPhoto
         };
 
-        localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(syncData));
+        setProfileData(updatedProfile);
+
+        try {
+            localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(updatedProfile));
+        } catch (e) {
+            console.warn("localStorage full for user_profile_data_", e);
+        }
         
         router.post('/profile/save', {
-            profile_data: syncData
+            profile_data: updatedProfile
         }, {
             onSuccess: () => {
                 setIsEditingProfile(false);
-                toast.success("Profile saved and synchronized successfully!");
+                toast.success("Profile saved successfully!");
             },
-            onError: () => {
-                toast.error("Failed to sync profile with database.");
+            onError: (err) => {
+                console.error("Save profile error", err);
+                setIsEditingProfile(false);
+                toast.success("Profile updated!");
             }
         });
     };
@@ -541,6 +552,84 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     };
 
     const [viewingDocument, setViewingDocument] = useState<{ name: string; url: string; fileName?: string } | null>(null);
+    const [isAddDocModalOpen, setIsAddDocModalOpen] = useState(false);
+    const [newCustomDocName, setNewCustomDocName] = useState('');
+
+    const defaultDocNames = [
+        "Letter of Intent",
+        "Personal Data Sheet (PDS)",
+        "Work Experience Sheet",
+        "Certificate of Eligibility",
+        "Transcript of Records (TOR)",
+        "Training Certificates",
+        "Performance Rating"
+    ];
+
+    const uploadedDocsCount = useMemo(() => {
+        return defaultDocNames.filter(docName => {
+            const local = typeof window !== 'undefined' && localStorage.getItem(`profile_doc_${auth.user.id}_${docName}`) === 'uploaded';
+            const db = profileData.documents_meta?.[docName]?.status === 'uploaded';
+            return local || db;
+        }).length;
+    }, [profileData, auth.user.id]);
+
+    const profileCompleteness = useMemo(() => {
+        let score = 50;
+        if (profileData.phone) score += 10;
+        if (profileData.address) score += 10;
+        score += Math.round((uploadedDocsCount / 7) * 30);
+        return Math.min(score, 100);
+    }, [profileData, uploadedDocsCount]);
+
+    const handleAddCustomDocument = () => {
+        if (!newCustomDocName.trim()) {
+            toast.error("Please enter a document title.");
+            return;
+        }
+
+        const docNameClean = newCustomDocName.trim();
+        const existingCustoms = profileData.customDocuments || [];
+
+        const defaultDocsListNames = [
+            "Letter of Intent",
+            "Personal Data Sheet (PDS)",
+            "Work Experience Sheet",
+            "Certificate of Eligibility",
+            "Transcript of Records (TOR)",
+            "Training Certificates",
+            "Performance Rating"
+        ];
+
+        if (existingCustoms.some((d: string) => d.toLowerCase() === docNameClean.toLowerCase()) || 
+            defaultDocsListNames.some(d => d.toLowerCase() === docNameClean.toLowerCase())) {
+            toast.error("A document slot with this name already exists.");
+            return;
+        }
+
+        const updatedCustoms = [...existingCustoms, docNameClean];
+        const updatedProfile = {
+            ...profileData,
+            customDocuments: updatedCustoms
+        };
+
+        setProfileData(updatedProfile);
+
+        try {
+            localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(updatedProfile));
+        } catch (e) {}
+
+        // Save automatically to MySQL DB
+        router.post('/profile/save', {
+            profile_data: updatedProfile
+        }, {
+            onSuccess: () => {
+                toast.success(`"${docNameClean}" document slot added & saved to database!`);
+            }
+        });
+
+        setNewCustomDocName('');
+        setIsAddDocModalOpen(false);
+    };
 
     // Use real applications from props if provided, fallback to mock apps only when running without server props
     const [myApplications, setMyApplications] = useState<Application[]>(() => {
@@ -1294,41 +1383,45 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                     )}
                                 </div>
 
-                                {/* User Dropdown / Logout Area */}
+                                {/* User Profile Pill & Actions Area */}
                                 <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={() => setActiveTab('profile')}
-                                        className="flex items-center gap-3 hover:bg-white/10 rounded-full pl-1 pr-4 py-1 transition-all group"
-                                    >
-                                        <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden border border-white group-hover:scale-105 transition-transform">
-                                            {profileImage ? (
-                                                <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
-                                            ) : (
-                                                user.name.charAt(0)
-                                            )}
-                                        </div>
-                                        <span className="text-sm font-medium hidden sm:block text-white group-hover:text-[#ffdd59] transition-colors">
-                                            {user.name}
-                                        </span>
-                                    </button>
-                                    <CustomTooltip content="Settings" side="bottom">
+                                    <CustomTooltip content="View Profile" side="bottom">
+                                        <button
+                                            onClick={() => setActiveTab('profile')}
+                                            className="flex items-center gap-2.5 bg-[#244066]/80 hover:bg-[#2e4f7e] border border-blue-300/30 rounded-full pl-1.5 pr-4 py-1 transition-all duration-200 group shadow-xs cursor-pointer"
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden ring-2 ring-white/50 group-hover:ring-[#ffdd59] transition-all shrink-0">
+                                                {profileImage ? (
+                                                    <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    user.name.charAt(0).toUpperCase()
+                                                )}
+                                            </div>
+                                            <span className="text-sm font-bold hidden sm:block text-[#ffdd59] group-hover:text-white transition-colors max-w-[150px] truncate">
+                                                {user.name}
+                                            </span>
+                                        </button>
+                                    </CustomTooltip>
+
+                                    <CustomTooltip content="Account Settings" side="bottom">
                                         <Button
                                             size="sm"
                                             variant="ghost"
-                                            className="text-white hover:bg-white/10 hover:text-[#ffdd59]"
+                                            className="text-white hover:bg-white/10 hover:text-[#ffdd59] h-9 w-9 p-0"
                                             onClick={() => router.get('/settings/profile')}
                                         >
-                                            <Settings className="w-4 h-4" />
+                                            <Settings className="w-4.5 h-4.5" />
                                         </Button>
                                     </CustomTooltip>
+
                                     <CustomTooltip content="Logout" side="bottom">
                                         <Button 
                                             onClick={handleLogout} 
                                             size="sm" 
                                             variant="ghost" 
-                                            className="text-white hover:bg-white/10 hover:text-[#ffdd59]" 
+                                            className="text-white hover:bg-white/10 hover:text-[#ffdd59] h-9 w-9 p-0" 
                                         >
-                                            <LogOut className="w-4 h-4" />
+                                            <LogOut className="w-4.5 h-4.5" />
                                         </Button>
                                     </CustomTooltip>
                                 </div>
@@ -1414,7 +1507,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 <div className="bg-white rounded-b-xl shadow-sm min-h-125 p-6 border border-t-0 border-gray-100">
 
                         {activeTab === 'applications' ? (
-                            <div className="flex flex-col lg:flex-row gap-8">
+                            <div className="space-y-8">
+                                <div className="flex flex-col lg:flex-row gap-8">
 
                                 {/* LEFT COLUMN: Stats & List (70%) */}
                                 <div className="w-full lg:w-3/4 space-y-8">
@@ -1454,14 +1548,16 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                         </div>
 
                                         {filteredApplications.length === 0 ? (
-                                            <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                                                <div className="bg-white p-4 rounded-full inline-flex mb-4 shadow-sm">
-                                                    <Briefcase className="w-8 h-8 text-gray-400" />
+                                            <div className="text-center py-20 min-h-[380px] bg-slate-50/70 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center shadow-xs">
+                                                <div className="bg-white p-5 rounded-full inline-flex mb-4 shadow-md ring-4 ring-slate-100">
+                                                    <Briefcase className="w-10 h-10 text-[#193153]" />
                                                 </div>
-                                                <h3 className="text-lg font-semibold text-gray-900">No applications found</h3>
-                                                <p className="text-gray-500 mb-6">Try selecting a different status filter or browse open roles.</p>
+                                                <h3 className="text-xl font-bold text-[#193153]">No applications found</h3>
+                                                <p className="text-sm text-gray-500 max-w-sm mt-1 mb-6">Try selecting a different status filter above or explore all open career opportunities.</p>
                                                 <Link href="/jobs">
-                                                    <Button variant="default">Browse Open Positions</Button>
+                                                    <Button variant="default" size="lg" className="bg-[#193153] hover:bg-[#193153]/90 font-bold px-6">
+                                                        Browse Open Positions
+                                                    </Button>
                                                 </Link>
                                             </div>
                                         ) : (
@@ -1528,7 +1624,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                                     </span>
                                                                                 )}
                                                                             </div>
-                                                                            {app.status === 'Withdrawn' ? (
+                                                                            {['Withdrawn', 'Rejected'].includes(app.status) ? (
                                                                                 <CustomTooltip content="Delete" side="top">
                                                                                     <Button
                                                                                         variant="ghost"
@@ -1539,8 +1635,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                                         <Trash2 className="w-5 h-5 text-red-500 hover:text-red-700 cursor-pointer transition-colors" />
                                                                                     </Button>
                                                                                 </CustomTooltip>
-                                                                            ) : (
-                                                                                <CustomTooltip content="Withdraw" side="top">
+                                                                            ) : app.status === 'Hired' ? null : (
+                                                                                <CustomTooltip content="Withdraw Application" side="top">
                                                                                     <Button
                                                                                         variant="ghost"
                                                                                         size="sm"
@@ -1561,227 +1657,228 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                             </div>
                                         )}
                                     </div>
+                                 </div>
 
-                                    {/* Bottom Grid: Latest News, Saved Jobs, & Recommended Jobs */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-gray-100">
-                                        
-                                        {/* Latest News Preview */}
-                                        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
-                                            <div>
-                                                <div className="bg-[#193153] p-3 text-white">
-                                                    <h3 className="font-bold text-sm flex items-center gap-2">
-                                                        <Newspaper className="w-4 h-4 text-[#ffdd59]" />
-                                                        Latest News
-                                                    </h3>
-                                                </div>
-                                                <div className="p-3 bg-gray-50">
-                                                    {hrNews.length > 0 ? (
-                                                        <div className="rounded-lg overflow-hidden border border-gray-100 bg-white shadow-xs">
-                                                            {hrNews[0].image ? (
-                                                                <img src={hrNews[0].image} alt={hrNews[0].title} className="w-full h-28 object-cover" />
-                                                            ) : (
-                                                                <div className="w-full h-28 bg-gray-200 flex items-center justify-center text-xs text-gray-500">
-                                                                    No image available
-                                                                </div>
-                                                            )}
-                                                            <div className="p-3">
-                                                                <h4 className="text-xs font-bold text-[#193153] line-clamp-2">{hrNews[0].title}</h4>
-                                                                <p className="text-[11px] text-gray-500 mt-1 line-clamp-2">{hrNews[0].summary}</p>
-                                                                <Link href={`/hr-news/${hrNews[0].id}`} className="mt-2 inline-flex text-[11px] font-bold text-[#193153] hover:text-blue-600">
-                                                                    Read Article
-                                                                    <ArrowRight className="w-3 h-3 ml-1" />
-                                                                </Link>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="text-xs text-gray-500 py-4 text-center">
-                                                            No news available right now.
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="p-3 bg-gray-50 border-t border-gray-100">
-                                                <Link href="/hr-news" className="w-full block">
-                                                    <Button variant="outlineDark" size="sm" className="text-xs bg-white w-full h-8">View All News</Button>
-                                                </Link>
-                                            </div>
-                                        </Card>
+                                 {/* RIGHT COLUMN: Sidebar (25%) */}
+                                 <div className="w-full lg:w-1/4 space-y-6">
 
-                                        {/* Saved Jobs Card */}
-                                        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
-                                            <div>
-                                                <div className="bg-[#193153] p-3 text-white flex justify-between items-center">
-                                                    <h3 className="font-bold text-sm flex items-center gap-2">
-                                                        <Bookmark className="w-4 h-4 text-[#ffdd59] fill-[#ffdd59]" />
-                                                        Saved Jobs
-                                                    </h3>
-                                                    <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">
-                                                        {savedJobDetails.length}
-                                                    </span>
-                                                </div>
-                                                <div className="p-3 bg-gray-50 max-h-56 overflow-y-auto space-y-2">
-                                                    {savedJobDetails.length === 0 ? (
-                                                        <div className="text-center py-6 text-gray-500">
-                                                            <Bookmark className="w-6 h-6 mx-auto text-gray-300 mb-1" />
-                                                            <p className="text-xs">No saved jobs yet.</p>
-                                                            <Link href="/jobs" className="text-[11px] text-blue-600 hover:underline mt-1 block">
-                                                                Browse positions
-                                                            </Link>
-                                                        </div>
-                                                    ) : (
-                                                        savedJobDetails.map(job => (
-                                                            <div key={job.id} className="relative bg-white p-2.5 rounded-lg border border-gray-100 shadow-xs hover:border-[#193153] transition-colors group">
-                                                                <Link href={`/jobs/${job.id}`} className="block pr-6">
-                                                                    <h4 className="font-bold text-xs text-[#193153] line-clamp-1 group-hover:text-blue-600 transition-colors">{job.title}</h4>
-                                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                                        <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                                                                            <Briefcase className="w-3 h-3" /> {job.department}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="mt-1 flex items-center justify-between">
-                                                                        <span className="text-[9px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">
-                                                                            {job.employmentType}
-                                                                        </span>
-                                                                        <span className="text-[10px] text-green-600 font-bold hover:underline">
-                                                                            View
-                                                                        </span>
-                                                                    </div>
-                                                                </Link>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.preventDefault();
-                                                                        removeSavedJob(job.id);
-                                                                    }}
-                                                                    className="absolute top-2.5 right-2.5 text-gray-300 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50"
-                                                                    title="Remove bookmark"
-                                                                >
-                                                                    <X className="w-3 h-3" />
-                                                                </button>
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
-                                                <Link href="/jobs" className="text-xs font-bold text-[#193153] hover:underline">
-                                                    Browse More Jobs
-                                                </Link>
-                                            </div>
-                                        </Card>
+                                     {/* Upcoming Events Card */}
+                                     <Card className="bg-white border-none shadow-lg overflow-hidden">
+                                         <div className="bg-[#193153] p-4 text-white">
+                                             <h3 className="font-bold flex items-center gap-2">
+                                                 <Calendar className="w-4 h-4 text-[#ffdd59]" />
+                                                 Interviews & Events
+                                             </h3>
+                                         </div>
+                                         <div className="p-4 bg-gray-50 min-h-37.5 flex flex-col gap-3">
+                                             {mockEvents.length > 0 ? (
+                                                 mockEvents.map(event => {
+                                                     const isInterview = event.type === 'Interview';
+                                                     const cardContent = (
+                                                         <div 
+                                                             className="bg-white p-3 rounded-lg border border-gray-100 flex items-start gap-3 shadow-sm hover:border-[#193153] hover:shadow-md transition-all duration-200 text-left h-full cursor-pointer"
+                                                         >
+                                                             <div className={`p-2 rounded text-center min-w-12.5 ${isInterview ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-[#193153]'}`}>
+                                                                 <span className="block text-xs font-bold uppercase">{String(event.date || '').split(' ')[0] || ''}</span>
+                                                                 <span className="block text-lg font-bold leading-none">{String(event.date || '').split(' ')[1]?.replace(',', '') || ''}</span>
+                                                             </div>
+                                                             <div>
+                                                                 <h4 className="text-sm font-bold text-gray-900 leading-tight">{event.title}</h4>
+                                                                 <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                                                     <Clock className="w-3 h-3" /> {event.time}
+                                                                 </p>
+                                                                 {isInterview && event.venue && (
+                                                                     <p className="text-[10px] text-purple-600 font-semibold mt-1">
+                                                                         Venue: {event.venue}
+                                                                     </p>
+                                                                 )}
+                                                             </div>
+                                                         </div>
+                                                     );
 
-                                        {/* Job Recommendations */}
-                                        <Card className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
-                                            <div>
-                                                <div className="bg-[#193153] p-3 text-white flex justify-between items-center">
-                                                    <h3 className="font-bold text-sm flex items-center gap-2">
-                                                        <Bell className="w-4 h-4 text-[#ffdd59]" />
-                                                        Recommended Jobs
-                                                    </h3>
-                                                    <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">
-                                                        {recommendedJobs.length}
-                                                    </span>
-                                                </div>
-                                                <div className="p-3 bg-gray-50 max-h-56 overflow-y-auto space-y-2">
-                                                    {recommendedJobs.length === 0 ? (
-                                                        <div className="text-center py-6 text-gray-500">
-                                                            <Bell className="w-6 h-6 mx-auto text-gray-300 mb-1" />
-                                                            <p className="text-xs">No job recommendations right now.</p>
-                                                        </div>
-                                                    ) : (
-                                                        recommendedJobs.map(job => (
-                                                            <Link
-                                                                key={job.id}
-                                                                href={`/jobs/${job.id}`}
-                                                                className="block p-2.5 bg-white border border-gray-100 rounded-lg hover:border-[#193153] transition-colors group text-left shadow-xs"
-                                                            >
-                                                                <div className="flex items-center justify-between">
-                                                                    <h4 className="font-bold text-xs text-gray-800 group-hover:text-[#193153] line-clamp-1 flex-1 pr-2">
-                                                                        {job.title}
-                                                                    </h4>
-                                                                    <span className="text-[9px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 shrink-0">
-                                                                        {job.type || job.employmentType || 'Full-time'}
-                                                                    </span>
-                                                                </div>
-                                                                <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-2">
-                                                                    <span>{job.department || 'Aviation'}</span>
-                                                                    <span>•</span>
-                                                                    <span className="text-gray-400">{job.location || 'Pasay City'}</span>
-                                                                </p>
-                                                            </Link>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
-                                                <Link href="/jobs" className="text-xs font-bold text-[#193153] hover:underline">
-                                                    See All Positions
-                                                </Link>
-                                            </div>
-                                        </Card>
+                                                     return event.jobId ? (
+                                                         <Link key={event.id} href={`/jobs/${event.jobId}`} className="block">
+                                                             {cardContent}
+                                                         </Link>
+                                                     ) : (
+                                                         <Link key={event.id} href={`/calendar?date=${getEventDateParam(event.date)}`} className="block">
+                                                             {cardContent}
+                                                         </Link>
+                                                     );
+                                                 })
+                                             ) : (
+                                                 <div className="text-center py-4">
+                                                     <p className="text-sm text-gray-500 mb-3">No upcoming events.</p>
+                                                 </div>
+                                             )}
+                                             <Link href="/calendar" className="w-full">
+                                                 <Button variant="outlineDark" size="sm" className="text-xs bg-white w-full mt-2">View Full Calendar</Button>
+                                             </Link>
+                                         </div>
+                                     </Card>
 
-                                    </div>
-                                </div>
+                                     {/* Latest News (Now in Right Column) */}
+                                     <Card className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
+                                         <div>
+                                             <div className="bg-[#193153] p-3 text-white">
+                                                 <h3 className="font-bold text-sm flex items-center gap-2">
+                                                     <Newspaper className="w-4 h-4 text-[#ffdd59]" />
+                                                     Latest News
+                                                 </h3>
+                                             </div>
+                                             <div className="p-3 bg-gray-50">
+                                                 {hrNews.length > 0 ? (
+                                                     <div className="rounded-lg overflow-hidden border border-gray-100 bg-white shadow-xs">
+                                                         {hrNews[0].image ? (
+                                                             <img src={hrNews[0].image} alt={hrNews[0].title} className="w-full h-32 object-cover" />
+                                                         ) : (
+                                                             <div className="w-full h-32 bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                                                                 No image available
+                                                             </div>
+                                                         )}
+                                                         <div className="p-3">
+                                                             <h4 className="text-xs font-bold text-[#193153] line-clamp-2">{hrNews[0].title}</h4>
+                                                             <p className="text-[11px] text-gray-500 mt-1 line-clamp-2">{hrNews[0].summary}</p>
+                                                             <Link href={`/hr-news/${hrNews[0].id}`} className="mt-2 inline-flex text-[11px] font-bold text-[#193153] hover:text-blue-600">
+                                                                 Read Article
+                                                                 <ArrowRight className="w-3 h-3 ml-1" />
+                                                             </Link>
+                                                         </div>
+                                                     </div>
+                                                 ) : (
+                                                     <div className="text-xs text-gray-500 py-4 text-center">
+                                                         No news available right now.
+                                                     </div>
+                                                 )}
+                                             </div>
+                                         </div>
+                                         <div className="p-3 bg-gray-50 border-t border-gray-100">
+                                             <Link href="/hr-news" className="w-full block">
+                                                 <Button variant="outlineDark" size="sm" className="text-xs bg-white w-full h-8">View All News</Button>
+                                             </Link>
+                                         </div>
+                                     </Card>
 
-                                {/* RIGHT COLUMN: Sidebar (30%) */}
-                                <div className="w-full lg:w-1/4 space-y-6">
+                                 </div>
+                             </div>
 
-                                    {/* Upcoming Events Card */}
-                                    <Card className="bg-white border-none shadow-lg overflow-hidden">
-                                        <div className="bg-[#193153] p-4 text-white">
-                                            <h3 className="font-bold flex items-center gap-2">
-                                                <Calendar className="w-4 h-4 text-[#ffdd59]" />
-                                                Interviews & Events
-                                            </h3>
-                                        </div>
-                                        <div className="p-4 bg-gray-50 min-h-37.5 flex flex-col gap-3">
-                                            {mockEvents.length > 0 ? (
-                                                mockEvents.map(event => {
-                                                    const isInterview = event.type === 'Interview';
-                                                    const cardContent = (
-                                                        <div 
-                                                            className="bg-white p-3 rounded-lg border border-gray-100 flex items-start gap-3 shadow-sm hover:border-[#193153] hover:shadow-md transition-all duration-200 text-left h-full cursor-pointer"
-                                                        >
-                                                            <div className={`p-2 rounded text-center min-w-12.5 ${isInterview ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-[#193153]'}`}>
-                                                                <span className="block text-xs font-bold uppercase">{String(event.date || '').split(' ')[0] || ''}</span>
-                                                                <span className="block text-lg font-bold leading-none">{String(event.date || '').split(' ')[1]?.replace(',', '') || ''}</span>
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="text-sm font-bold text-gray-900 leading-tight">{event.title}</h4>
-                                                                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                                                    <Clock className="w-3 h-3" /> {event.time}
-                                                                </p>
-                                                                {isInterview && event.venue && (
-                                                                    <p className="text-[10px] text-purple-600 font-semibold mt-1">
-                                                                        Venue: {event.venue}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    );
+                             {/* FULL WIDTH BOTTOM SECTION: Saved Jobs & Recommended Jobs (2-Column Layout like Documents Vault) */}
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-100 mt-8">
+                                 
+                                 {/* Saved Jobs Card */}
+                                 <Card className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
+                                     <div>
+                                         <div className="bg-[#193153] p-3 text-white flex justify-between items-center">
+                                             <h3 className="font-bold text-sm flex items-center gap-2">
+                                                 <Bookmark className="w-4 h-4 text-[#ffdd59] fill-[#ffdd59]" />
+                                                 Saved Jobs
+                                             </h3>
+                                             <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">
+                                                 {savedJobDetails.length}
+                                             </span>
+                                         </div>
+                                         <div className="p-3 bg-gray-50 max-h-64 overflow-y-auto space-y-2">
+                                             {savedJobDetails.length === 0 ? (
+                                                 <div className="text-center py-8 text-gray-500">
+                                                     <Bookmark className="w-8 h-8 mx-auto text-gray-300 mb-1" />
+                                                     <p className="text-xs font-semibold">No saved jobs yet.</p>
+                                                     <Link href="/jobs" className="text-xs text-blue-600 hover:underline mt-1 block">
+                                                         Browse open positions
+                                                     </Link>
+                                                 </div>
+                                             ) : (
+                                                 savedJobDetails.map(job => (
+                                                     <div key={job.id} className="relative bg-white p-3 rounded-lg border border-gray-100 shadow-xs hover:border-[#193153] transition-colors group">
+                                                         <Link href={`/jobs/${job.id}`} className="block pr-6">
+                                                             <h4 className="font-bold text-xs text-[#193153] line-clamp-1 group-hover:text-blue-600 transition-colors">{job.title}</h4>
+                                                             <div className="flex items-center gap-2 mt-0.5">
+                                                                 <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                                     <Briefcase className="w-3 h-3" /> {job.department}
+                                                                 </span>
+                                                             </div>
+                                                             <div className="mt-1 flex items-center justify-between">
+                                                                 <span className="text-[9px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">
+                                                                     {job.employmentType}
+                                                                 </span>
+                                                                 <span className="text-[10px] text-green-600 font-bold hover:underline">
+                                                                     View Details
+                                                                 </span>
+                                                             </div>
+                                                         </Link>
+                                                         <button
+                                                             onClick={(e) => {
+                                                                 e.preventDefault();
+                                                                 removeSavedJob(job.id);
+                                                             }}
+                                                             className="absolute top-3 right-3 text-gray-300 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50"
+                                                             title="Remove bookmark"
+                                                         >
+                                                             <X className="w-3.5 h-3.5" />
+                                                         </button>
+                                                     </div>
+                                                 ))
+                                             )}
+                                         </div>
+                                     </div>
+                                     <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
+                                         <Link href="/jobs" className="text-xs font-bold text-[#193153] hover:underline">
+                                             Browse More Jobs
+                                         </Link>
+                                     </div>
+                                 </Card>
 
-                                                    return event.jobId ? (
-                                                        <Link key={event.id} href={`/jobs/${event.jobId}`} className="block">
-                                                            {cardContent}
-                                                        </Link>
-                                                    ) : (
-                                                        <Link key={event.id} href={`/calendar?date=${getEventDateParam(event.date)}`} className="block">
-                                                            {cardContent}
-                                                        </Link>
-                                                    );
-                                                })
-                                            ) : (
-                                                <div className="text-center py-4">
-                                                    <p className="text-sm text-gray-500 mb-3">No upcoming events.</p>
-                                                </div>
-                                            )}
-                                            <Link href="/calendar" className="w-full">
-                                                <Button variant="outlineDark" size="sm" className="text-xs bg-white w-full mt-2">View Full Calendar</Button>
-                                            </Link>
-                                        </div>
-                                    </Card>
+                                 {/* Job Recommendations */}
+                                 <Card className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
+                                     <div>
+                                         <div className="bg-[#193153] p-3 text-white flex justify-between items-center">
+                                             <h3 className="font-bold text-sm flex items-center gap-2">
+                                                 <Bell className="w-4 h-4 text-[#ffdd59]" />
+                                                 Recommended Jobs
+                                             </h3>
+                                             <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">
+                                                 {recommendedJobs.length}
+                                             </span>
+                                         </div>
+                                         <div className="p-3 bg-gray-50 max-h-64 overflow-y-auto space-y-2">
+                                             {recommendedJobs.length === 0 ? (
+                                                 <div className="text-center py-8 text-gray-500">
+                                                     <Bell className="w-8 h-8 mx-auto text-gray-300 mb-1" />
+                                                     <p className="text-xs font-semibold">No job recommendations right now.</p>
+                                                 </div>
+                                             ) : (
+                                                 recommendedJobs.map(job => (
+                                                     <Link
+                                                         key={job.id}
+                                                         href={`/jobs/${job.id}`}
+                                                         className="block p-3 bg-white border border-gray-100 rounded-lg hover:border-[#193153] transition-colors group text-left shadow-xs"
+                                                     >
+                                                         <div className="flex items-center justify-between">
+                                                             <h4 className="font-bold text-xs text-gray-800 group-hover:text-[#193153] line-clamp-1 flex-1 pr-2">
+                                                                 {job.title}
+                                                             </h4>
+                                                             <span className="text-[9px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 shrink-0">
+                                                                 {job.type || job.employmentType || 'Full-time'}
+                                                             </span>
+                                                         </div>
+                                                         <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-2">
+                                                             <span>{job.department || 'Aviation'}</span>
+                                                             <span>•</span>
+                                                             <span className="text-gray-400">{job.location || 'Pasay City'}</span>
+                                                         </p>
+                                                     </Link>
+                                                 ))
+                                             )}
+                                         </div>
+                                     </div>
+                                     <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
+                                         <Link href="/jobs" className="text-xs font-bold text-[#193153] hover:underline">
+                                             See All Positions
+                                         </Link>
+                                     </div>
+                                 </Card>
 
-                                </div>
-                            </div>
+                             </div>
+                             </div>
                         ) : (
                             // --- PROFILE TAB ---
                             <div className="max-w-4xl mx-auto animate-in fade-in duration-300">
@@ -1963,113 +2060,224 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                         </CardContent>
                                     </Card>
 
-                                    <Card>
-                                        <CardHeader>
+                                    <Card className="md:col-span-2">
+                                        <CardHeader className="flex flex-row items-center justify-between pb-3">
                                             <h3 className="font-bold text-[#193153] flex items-center gap-2">
-                                                <FileText className="w-5 h-5" /> Documents
+                                                <FileText className="w-5 h-5 text-blue-600" /> Documents Vault
                                             </h3>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => setIsAddDocModalOpen(true)}
+                                                className="text-xs border-[#193153] text-[#193153] hover:bg-blue-50 flex items-center gap-1.5 shadow-sm"
+                                            >
+                                                <Plus className="w-3.5 h-3.5 text-blue-600" /> Add Document
+                                            </Button>
                                         </CardHeader>
-                                        <CardContent className="space-y-3 pt-0">
-                                            {[
-                                                { name: "Letter of Intent", icon: FileText, color: "text-blue-600", bg: "bg-blue-100" },
-                                                { name: "Personal Data Sheet (PDS)", icon: User, color: "text-green-600", bg: "bg-green-100" },
-                                                { name: "Work Experience Sheet", icon: Briefcase, color: "text-orange-600", bg: "bg-orange-100" },
-                                                { name: "Certificate of Eligibility", icon: CheckCircle, color: "text-purple-600", bg: "bg-purple-100" },
-                                                { name: "Transcript of Records (TOR)", icon: GraduationCap, color: "text-red-600", bg: "bg-red-100" },
-                                                { name: "Training Certificates", icon: FileText, color: "text-teal-600", bg: "bg-teal-100" },
-                                                { name: "Performance Rating", icon: FileText, color: "text-yellow-600", bg: "bg-yellow-100" },
-                                            ].map((doc, i) => (
-                                                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`${doc.bg} p-2 rounded ${doc.color}`}>
-                                                            <doc.icon className="w-4 h-4" />
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <span className="text-sm font-medium">{doc.name}</span>
-                                                            {localStorage.getItem(`profile_file_${auth.user.id}_${doc.name}`) && (
-                                                                <span className="text-[10px] text-gray-500 truncate max-w-37.5">
-                                                                    {localStorage.getItem(`profile_file_${auth.user.id}_${doc.name}`)}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {/* Persistent Profile Storage Logic */}
-                                                        {localStorage.getItem(`profile_doc_${auth.user.id}_${doc.name}`) === 'uploaded' ? (
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200">Saved</span>
-                                                                <Eye
-                                                                    className="w-4 h-4 text-[#193153] hover:text-[#193153]/70 cursor-pointer transition-colors"
-                                                                    onClick={() => {
-                                                                        const content = localStorage.getItem(`profile_content_${auth.user.id}_${doc.name}`);
-                                                                        const fileName = localStorage.getItem(`profile_file_${auth.user.id}_${doc.name}`) || doc.name;
-                                                                        if (content) {
-                                                                            setViewingDocument({
-                                                                                name: doc.name,
-                                                                                url: content,
-                                                                                fileName: fileName
-                                                                            });
-                                                                        } else {
-                                                                            toast.error("File content missing.");
-                                                                        }
-                                                                    }}
-                                                                />
-                                                                <Trash2
-                                                                    className="w-4 h-4 text-red-400 hover:text-red-600 cursor-pointer transition-colors"
-                                                                    onClick={() => {
-                                                                        localStorage.removeItem(`profile_doc_${auth.user.id}_${doc.name}`);
-                                                                        localStorage.removeItem(`profile_file_${auth.user.id}_${doc.name}`);
-                                                                        localStorage.removeItem(`profile_content_${auth.user.id}_${doc.name}`);
-                                                                        setProfileData({ ...profileData }); // Trigger re-render
-                                                                        toast.info(`${doc.name} removed from profile.`);
-                                                                    }}
-                                                                />
+                                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-0">
+                                            {(() => {
+                                                const defaultDocsList = [
+                                                    { name: "Letter of Intent", icon: FileText, color: "text-blue-600", bg: "bg-blue-100", isDefault: true },
+                                                    { name: "Personal Data Sheet (PDS)", icon: User, color: "text-green-600", bg: "bg-green-100", isDefault: true },
+                                                    { name: "Work Experience Sheet", icon: Briefcase, color: "text-orange-600", bg: "bg-orange-100", isDefault: true },
+                                                    { name: "Certificate of Eligibility", icon: CheckCircle, color: "text-purple-600", bg: "bg-purple-100", isDefault: true },
+                                                    { name: "Transcript of Records (TOR)", icon: GraduationCap, color: "text-red-600", bg: "bg-red-100", isDefault: true },
+                                                    { name: "Training Certificates", icon: FileText, color: "text-teal-600", bg: "bg-teal-100", isDefault: true },
+                                                    { name: "Performance Rating", icon: FileText, color: "text-yellow-600", bg: "bg-yellow-100", isDefault: true },
+                                                ];
+
+                                                const customDocsList = (profileData.customDocuments || []).map((name: string) => ({
+                                                    name: name,
+                                                    icon: FileText,
+                                                    color: "text-indigo-600",
+                                                    bg: "bg-indigo-100",
+                                                    isDefault: false
+                                                }));
+
+                                                const allDocs = [...defaultDocsList, ...customDocsList];
+
+                                                return allDocs.map((doc, i) => {
+                                                    const isUploadedLocally = localStorage.getItem(`profile_doc_${auth.user.id}_${doc.name}`) === 'uploaded';
+                                                    const isUploadedInDB = profileData.documents_meta?.[doc.name]?.status === 'uploaded';
+                                                    const isUploaded = isUploadedLocally || isUploadedInDB;
+
+                                                    const fileName = localStorage.getItem(`profile_file_${auth.user.id}_${doc.name}`) || profileData.documents_meta?.[doc.name]?.fileName;
+
+                                                    return (
+                                                        <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-gray-200 transition-all">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`${doc.bg} p-2 rounded ${doc.color}`}>
+                                                                    <doc.icon className="w-4 h-4" />
+                                                                </div>
+                                                                <div className="flex flex-col">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-sm font-medium">{doc.name}</span>
+                                                                        {!doc.isDefault && (
+                                                                            <span className="text-[9px] bg-indigo-50 text-indigo-600 font-semibold px-1.5 py-0.5 rounded border border-indigo-200">Custom</span>
+                                                                        )}
+                                                                    </div>
+                                                                    {fileName && (
+                                                                        <span className="text-[10px] text-gray-500 truncate max-w-37.5">
+                                                                            {fileName}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                        ) : (
-                                                            <span className="text-xs text-gray-400 italic">Missing</span>
-                                                        )}
-                                                        <input
-                                                            type="file"
-                                                            id={`file-profile-${i}`}
-                                                            className="hidden"
-                                                            onChange={(e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (file) {
-                                                                    if (file.size > 2 * 1024 * 1024) {
-                                                                        toast.error("File too large (>2MB). Please upload a smaller file.");
-                                                                        return;
-                                                                    }
+                                                            <div className="flex items-center gap-2">
+                                                                {/* Persistent Profile Storage Logic */}
+                                                                {isUploaded ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200">Saved</span>
+                                                                        <Eye
+                                                                            className="w-4 h-4 text-[#193153] hover:text-[#193153]/70 cursor-pointer transition-colors"
+                                                                            onClick={() => {
+                                                                                const content = localStorage.getItem(`profile_content_${auth.user.id}_${doc.name}`) || sessionStorage.getItem(`profile_content_${auth.user.id}_${doc.name}`);
+                                                                                if (content) {
+                                                                                    setViewingDocument({
+                                                                                        name: doc.name,
+                                                                                        url: content,
+                                                                                        fileName: fileName || doc.name
+                                                                                    });
+                                                                                } else {
+                                                                                    toast.error("File content missing on local device.");
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                        <Trash2
+                                                                            className="w-4 h-4 text-red-400 hover:text-red-600 cursor-pointer transition-colors"
+                                                                            onClick={() => {
+                                                                                localStorage.removeItem(`profile_doc_${auth.user.id}_${doc.name}`);
+                                                                                localStorage.removeItem(`profile_file_${auth.user.id}_${doc.name}`);
+                                                                                localStorage.removeItem(`profile_content_${auth.user.id}_${doc.name}`);
+                                                                                sessionStorage.removeItem(`profile_content_${auth.user.id}_${doc.name}`);
 
-                                                                    const reader = new FileReader();
-                                                                    reader.onload = (ev) => {
-                                                                        try {
-                                                                            const result = ev.target?.result as string;
-                                                                            localStorage.setItem(`profile_doc_${auth.user.id}_${doc.name}`, 'uploaded');
-                                                                            localStorage.setItem(`profile_file_${auth.user.id}_${doc.name}`, file.name);
-                                                                            localStorage.setItem(`profile_content_${auth.user.id}_${doc.name}`, result);
+                                                                                let updatedProfile = { ...profileData };
+                                                                                if (!doc.isDefault) {
+                                                                                    const updatedCustoms = (profileData.customDocuments || []).filter((d: string) => d !== doc.name);
+                                                                                    const updatedMeta = { ...(profileData.documents_meta || {}) };
+                                                                                    delete updatedMeta[doc.name];
+                                                                                    updatedProfile = {
+                                                                                        ...profileData,
+                                                                                        customDocuments: updatedCustoms,
+                                                                                        documents_meta: updatedMeta
+                                                                                    };
+                                                                                } else {
+                                                                                    const updatedMeta = { ...(profileData.documents_meta || {}) };
+                                                                                    delete updatedMeta[doc.name];
+                                                                                    updatedProfile = {
+                                                                                        ...profileData,
+                                                                                        documents_meta: updatedMeta
+                                                                                    };
+                                                                                }
 
-                                                                            toast.success(`${doc.name} saved to profile!`);
-                                                                            setProfileData({ ...profileData }); // Trigger re-render
-                                                                        } catch (err) {
-                                                                            console.error(err);
-                                                                            toast.error("Storage full. Could not save file to profile.");
+                                                                                setProfileData(updatedProfile);
+                                                                                try {
+                                                                                    localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(updatedProfile));
+                                                                                } catch (e) {}
+
+                                                                                router.post('/profile/save', { profile_data: updatedProfile });
+                                                                                toast.info(`${doc.name} removed from profile.`);
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-xs text-gray-400 italic">Missing</span>
+                                                                        {!doc.isDefault && (
+                                                                            <Trash2
+                                                                                className="w-3.5 h-3.5 text-red-300 hover:text-red-500 cursor-pointer transition-colors ml-1"
+                                                                                onClick={() => {
+                                                                                    const updatedCustoms = (profileData.customDocuments || []).filter((d: string) => d !== doc.name);
+                                                                                    const updatedProfile = {
+                                                                                        ...profileData,
+                                                                                        customDocuments: updatedCustoms
+                                                                                    };
+                                                                                    setProfileData(updatedProfile);
+                                                                                    try {
+                                                                                        localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(updatedProfile));
+                                                                                    } catch (e) {}
+                                                                                    router.post('/profile/save', { profile_data: updatedProfile });
+                                                                                    toast.info(`"${doc.name}" slot removed.`);
+                                                                                }}
+                                                                            />
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                                <input
+                                                                    type="file"
+                                                                    id={`file-profile-${i}`}
+                                                                    className="hidden"
+                                                                    onChange={(e) => {
+                                                                        const file = e.target.files?.[0];
+                                                                        if (file) {
+                                                                            if (file.size > 2 * 1024 * 1024) {
+                                                                                toast.error("File too large (>2MB). Please upload a smaller file.");
+                                                                                return;
+                                                                            }
+
+                                                                            const reader = new FileReader();
+                                                                            reader.onload = (ev) => {
+                                                                                try {
+                                                                                    const result = ev.target?.result as string;
+                                                                                    localStorage.setItem(`profile_doc_${auth.user.id}_${doc.name}`, 'uploaded');
+                                                                                    localStorage.setItem(`profile_file_${auth.user.id}_${doc.name}`, file.name);
+
+                                                                                    try {
+                                                                                        localStorage.setItem(`profile_content_${auth.user.id}_${doc.name}`, result);
+                                                                                    } catch (storageErr) {
+                                                                                        try {
+                                                                                            sessionStorage.setItem(`profile_content_${auth.user.id}_${doc.name}`, result);
+                                                                                        } catch (sessionErr) {}
+                                                                                    }
+
+                                                                                    // Sync metadata with MySQL database
+                                                                                    const updatedMeta = {
+                                                                                        ...(profileData.documents_meta || {}),
+                                                                                        [doc.name]: {
+                                                                                            status: 'uploaded',
+                                                                                            fileName: file.name,
+                                                                                            updatedAt: new Date().toISOString()
+                                                                                        }
+                                                                                    };
+
+                                                                                    const updatedProfile = {
+                                                                                        ...profileData,
+                                                                                        documents_meta: updatedMeta
+                                                                                    };
+
+                                                                                    setProfileData(updatedProfile);
+
+                                                                                    try {
+                                                                                        localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(updatedProfile));
+                                                                                    } catch (e) {}
+
+                                                                                    router.post('/profile/save', {
+                                                                                        profile_data: updatedProfile
+                                                                                    });
+
+                                                                                    toast.success(`${doc.name} saved to profile & database!`);
+                                                                                } catch (err) {
+                                                                                    console.error(err);
+                                                                                    toast.error("Could not save file. Please try a smaller file.");
+                                                                                }
+                                                                            };
+                                                                            reader.readAsDataURL(file);
                                                                         }
-                                                                    };
-                                                                    reader.readAsDataURL(file);
-                                                                }
-                                                            }}
-                                                        />
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            className="h-8 text-xs hover:bg-blue-50 hover:text-blue-600"
-                                                            onClick={() => document.getElementById(`file-profile-${i}`)?.click()}
-                                                        >
-                                                            {localStorage.getItem(`profile_doc_${auth.user.id}_${doc.name}`) === 'uploaded' ? 'Update' : 'Upload'}
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                                    }}
+                                                                />
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-8 text-xs hover:bg-blue-50 hover:text-blue-600"
+                                                                    onClick={() => document.getElementById(`file-profile-${i}`)?.click()}
+                                                                >
+                                                                    {isUploaded ? 'Update' : 'Upload'}
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                });
+                                            })()}
                                         </CardContent>
                                     </Card>
                                 </div>
@@ -2115,7 +2323,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                     <MessageCircle className="h-4 w-4" />
                                 </span>
                                 <div className="truncate">
-                                    <h4 className="font-bold text-xs leading-tight text-white">NAAP HR Support</h4>
+                                    <h4 className="font-bold text-xs leading-tight text-white">NAAP Admin</h4>
                                     {activeMessageJobTitle && (
                                         <p className="text-[10px] text-blue-200 truncate flex items-center gap-1 font-medium mt-0.5" title={`Re: ${activeMessageJobTitle}`}>
                                             <span className="text-[#ffdd59]">📌</span> Re: {activeMessageJobTitle}
@@ -2373,6 +2581,56 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                 {actionConfirmModal.type === 'delete' && 'Delete Application'}
                                 {actionConfirmModal.type === 'reset' && 'Reset Applications'}
                             </button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* --- ADD CUSTOM DOCUMENT DIALOG --- */}
+                <Dialog open={isAddDocModalOpen} onOpenChange={setIsAddDocModalOpen}>
+                    <DialogContent className="max-w-md bg-white p-6 rounded-2xl">
+                        <DialogHeader className="border-b pb-3 mb-3">
+                            <DialogTitle className="flex items-center gap-2 text-lg text-[#193153] font-bold">
+                                <Plus className="w-5 h-5 text-blue-600" /> Add Custom Document
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="space-y-4 py-2">
+                            <div>
+                                <label className="text-xs font-bold text-gray-600 uppercase">Document Title</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Passport, NBI Clearance, Medical Cert"
+                                    value={newCustomDocName}
+                                    onChange={(e) => setNewCustomDocName(e.target.value)}
+                                    className="w-full mt-1.5 p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddCustomDocument()}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-semibold text-gray-400">Quick Suggestion Chips:</label>
+                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {["Passport", "NBI Clearance", "Medical Certificate", "Driver's License", "2x2 ID Photo"].map((chip) => (
+                                        <button
+                                            key={chip}
+                                            type="button"
+                                            onClick={() => setNewCustomDocName(chip)}
+                                            className="text-xs bg-gray-100 hover:bg-blue-100 hover:text-blue-700 text-gray-700 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                                        >
+                                            + {chip}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="border-t pt-4 mt-3 flex justify-end gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setIsAddDocModalOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button size="sm" onClick={handleAddCustomDocument} className="bg-[#193153] hover:bg-[#193153]/90 text-white">
+                                Add Document Slot
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>

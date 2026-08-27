@@ -328,10 +328,21 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
                                                         isSelected ? 'bg-[#ffdd59] text-[#193153]' : 'bg-blue-100 text-blue-800'
                                                     }`}>
                                                         {app.avatar || app.avatar_url ? (
-                                                            <img src={app.avatar || app.avatar_url} alt={app.applicantName} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            (app.applicantName || 'A').charAt(0)
-                                                        )}
+                                                            <img 
+                                                                src={app.avatar || app.avatar_url} 
+                                                                alt={app.applicantName} 
+                                                                className="w-full h-full object-cover" 
+                                                                onError={(e) => {
+                                                                    const target = e.currentTarget;
+                                                                    target.style.display = 'none';
+                                                                    const fallback = target.nextElementSibling as HTMLElement;
+                                                                    if (fallback) fallback.style.display = 'flex';
+                                                                }}
+                                                            />
+                                                        ) : null}
+                                                        <span style={{ display: app.avatar || app.avatar_url ? 'none' : 'flex' }} className="w-full h-full items-center justify-center">
+                                                            {(app.applicantName || 'A').charAt(0)}
+                                                        </span>
                                                     </div>
                                                     {app.hasUnreadMessages && (
                                                         <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 z-20">
@@ -398,10 +409,21 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
 
                                                   <div className="w-10 h-10 rounded-full overflow-hidden bg-[#193153] flex items-center justify-center text-[#ffdd59] font-bold text-sm group-hover:ring-2 group-hover:ring-[#ffdd59] transition-all shadow-xs flex-shrink-0">
                                                       {selectedApp.avatar || selectedApp.avatar_url ? (
-                                                          <img src={selectedApp.avatar || selectedApp.avatar_url} alt={selectedApp.applicantName} className="w-full h-full object-cover" />
-                                                      ) : (
-                                                          (selectedApp.applicantName || 'A').charAt(0)
-                                                      )}
+                                                          <img 
+                                                              src={selectedApp.avatar || selectedApp.avatar_url} 
+                                                              alt={selectedApp.applicantName} 
+                                                              className="w-full h-full object-cover" 
+                                                              onError={(e) => {
+                                                                  const target = e.currentTarget;
+                                                                  target.style.display = 'none';
+                                                                  const fallback = target.nextElementSibling as HTMLElement;
+                                                                  if (fallback) fallback.style.display = 'flex';
+                                                              }}
+                                                          />
+                                                      ) : null}
+                                                      <span style={{ display: selectedApp.avatar || selectedApp.avatar_url ? 'none' : 'flex' }} className="w-full h-full items-center justify-center">
+                                                          {(selectedApp.applicantName || 'A').charAt(0)}
+                                                      </span>
                                                   </div>
                                                   <div>
                                                       <h3 className="font-bold text-[#193153] text-sm leading-tight flex items-center gap-1.5 group-hover:text-blue-600 transition-colors">
@@ -539,14 +561,25 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
                                         >
                                             {selectedApp.avatar || selectedApp.avatar_url ? (
                                                 <>
-                                                    <img src={selectedApp.avatar || selectedApp.avatar_url} alt={selectedApp.applicantName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200" />
+                                                    <img 
+                                                        src={selectedApp.avatar || selectedApp.avatar_url} 
+                                                        alt={selectedApp.applicantName} 
+                                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200" 
+                                                        onError={(e) => {
+                                                            const target = e.currentTarget;
+                                                            target.style.display = 'none';
+                                                            const fallback = target.parentElement?.nextElementSibling as HTMLElement;
+                                                            if (fallback) fallback.style.display = 'flex';
+                                                        }}
+                                                    />
                                                     <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                         <ZoomIn className="w-4 h-4 text-white drop-shadow-md" />
                                                     </div>
                                                 </>
-                                            ) : (
-                                                (selectedApp.applicantName || 'A').charAt(0)
-                                            )}
+                                            ) : null}
+                                            <span style={{ display: selectedApp.avatar || selectedApp.avatar_url ? 'none' : 'flex' }} className="w-full h-full items-center justify-center font-bold text-xl">
+                                                {(selectedApp.applicantName || 'A').charAt(0)}
+                                            </span>
                                         </div>
                                     </CustomTooltip>
                                     <div>

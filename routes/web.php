@@ -24,7 +24,19 @@ Route::get('/', function () {
         return redirect()->route('dashboard');
     }
 
-    return Inertia::render('ProfessionalsHired');
+    $dbHired = \App\Models\Application::where('status', 'Hired')->count();
+    $dbProcessed = \App\Models\Application::whereIn('status', ['Hired', 'Rejected'])->count();
+    $dbRate = $dbProcessed > 0 ? round(($dbHired / $dbProcessed) * 100) : 0;
+    $dbPartners = 50;
+
+    return Inertia::render('ProfessionalsHired', [
+        'serverStats' => [
+            'hiredCount' => $dbHired,
+            'employmentRate' => $dbRate,
+            'industryPartnersCount' => $dbPartners,
+            'cscLevel' => 'Lvl 2',
+        ],
+    ]);
 })->name('home');
 
 Route::get('/cms-content/{key}', [\App\Http\Controllers\CmsContentController::class, 'show'])->name('cms-content.show');
@@ -51,8 +63,8 @@ Route::get('/api/open-jobs', function () {
     );
 });
 
-Route::get('/dashboard', [\App\Http\Controllers\ApplicantController::class, 'dashboard'])->middleware(['auth', 'verified'])->name('dashboard');
-Route::post('/profile/save', [\App\Http\Controllers\ApplicantController::class, 'saveProfileData'])->middleware(['auth', 'verified'])->name('profile.saveData');
+Route::get('/dashboard', [\App\Http\Controllers\ApplicantController::class, 'dashboard'])->middleware(['auth'])->name('dashboard');
+Route::post('/profile/save', [\App\Http\Controllers\ApplicantController::class, 'saveProfileData'])->middleware(['auth'])->name('profile.saveData');
 
 Route::get('/calendar', function () {
     $user = Auth::user();
@@ -178,6 +190,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/cms-content', [\App\Http\Controllers\CmsContentController::class, 'store'])->name('cms-content.store');
 
+    Route::post('/security/send-otp', [\App\Http\Controllers\Auth\OtpVerificationController::class, 'sendOtp'])->name('security.send-otp');
+    Route::post('/security/verify-otp', [\App\Http\Controllers\Auth\OtpVerificationController::class, 'verifyOtp'])->name('security.verify-otp');
+
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', function () {
             $appQuery = \App\Models\Application::query()->select('id', 'applicant_name', 'job_title', 'status', 'created_at', 'updated_at');
@@ -219,6 +234,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::post('/applications/{application}/status', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'updateStatus'])->name('applications.status');
         Route::get('/reports/export', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'exportReport'])->name('reports.export');
+
+        Route::post('/users/create', [\App\Http\Controllers\Admin\AdminUserController::class, 'store'])->name('users.store');
+        Route::delete('/users/{user}', [\App\Http\Controllers\Admin\AdminUserController::class, 'destroy'])->name('users.destroy');
 
         Route::get('/applicants', function () {
             $rawApps = \App\Models\Application::query()
@@ -489,14 +507,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
                 $userProf = $app->user && is_array($app->user->profile_data) ? $app->user->profile_data : [];
                 $avatarUrl = null;
-                if (! empty($userProf['photo'])) {
-                    $avatarUrl = str_starts_with($userProf['photo'], 'data:') || str_starts_with($userProf['photo'], 'http')
-                        ? $userProf['photo']
-                        : '/storage/'.$userProf['photo'];
-                } elseif (! empty($userProf['avatar'])) {
-                    $avatarUrl = $userProf['avatar'];
-                } elseif (! empty($app->dynamic_responses['photo'])) {
-                    $avatarUrl = $app->dynamic_responses['photo'];
+                $rawPhoto = $userProf['avatar_url'] ?? $userProf['photo'] ?? $userProf['avatar'] ?? ($app->dynamic_responses['photo'] ?? null);
+                if (! empty($rawPhoto)) {
+                    $avatarUrl = (str_starts_with($rawPhoto, 'data:') || str_starts_with($rawPhoto, 'http') || str_starts_with($rawPhoto, '/'))
+                        ? $rawPhoto
+                        : '/storage/'.$rawPhoto;
                 }
 
                 $realEducation = ! empty($userProf['highestEducation'])

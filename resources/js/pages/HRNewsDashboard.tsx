@@ -98,9 +98,19 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
 
                                 {/* User Avatar */}
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden border border-white">
-                                        {auth.user.name ? auth.user.name.charAt(0) : 'U'}
-                                    </div>
+                                    {(() => {
+                                        const pData = auth?.user?.profile_data || {};
+                                        const avatarSrc = auth?.user?.avatar_url || pData.avatar_url || pData.photo || pData.avatar || (typeof window !== 'undefined' ? localStorage.getItem(`user_profile_image_${auth?.user?.id}`) : null) || null;
+                                        return (
+                                            <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden border border-white shrink-0">
+                                                {avatarSrc ? (
+                                                    <img src={avatarSrc} alt="Profile" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    auth.user.name ? auth.user.name.charAt(0).toUpperCase() : 'U'
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                     <span className="text-sm font-medium hidden sm:block text-white">
                                         {auth.user.name}
                                     </span>

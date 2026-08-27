@@ -28,17 +28,75 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
+    public function update(Request $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'phone_number' => ['nullable', 'string', 'max:50'],
+            'avatar' => ['nullable', 'image', 'max:5120'],
+            'avatar_data' => ['nullable', 'string'],
+            'remove_avatar' => ['nullable', 'boolean'],
+        ]);
+
+        $user->name = $request->input('name');
+
+        if ($user->email !== $request->input('email')) {
+            $user->email = $request->input('email');
+            $user->email_verified_at = null;
         }
 
-        $request->user()->save();
+        $profileData = is_array($user->profile_data) ? $user->profile_data : [];
+        $profileData['phone_number'] = $request->input('phone_number');
+        $profileData['contact_number'] = $request->input('phone_number');
 
-        return to_route('profile.edit');
+        if ($request->boolean('remove_avatar')) {
+            $profileData['avatar_url'] = null;
+            $profileData['photo'] = null;
+            $profileData['avatar'] = null;
+        } elseif ($request->hasFile('avatar')) {
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $url = '/storage/' . $path;
+            $profileData['avatar_url'] = $url;
+            $profileData['photo'] = $url;
+            $profileData['avatar'] = $url;
+        } elseif ($request->input('avatar_data')) {
+            $avatarData = $request->input('avatar_data');
+            if (str_starts_with($avatarData, 'data:image')) {
+                try {
+                    @list($type, $data) = explode(';', $avatarData);
+                    @list(, $data)      = explode(',', $data);
+                    $decoded = base64_decode($data);
+                    if ($decoded) {
+                        $filename = 'avatars/user_' . $user->id . '_' . time() . '.jpg';
+                        $fullPath = storage_path('app/public/' . $filename);
+                        if (!is_dir(dirname($fullPath))) {
+                            mkdir(dirname($fullPath), 0755, true);
+                        }
+                        file_put_contents($fullPath, $decoded);
+                        $url = '/storage/' . $filename;
+                    } else {
+                        $url = $avatarData;
+                    }
+                } catch (\Exception $ex) {
+                    $url = $avatarData;
+                }
+            } else {
+                $url = $avatarData;
+            }
+            $profileData['avatar_url'] = $url;
+            $profileData['photo'] = $url;
+            $profileData['avatar'] = $url;
+        }
+
+        $user->profile_data = $profileData;
+        $user->save();
+
+        \App\Models\ActivityLog::write('Updated Profile Information', "Updated account profile details and avatar for {$user->name}.", 'Account Settings', 'UserCheck', 'text-blue-600 bg-blue-100');
+
+        return back();
     }
 
     /**

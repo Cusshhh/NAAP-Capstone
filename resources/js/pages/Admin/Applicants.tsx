@@ -701,7 +701,6 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                         <TableHead>Applicant</TableHead>
                                         <TableHead>Position</TableHead>
                                         <TableHead>Score Percentage</TableHead>
-                                        <TableHead>Breakdown</TableHead>
                                         <TableHead>Match</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead>Date</TableHead>
@@ -733,148 +732,6 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                     </div>
                                                     <span className="text-sm font-semibold">{scoreToPercentage(app.aiScore || 0)}%</span>
                                                 </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Dialog>
-                                                    <DialogTrigger asChild>
-                                                        <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"><TrendingUp className="w-4 h-4 mr-1" /> View</Button>
-                                                    </DialogTrigger>
-                                                    <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-                                                        <DialogHeader>
-                                                            <DialogTitle className="flex items-center gap-2 text-base font-bold text-[#193153]">
-                                                                <TrendingUp className="w-5 h-5 text-blue-600" /> Qualification Result - {app.applicantName}
-                                                            </DialogTitle>
-                                                        </DialogHeader>
-                                                        <div className="space-y-4 pb-4 mt-2">
-                                                            {(() => {
-                                                                const breakdown = app.aiScoreBreakdown || { education: 0, experience: 0, accomplishments: 0, training: 0 };
-                                                                const totalScore = app.aiScore || 0;
-                                                                return (
-                                                                    <>
-                                                                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-                                                                            <div className="flex items-center justify-between mb-2">
-                                                                                <span className="text-sm font-medium text-gray-700">Balanced Qualification Score</span>
-                                                                                <span className="text-2xl font-bold text-[#193153]">{scoreToPercentage(totalScore)}% <span className="text-sm text-gray-500">Match</span></span>
-                                                                            </div>
-                                                                            <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                                                                                <div className={`h-3 rounded-full ${scoreToPercentage(totalScore) >= 90 ? 'bg-green-500' : scoreToPercentage(totalScore) >= 80 ? 'bg-blue-500' : scoreToPercentage(totalScore) >= 70 ? 'bg-cyan-500' : scoreToPercentage(totalScore) >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${Math.min(scoreToPercentage(totalScore), 100)}%` }} />
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="space-y-3">
-                                                                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">PDS Section Evaluation Breakdown</p>
-
-                                                                            {/* Education */}
-                                                                            <div className="flex items-center gap-3">
-                                                                                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
-                                                                                    <GraduationCap className="w-4 h-4 text-purple-600" />
-                                                                                </div>
-                                                                                <div className="flex-1">
-                                                                                    <div className="flex items-center justify-between mb-1">
-                                                                                        <span className="text-sm font-medium">Education (PDS Sec II)</span>
-                                                                                        <span className="text-sm font-bold">{Math.round((breakdown.education / 5) * 100)}%</span>
-                                                                                    </div>
-                                                                                    <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                                                                        <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${(breakdown.education / 5) * 100}%` }} />
-                                                                                    </div>
-                                                                                    {app.educationLevel ? (
-                                                                                        <p className="text-xs text-gray-600 mt-1">
-                                                                                            <span className="font-medium">Level:</span> {
-                                                                                                app.educationLevel === 'bachelor' ? "Bachelor's Degree" :
-                                                                                                    app.educationLevel === 'masters' ? "Master's Degree" :
-                                                                                                        app.educationLevel === 'doctoral_9-15' ? "Doctoral (9-15 units)" :
-                                                                                                            app.educationLevel === 'doctoral_15-18' ? "Doctoral (15-18 units)" :
-                                                                                                                app.educationLevel === 'doctoral_18-24' ? "Doctoral (18-24 units)" :
-                                                                                                                    app.educationLevel === 'doctoral_27+' ? "Doctoral (27+ units)" :
-                                                                                                                        app.educationLevel === 'doctoral_graduate' ? "Doctoral Graduate" :
-                                                                                                                            app.educationLevel
-                                                                                            }
-                                                                                        </p>
-                                                                                    ) : (
-                                                                                        <p className="text-xs text-gray-400 italic mt-1">Data not available</p>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {/* Experience */}
-                                                                            <div className="flex items-center gap-3">
-                                                                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                                                                                    <Briefcase className="w-4 h-4 text-blue-600" />
-                                                                                </div>
-                                                                                <div className="flex-1">
-                                                                                    <div className="flex items-center justify-between mb-1">
-                                                                                        <span className="text-sm font-medium">Work Experience (PDS Sec IV)</span>
-                                                                                        <span className="text-sm font-bold">{Math.round((breakdown.experience / 25) * 100)}%</span>
-                                                                                    </div>
-                                                                                    <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                                                                        <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(breakdown.experience / 25) * 100}%` }} />
-                                                                                    </div>
-                                                                                    {app.yearsOfExperience !== undefined ? (
-                                                                                        <p className="text-xs text-gray-600 mt-1">
-                                                                                            <span className="font-medium">Years:</span> {app.yearsOfExperience} years
-                                                                                        </p>
-                                                                                    ) : (
-                                                                                        <p className="text-xs text-gray-400 italic mt-1">Data not available</p>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {/* Awards */}
-                                                                            <div className="flex items-center gap-3">
-                                                                                <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
-                                                                                    <Award className="w-4 h-4 text-yellow-600" />
-                                                                                </div>
-                                                                                <div className="flex-1">
-                                                                                    <div className="flex items-center justify-between mb-1">
-                                                                                        <span className="text-sm font-medium">Eligibility & Awards (PDS Sec III & VII)</span>
-                                                                                        <span className="text-sm font-bold">{Math.round((breakdown.accomplishments / 5) * 100)}%</span>
-                                                                                    </div>
-                                                                                    <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                                                                        <div className="bg-yellow-500 h-1.5 rounded-full" style={{ width: `${(breakdown.accomplishments / 5) * 100}%` }} />
-                                                                                    </div>
-                                                                                    {app.awards && app.awards.length > 0 ? (
-                                                                                        <p className="text-xs text-gray-600 mt-1">
-                                                                                            <span className="font-medium">Received:</span> {app.awards.map((award: string) =>
-                                                                                                award === 'national' ? 'National Award' :
-                                                                                                    award === 'csc' ? 'CSC Award' :
-                                                                                                        award === 'president' ? "President's Award" :
-                                                                                                            award === 'ngo' ? 'NGO Award' : award
-                                                                                            ).join(', ')}
-                                                                                        </p>
-                                                                                    ) : (
-                                                                                        <p className="text-xs text-gray-500 mt-1">No awards listed</p>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {/* Training */}
-                                                                            <div className="flex items-center gap-3">
-                                                                                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                                                                    <BookOpen className="w-4 h-4 text-green-600" />
-                                                                                </div>
-                                                                                <div className="flex-1">
-                                                                                    <div className="flex items-center justify-between mb-1">
-                                                                                        <span className="text-sm font-medium">Training & L&D (PDS Sec VI)</span>
-                                                                                        <span className="text-sm font-bold">{Math.round((breakdown.training / 10) * 100)}%</span>
-                                                                                    </div>
-                                                                                    <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                                                                        <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${(breakdown.training / 10) * 100}%` }} />
-                                                                                    </div>
-                                                                                    {app.trainingHours !== undefined ? (
-                                                                                        <p className="text-xs text-gray-600 mt-1">
-                                                                                            <span className="font-medium">Hours:</span> {app.trainingHours} hours
-                                                                                        </p>
-                                                                                    ) : (
-                                                                                        <p className="text-xs text-gray-400 italic mt-1">Data not available</p>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </>
-                                                                );
-                                                            })()}
-                                                        </div>
-                                                    </DialogContent>
-                                                </Dialog>
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant="secondary" className={getMatchColor(getAiMatch(app.aiScore))}>
@@ -933,44 +790,102 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                                 </span>
                                                                             </div>
                                                                         </div>
-                                                                        <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200">
-                                                                            <div className="flex justify-between items-center mb-3">
-                                                                                <h3 className="font-semibold text-blue-900 text-sm">AI Qualification Analysis</h3>
-                                                                                <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs px-2 py-0.5">{app.aiScore}% Match</Badge>
+                                                                        <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200 space-y-3">
+                                                                            <div className="flex justify-between items-center">
+                                                                                <h3 className="font-semibold text-blue-900 text-sm flex items-center gap-1.5">
+                                                                                    <TrendingUp className="w-4 h-4 text-blue-600" /> Qualification Analysis Results
+                                                                                </h3>
+                                                                                <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs px-2.5 py-0.5 font-bold">
+                                                                                    {scoreToPercentage(app.aiScore || 0)}% Match
+                                                                                </Badge>
                                                                             </div>
-                                                                            <p className="text-xs text-blue-800 leading-relaxed mb-4">
+                                                                            <p className="text-xs text-blue-800 leading-relaxed">
                                                                                 <span className="font-semibold">{getAiMatch(app.aiScore)}:</span> This applicant shows {getAiMatch(app.aiScore).toLowerCase()} alignment based on computed education level, years of experience, and training credentials.
                                                                             </p>
                                                                             {(() => {
                                                                                 const breakdown = app.aiScoreBreakdown || { education: 0, experience: 0, accomplishments: 0, training: 0 };
                                                                                 return (
-                                                                                    <div className="space-y-3">
+                                                                                    <div className="space-y-3 pt-2 border-t border-blue-200/60">
+                                                                                        <p className="text-[11px] font-semibold text-blue-900 uppercase tracking-wide">PDS Evaluation Breakdown</p>
+                                                                                        
+                                                                                        {/* Education */}
                                                                                         <div>
-                                                                                            <div className="flex justify-between text-[11px] mb-1">
-                                                                                                <span className="text-gray-600">Education Fit</span>
-                                                                                                <span className="font-semibold text-gray-900">{Math.round((breakdown.education / 5) * 100)}%</span>
+                                                                                            <div className="flex justify-between text-xs mb-1">
+                                                                                                <span className="text-gray-700 font-medium">Education Fit (PDS Sec II)</span>
+                                                                                                <span className="font-bold text-gray-900">{Math.round((breakdown.education / 5) * 100)}%</span>
                                                                                             </div>
-                                                                                            <div className="w-full bg-gray-200 rounded-full h-1">
-                                                                                                <div className="bg-purple-600 h-1 rounded-full" style={{ width: `${(breakdown.education / 5) * 100}%` }} />
+                                                                                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                                                                                <div className="bg-purple-600 h-1.5 rounded-full" style={{ width: `${(breakdown.education / 5) * 100}%` }} />
                                                                                             </div>
+                                                                                            {app.educationLevel && (
+                                                                                                <p className="text-[11px] text-gray-500 mt-1">
+                                                                                                    <span className="font-medium">Level:</span> {
+                                                                                                        app.educationLevel === 'bachelor' ? "Bachelor's Degree" :
+                                                                                                        app.educationLevel === 'masters' ? "Master's Degree" :
+                                                                                                        app.educationLevel === 'doctoral_9-15' ? "Doctoral (9-15 units)" :
+                                                                                                        app.educationLevel === 'doctoral_15-18' ? "Doctoral (15-18 units)" :
+                                                                                                        app.educationLevel === 'doctoral_18-24' ? "Doctoral (18-24 units)" :
+                                                                                                        app.educationLevel === 'doctoral_27+' ? "Doctoral (27+ units)" :
+                                                                                                        app.educationLevel === 'doctoral_graduate' ? "Doctoral Graduate" :
+                                                                                                        app.educationLevel
+                                                                                                    }
+                                                                                                </p>
+                                                                                            )}
                                                                                         </div>
+
+                                                                                        {/* Work Experience */}
                                                                                         <div>
-                                                                                            <div className="flex justify-between text-[11px] mb-1">
-                                                                                                <span className="text-gray-600">Work Experience Fit</span>
-                                                                                                <span className="font-semibold text-gray-900">{Math.round((breakdown.experience / 25) * 100)}%</span>
+                                                                                            <div className="flex justify-between text-xs mb-1">
+                                                                                                <span className="text-gray-700 font-medium">Work Experience Fit (PDS Sec IV)</span>
+                                                                                                <span className="font-bold text-gray-900">{Math.round((breakdown.experience / 25) * 100)}%</span>
                                                                                             </div>
-                                                                                            <div className="w-full bg-gray-200 rounded-full h-1">
-                                                                                                <div className="bg-blue-600 h-1 rounded-full" style={{ width: `${(breakdown.experience / 25) * 100}%` }} />
+                                                                                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                                                                                <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${(breakdown.experience / 25) * 100}%` }} />
                                                                                             </div>
+                                                                                            {app.yearsOfExperience !== undefined && (
+                                                                                                <p className="text-[11px] text-gray-500 mt-1">
+                                                                                                    <span className="font-medium">Years:</span> {app.yearsOfExperience} years
+                                                                                                </p>
+                                                                                            )}
                                                                                         </div>
+
+                                                                                        {/* Awards & Recognition */}
                                                                                         <div>
-                                                                                            <div className="flex justify-between text-[11px] mb-1">
-                                                                                                <span className="text-gray-600">Awards & Recognition Fit</span>
-                                                                                                <span className="font-semibold text-gray-900">{Math.round((breakdown.accomplishments / 5) * 100)}%</span>
+                                                                                            <div className="flex justify-between text-xs mb-1">
+                                                                                                <span className="text-gray-700 font-medium">Eligibility & Awards Fit (PDS Sec III & VII)</span>
+                                                                                                <span className="font-bold text-gray-900">{Math.round((breakdown.accomplishments / 5) * 100)}%</span>
                                                                                             </div>
-                                                                                            <div className="w-full bg-gray-200 rounded-full h-1">
-                                                                                                <div className="bg-yellow-600 h-1 rounded-full" style={{ width: `${(breakdown.accomplishments / 5) * 100}%` }} />
+                                                                                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                                                                                <div className="bg-yellow-500 h-1.5 rounded-full" style={{ width: `${(breakdown.accomplishments / 5) * 100}%` }} />
                                                                                             </div>
+                                                                                            {app.awards && app.awards.length > 0 ? (
+                                                                                                <p className="text-[11px] text-gray-500 mt-1">
+                                                                                                    <span className="font-medium">Received:</span> {app.awards.map((award: string) =>
+                                                                                                        award === 'national' ? 'National Award' :
+                                                                                                        award === 'csc' ? 'CSC Award' :
+                                                                                                        award === 'president' ? "President's Award" :
+                                                                                                        award === 'ngo' ? 'NGO Award' : award
+                                                                                                    ).join(', ')}
+                                                                                                </p>
+                                                                                            ) : (
+                                                                                                <p className="text-[11px] text-gray-400 mt-1 italic">No awards listed</p>
+                                                                                            )}
+                                                                                        </div>
+
+                                                                                        {/* Training & L&D */}
+                                                                                        <div>
+                                                                                            <div className="flex justify-between text-xs mb-1">
+                                                                                                <span className="text-gray-700 font-medium">Training & L&D Fit (PDS Sec VI)</span>
+                                                                                                <span className="font-bold text-gray-900">{Math.round((breakdown.training / 10) * 100)}%</span>
+                                                                                            </div>
+                                                                                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                                                                                <div className="bg-green-600 h-1.5 rounded-full" style={{ width: `${(breakdown.training / 10) * 100}%` }} />
+                                                                                            </div>
+                                                                                            {app.trainingHours !== undefined && (
+                                                                                                <p className="text-[11px] text-gray-500 mt-1">
+                                                                                                    <span className="font-medium">Hours:</span> {app.trainingHours} hours
+                                                                                                </p>
+                                                                                            )}
                                                                                         </div>
                                                                                     </div>
                                                                                 );

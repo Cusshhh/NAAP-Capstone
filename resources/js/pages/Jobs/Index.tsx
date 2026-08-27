@@ -119,10 +119,10 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
 
                                 <Link href="/dashboard" className="flex items-center gap-3 group hover:bg-white/10 rounded-full py-1 px-3 transition-all">
                                     <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden border border-white group-hover:scale-105 transition-transform">
-                                        {profileImage ? (
-                                            <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                                        {profileImage || user.avatar_url || user.profile_data?.avatar_url || user.profile_data?.photo ? (
+                                            <img src={profileImage || user.avatar_url || user.profile_data?.avatar_url || user.profile_data?.photo} alt="Profile" className="w-full h-full object-cover" />
                                         ) : (
-                                            user.name.charAt(0)
+                                            user.name.charAt(0).toUpperCase()
                                         )}
                                     </div>
                                     <span className="text-sm font-medium hidden sm:block group-hover:text-[#ffdd59] transition-colors">{user.name}</span>

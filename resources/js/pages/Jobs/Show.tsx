@@ -153,9 +153,11 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                 localStorage.setItem(`file_${user?.id}_${docName}`, file.name);
                 try {
                     localStorage.setItem(`content_${user?.id}_${docName}`, dataUrl);
-                } catch (e) {
-                    console.error("Storage full", e);
-                    toast.error("Local storage full. Cannot save file content for preview.");
+                } catch (storageErr) {
+                    console.warn("localStorage quota reached, using sessionStorage fallback", storageErr);
+                    try {
+                        sessionStorage.setItem(`content_${user?.id}_${docName}`, dataUrl);
+                    } catch (sessionErr) {}
                 }
 
                 setAttachedDocs(prev => ({ ...prev, [docName]: true }));
@@ -343,10 +345,10 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                     {user && (
                         <Link href="/dashboard" className="flex items-center gap-3 mb-4 text-white group hover:bg-white/10 rounded-full py-1 px-3 transition-all">
                             <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden border border-white group-hover:scale-105 transition-transform">
-                                {profileImage ? (
-                                    <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                                {profileImage || user.avatar_url || user.profile_data?.avatar_url || user.profile_data?.photo ? (
+                                    <img src={profileImage || user.avatar_url || user.profile_data?.avatar_url || user.profile_data?.photo} alt="Profile" className="w-full h-full object-cover" />
                                 ) : (
-                                    user.name.charAt(0)
+                                    user.name.charAt(0).toUpperCase()
                                 )}
                             </div>
                             <span className="text-sm font-medium group-hover:text-[#ffdd59] transition-colors">{user.name}</span>

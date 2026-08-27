@@ -83,6 +83,8 @@ class JobController extends Controller
                 'status' => $validated['status'] ?? 'Open',
             ]);
 
+            \App\Models\ActivityLog::write('Created Job Vacancy', "Posted new vacancy position '{$vacancy->title}' in {$vacancy->department}.", 'Job Management', 'Briefcase', 'text-blue-600 bg-blue-100');
+
             return back()->with('message', 'Job posted successfully.');
         } catch (\Illuminate\Validation\ValidationException $ve) {
             throw $ve;
@@ -125,6 +127,8 @@ class JobController extends Controller
                 'status' => $validated['status'] ?? $vacancy->status,
             ]);
 
+            \App\Models\ActivityLog::write('Updated Job Vacancy', "Updated details for job vacancy '{$vacancy->title}'.", 'Job Management', 'Briefcase', 'text-indigo-600 bg-indigo-100');
+
             return back()->with('message', 'Job updated successfully.');
         } catch (\Illuminate\Validation\ValidationException $ve) {
             throw $ve;
@@ -141,8 +145,11 @@ class JobController extends Controller
     public function destroy(Vacancy $vacancy)
     {
         try {
+            $title = $vacancy->title;
             \App\Models\Application::where('job_id', $vacancy->id)->delete();
             $vacancy->delete();
+
+            \App\Models\ActivityLog::write('Deleted Job Vacancy', "Deleted job vacancy position '{$title}'.", 'Job Management', 'Trash2', 'text-red-600 bg-red-100');
 
             return back()->with('message', 'Job deleted successfully.');
         } catch (\Throwable $ex) {

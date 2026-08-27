@@ -1,8 +1,16 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { Users, Briefcase, Shield, LogOut, Menu, Layout, Clock, FileText, Calendar, ChevronRight, Key, MessageSquare } from 'lucide-react';
+import { Users, Briefcase, Shield, LogOut, Menu, Layout, Clock, FileText, Calendar, ChevronRight, Key, MessageSquare, ChevronDown, User, Settings, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface AdminLayoutProps {
     children: ReactNode;
@@ -88,22 +96,78 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
 
                             {headerActions}
 
-                            {/* Admin User Info */}
-                            <div className="flex items-center gap-2 px-2">
-                                <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs ring-2 ring-white/10">
-                                    {admin.name.charAt(0)}
-                                </div>
-                                <span className="text-sm font-medium text-blue-100">{admin.name}</span>
-                            </div>
+                            {/* Admin User Profile Dropdown */}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button className="flex items-center gap-2.5 px-3 py-1.5 rounded-full hover:bg-white/10 transition-all duration-200 outline-none cursor-pointer group border border-transparent hover:border-white/10">
+                                        <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs ring-2 ring-[#ffdd59]/50 group-hover:ring-[#ffdd59] transition-all shadow-xs shrink-0 overflow-hidden">
+                                            {admin.avatar_url || admin.profile_data?.avatar_url ? (
+                                                <img src={admin.avatar_url || admin.profile_data?.avatar_url} alt={admin.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                admin.name.charAt(0)
+                                            )}
+                                        </div>
+                                        <span className="text-sm font-medium text-blue-100 group-hover:text-white transition-colors max-w-[140px] truncate">
+                                            {admin.name}
+                                        </span>
+                                        <ChevronDown className="w-3.5 h-3.5 text-blue-200 group-hover:text-[#ffdd59] transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                    </button>
+                                </DropdownMenuTrigger>
 
-                            <Button
-                                variant="ghost"
-                                className="text-white hover:bg-red-500/20 hover:text-red-300"
-                                onClick={handleLogout}
-                            >
-                                <LogOut className="h-4 w-4 mr-2" />
-                                Logout
-                            </Button>
+                                <DropdownMenuContent align="end" className="w-60 bg-white shadow-xl rounded-xl border border-gray-100 p-1.5 mt-2 z-50">
+                                    {/* Admin Identity Card Header */}
+                                    <div className="p-3 bg-gradient-to-br from-[#193153]/5 to-blue-50/50 rounded-lg mb-1 border border-blue-100/50">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-9 h-9 rounded-full bg-[#193153] text-[#ffdd59] font-bold text-sm flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+                                                {admin.avatar_url || admin.profile_data?.avatar_url ? (
+                                                    <img src={admin.avatar_url || admin.profile_data?.avatar_url} alt={admin.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    admin.name.charAt(0)
+                                                )}
+                                            </div>
+                                            <div className="overflow-hidden">
+                                                <p className="font-bold text-[#193153] text-sm leading-tight truncate">{admin.name}</p>
+                                                <p className="text-xs text-gray-500 truncate mt-0.5">{admin.email || 'admin@naap.edu.ph'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <DropdownMenuSeparator className="my-1" />
+
+                                    {/* Options */}
+                                    <DropdownMenuItem asChild className="cursor-pointer rounded-lg text-xs font-medium py-2 px-2.5 text-gray-700 hover:bg-gray-100 hover:text-[#193153] transition-colors">
+                                        <a href="/settings/profile" className="flex items-center gap-2 w-full">
+                                            <Settings className="w-4 h-4 text-blue-600" />
+                                            <span>Account Settings</span>
+                                        </a>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem asChild className="cursor-pointer rounded-lg text-xs font-medium py-2 px-2.5 text-gray-700 hover:bg-gray-100 hover:text-[#193153] transition-colors">
+                                        <a href="/settings/two-factor" className="flex items-center gap-2 w-full">
+                                            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                            <span>Security & 2FA</span>
+                                        </a>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem asChild className="cursor-pointer rounded-lg text-xs font-medium py-2 px-2.5 text-gray-700 hover:bg-gray-100 hover:text-[#193153] transition-colors">
+                                        <a href="/admin/activity-log" className="flex items-center gap-2 w-full">
+                                            <Clock className="w-4 h-4 text-purple-600" />
+                                            <span>Activity Audit Logs</span>
+                                        </a>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuSeparator className="my-1" />
+
+                                    {/* Logout Option */}
+                                    <DropdownMenuItem 
+                                        onClick={handleLogout}
+                                        className="cursor-pointer rounded-lg text-xs font-semibold py-2 px-2.5 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors flex items-center gap-2"
+                                    >
+                                        <LogOut className="w-4 h-4 text-red-500" />
+                                        <span>Log Out</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
 
                         {/* Mobile Menu Button */}
