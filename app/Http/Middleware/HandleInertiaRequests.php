@@ -44,7 +44,7 @@ class HandleInertiaRequests extends Middleware
                     'is_hr_admin' => $request->user()->isHrAdmin(),
                     'is_hr_staff' => $request->user()->isHrStaff(),
                     'is_admin' => $request->user()->isAdmin() || in_array($request->user()->email, ['admin@naap.edu.ph', 'admin@admin.com']),
-                    'avatar_url' => is_array($request->user()->profile_data) 
+                    'avatar_url' => is_array($request->user()->profile_data)
                         ? ($request->user()->profile_data['avatar_url'] ?? $request->user()->profile_data['photo'] ?? $request->user()->profile_data['avatar'] ?? $request->user()->avatar_url ?? null)
                         : ($request->user()->avatar_url ?? null),
                     'campus_name' => 'Pasay Main Campus',

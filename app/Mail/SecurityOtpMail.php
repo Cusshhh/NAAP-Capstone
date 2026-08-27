@@ -13,7 +13,9 @@ class SecurityOtpMail extends Mailable
     use Queueable, SerializesModels;
 
     public string $otpCode;
+
     public string $userName;
+
     public string $actionType;
 
     /**

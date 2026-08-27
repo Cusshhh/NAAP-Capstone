@@ -180,23 +180,23 @@ class ApplicantController extends Controller
                 foreach (['photo', 'avatar', 'avatar_url'] as $photoKey) {
                     if (isset($profile[$photoKey]) && is_string($profile[$photoKey]) && str_starts_with($profile[$photoKey], 'data:image')) {
                         try {
-                            @list($type, $data) = explode(';', $profile[$photoKey]);
-                            @list(, $data)      = explode(',', $data);
+                            @[$type, $data] = explode(';', $profile[$photoKey]);
+                            @[, $data] = explode(',', $data);
                             $decoded = base64_decode($data);
                             if ($decoded) {
-                                $filename = 'avatars/user_' . $user->id . '_' . time() . '.jpg';
-                                $fullPath = storage_path('app/public/' . $filename);
-                                if (!is_dir(dirname($fullPath))) {
+                                $filename = 'avatars/user_'.$user->id.'_'.time().'.jpg';
+                                $fullPath = storage_path('app/public/'.$filename);
+                                if (! is_dir(dirname($fullPath))) {
                                     mkdir(dirname($fullPath), 0755, true);
                                 }
                                 file_put_contents($fullPath, $decoded);
-                                $url = '/storage/' . $filename;
+                                $url = '/storage/'.$filename;
                                 $profile['photo'] = $url;
                                 $profile['avatar'] = $url;
                                 $profile['avatar_url'] = $url;
                             }
                         } catch (\Exception $ex) {
-                            Log::warning('Base64 photo conversion error: ' . $ex->getMessage());
+                            Log::warning('Base64 photo conversion error: '.$ex->getMessage());
                         }
                     }
                 }

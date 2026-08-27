@@ -26,7 +26,7 @@ class OtpVerificationController extends Controller
     public function sendOtp(Request $request): JsonResponse|RedirectResponse
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
         }
 
@@ -82,11 +82,12 @@ class OtpVerificationController extends Controller
         $storedOtp = session('security_otp');
         $expires = session('security_otp_expires');
 
-        if (!$storedOtp || !$expires || now()->greaterThan($expires)) {
+        if (! $storedOtp || ! $expires || now()->greaterThan($expires)) {
             $msg = 'Security code has expired. Please request a new code.';
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
             }
+
             return back()->withErrors(['otp_code' => $msg]);
         }
 
@@ -95,6 +96,7 @@ class OtpVerificationController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
             }
+
             return back()->withErrors(['otp_code' => $msg]);
         }
 

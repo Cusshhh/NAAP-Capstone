@@ -57,18 +57,21 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         $role = is_array($this->profile_data) ? ($this->profile_data['role'] ?? null) : $this->role;
+
         return $role === 'super_admin' || $this->email === 'admin@naap.edu.ph';
     }
 
     public function isHrAdmin(): bool
     {
         $role = is_array($this->profile_data) ? ($this->profile_data['role'] ?? null) : $this->role;
+
         return $role === 'hr_admin' || $this->isAdmin();
     }
 
     public function isHrStaff(): bool
     {
         $role = is_array($this->profile_data) ? ($this->profile_data['role'] ?? null) : $this->role;
+
         return $role === 'hr_staff' || $this->isAdmin();
     }
 
@@ -83,7 +86,7 @@ class User extends Authenticatable
             return true;
         }
 
-        if (is_array($this->profile_data) && !empty($this->profile_data['is_admin'])) {
+        if (is_array($this->profile_data) && ! empty($this->profile_data['is_admin'])) {
             return true;
         }
 

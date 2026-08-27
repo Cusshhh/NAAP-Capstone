@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
-use App\Http\Requests\Settings\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,7 +57,7 @@ class ProfileController extends Controller
             $profileData['avatar'] = null;
         } elseif ($request->hasFile('avatar')) {
             $path = $request->file('avatar')->store('avatars', 'public');
-            $url = '/storage/' . $path;
+            $url = '/storage/'.$path;
             $profileData['avatar_url'] = $url;
             $profileData['photo'] = $url;
             $profileData['avatar'] = $url;
@@ -66,17 +65,17 @@ class ProfileController extends Controller
             $avatarData = $request->input('avatar_data');
             if (str_starts_with($avatarData, 'data:image')) {
                 try {
-                    @list($type, $data) = explode(';', $avatarData);
-                    @list(, $data)      = explode(',', $data);
+                    @[$type, $data] = explode(';', $avatarData);
+                    @[, $data] = explode(',', $data);
                     $decoded = base64_decode($data);
                     if ($decoded) {
-                        $filename = 'avatars/user_' . $user->id . '_' . time() . '.jpg';
-                        $fullPath = storage_path('app/public/' . $filename);
-                        if (!is_dir(dirname($fullPath))) {
+                        $filename = 'avatars/user_'.$user->id.'_'.time().'.jpg';
+                        $fullPath = storage_path('app/public/'.$filename);
+                        if (! is_dir(dirname($fullPath))) {
                             mkdir(dirname($fullPath), 0755, true);
                         }
                         file_put_contents($fullPath, $decoded);
-                        $url = '/storage/' . $filename;
+                        $url = '/storage/'.$filename;
                     } else {
                         $url = $avatarData;
                     }
@@ -96,7 +95,7 @@ class ProfileController extends Controller
 
         \App\Models\ActivityLog::write('Updated Profile Information', "Updated account profile details and avatar for {$user->name}.", 'Account Settings', 'UserCheck', 'text-blue-600 bg-blue-100');
 
-        return back();
+        return to_route('profile.edit');
     }
 
     /**
