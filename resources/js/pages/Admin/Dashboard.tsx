@@ -100,10 +100,11 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
     const { campuses: activeCampuses = [] } = usePage().props as any;
     const [reportCampusId, setReportCampusId] = useState('all');
     const [reportStatus, setReportStatus] = useState('all');
+    const [reportPosition, setReportPosition] = useState('all');
 
     const handleDownloadReport = () => {
         setIsReportModalOpen(false);
-        const url = `/admin/reports/export?campus_id=${reportCampusId}&status=${reportStatus}`;
+        const url = `/admin/reports/export?status=${reportStatus}&position=${encodeURIComponent(reportPosition)}`;
         window.open(url, '_blank');
     };
 
@@ -111,6 +112,7 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
 
     const jobs = getJobs();
     const campuses = Array.from(new Set(jobs.map(j => j.location).filter(Boolean)));
+    const positions = Array.from(new Set(jobs.map(j => j.title).filter(Boolean))).sort();
 
 
     const [viewMode, setViewMode] = useState<'global' | 'campus'>('global');
@@ -162,11 +164,10 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                 </DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4 my-4">
-
                                 <div className="grid gap-2">
-                                    <Label htmlFor="report-status" className="font-semibold text-gray-700">Filter by Status</Label>
+                                    <Label htmlFor="report-status" className="font-semibold text-gray-700 text-xs">Filter by Application Status</Label>
                                     <Select value={reportStatus} onValueChange={setReportStatus}>
-                                        <SelectTrigger id="report-status">
+                                        <SelectTrigger id="report-status" className="text-xs">
                                             <SelectValue placeholder="All Statuses" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -179,13 +180,28 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                         </SelectContent>
                                     </Select>
                                 </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="report-position" className="font-semibold text-gray-700 text-xs">Filter by Position Applied</Label>
+                                    <Select value={reportPosition} onValueChange={setReportPosition}>
+                                        <SelectTrigger id="report-position" className="text-xs">
+                                            <SelectValue placeholder="All Positions" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Positions</SelectItem>
+                                            {positions.map((pos: string) => (
+                                                <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                             <DialogFooter className="gap-2">
                                 <Button variant="outline" onClick={() => setIsReportModalOpen(false)}>
                                     Cancel
                                 </Button>
                                 <Button onClick={handleDownloadReport} className="bg-[#193153] hover:bg-[#193153]/90 text-white font-semibold">
-                                    Download CSV
+                                    <Download className="w-4 h-4 mr-1.5" /> Download CSV (Excel)
                                 </Button>
                             </DialogFooter>
                         </DialogContent>

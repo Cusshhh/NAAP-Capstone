@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { ArrowLeft, MapPin, Briefcase, Clock, Calendar, Users, CheckCircle, Upload, TrendingUp, Shield, Edit } from 'lucide-react';
+import { ArrowLeft, MapPin, Briefcase, Clock, Calendar, Users, CheckCircle, Upload, TrendingUp, Shield, Edit, Plus, Trash2 } from 'lucide-react';
  import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -84,6 +84,8 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
     const [toFollowDocs, setToFollowDocs] = useState<Record<string, boolean>>({});
     const [customFiles, setCustomFiles] = useState<Record<string, File | null>>({});
     const [selectedEligibilities, setSelectedEligibilities] = useState<string[]>([]);
+    const [otherEligibilityText, setOtherEligibilityText] = useState<string>('');
+    const [extraCustomDocs, setExtraCustomDocs] = useState<{ id: number, label: string, file: File | null }[]>([]);
     // Auto-fill from Profile
     // Update the useEffect hook to populate form data from local storage when the application form (isApplyOpen) is opened.
     // This ensures that users don't have to re-enter their information if they have already saved it in their dashboard.
@@ -285,7 +287,12 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                 alternateContact: formData.alternateContact,
                 source: formData.source,
                 openToOthers: formData.openToOthers,
-                eligibilities: selectedEligibilities
+                eligibilities: selectedEligibilities.map(e => {
+                    if (e === 'Other' && otherEligibilityText.trim()) {
+                        return `Other: ${otherEligibilityText.trim()}`;
+                    }
+                    return e;
+                })
             }
         }, {
             onSuccess: () => {
@@ -720,6 +727,25 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                         </Label>
                                     </div>
                                 ))}
+                            </div>
+
+                            {selectedEligibilities.includes("Other") && (
+                                <div className="mt-3 p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl animate-in fade-in slide-in-from-top-2 duration-200 shadow-xs">
+                                    <Label htmlFor="other-eligibility-input" className="text-xs font-bold text-[#193153] mb-1.5 flex items-center gap-1.5">
+                                        <span>Specify Other Eligibility / Rating / License:</span>
+                                        <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Input 
+                                        id="other-eligibility-input"
+                                        type="text"
+                                        placeholder="e.g. CAAP Commercial Pilot License / ATO Rating, CPA, PMP, etc."
+                                        value={otherEligibilityText}
+                                        onChange={(e) => setOtherEligibilityText(e.target.value)}
+                                        className="w-full text-sm bg-white border-blue-300 focus:border-[#193153] focus:ring-[#193153]"
+                                    />
+                                    <p className="text-[11px] text-gray-500 mt-1">Specify your license title, CSC rating, or professional certification.</p>
+                                </div>
+                            )}
 
                                 {job.custom_file_requirements && job.custom_file_requirements.length > 0 && (
                                     <div className="space-y-4 pt-4 border-t border-gray-100">
@@ -744,7 +770,6 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     </div>
                                 )}
                             </div>
-                        </div>
 
                         {/* 3. Contact & Address */}
                         <div className="space-y-4">
@@ -957,72 +982,188 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     const isProfileAvailable = localStorage.getItem(`profile_doc_${user?.id}_${storageKey}`) === 'uploaded';
 
                                     return (
-                                        <div key={i} className={`space-y-2 border p-3 rounded-lg ${isAttached ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
-                                            <div className="flex justify-between items-start">
-                                                <Label className="font-semibold text-gray-700">{docLabel} <span className="text-red-500">*</span></Label>
-                                                <div className="flex items-center gap-2">
-                                                    {isAttached && !toFollowDocs[storageKey] && (
-                                                        <span className="text-[10px] font-bold text-green-700 bg-white px-2 py-0.5 rounded border border-green-200 flex items-center gap-1">
-                                                            <CheckCircle className="w-3 h-3" /> {hasManualContent ? 'Attached' : 'From Profile'}
+                                        <div 
+                                            key={i} 
+                                            className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between h-[145px] shrink-0 ${
+                                                isAttached ? 'bg-green-50/60 border-green-300 shadow-xs' : 'bg-gray-50/80 border-gray-200 hover:border-blue-200'
+                                            }`}
+                                        >
+                                            {/* Top Section: Document Title (Fixed 38px height so 1-line and 2-line titles match perfectly) */}
+                                            <div className="h-[38px] flex items-start border-b border-gray-200/50 pb-1">
+                                                <Label className="font-bold text-xs sm:text-sm text-[#193153] leading-snug line-clamp-2 block">
+                                                    {docLabel} <span className="text-red-500">*</span>
+                                                </Label>
+                                            </div>
+
+                                            {/* Middle Section: Status Badge (Left) & To Follow Checkbox (Right) - Fixed 26px height */}
+                                            <div className="h-[26px] flex items-center justify-between gap-2">
+                                                <div className="flex items-center">
+                                                    {isAttached && !toFollowDocs[storageKey] ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold text-green-700 bg-white border border-green-300 shadow-2xs">
+                                                            <CheckCircle className="w-3 h-3 text-green-600" /> {hasManualContent ? 'Attached' : 'From Profile'}
                                                         </span>
+                                                    ) : (
+                                                        <span className="text-[10px] text-gray-400 font-medium italic">Pending Upload</span>
                                                     )}
-                                                    <div className="flex items-center space-x-1">
-                                                        <Checkbox
-                                                            id={`to-follow-${i}`}
-                                                            checked={toFollowDocs[storageKey] || false}
-                                                            disabled={isAttached}
-                                                            onCheckedChange={(checked) => {
-                                                                setToFollowDocs(prev => ({ ...prev, [storageKey]: !!checked }));
-                                                            }}
-                                                        />
-                                                        <Label htmlFor={`to-follow-${i}`} className="text-xs text-gray-500 cursor-pointer">To Follow</Label>
-                                                    </div>
+                                                </div>
+
+                                                {/* To Follow Toggle */}
+                                                <div className="flex items-center space-x-1.5 shrink-0 bg-white px-2 py-0.5 rounded-md border border-gray-200 shadow-2xs">
+                                                    <Checkbox
+                                                        id={`to-follow-${i}`}
+                                                        checked={toFollowDocs[storageKey] || false}
+                                                        disabled={isAttached}
+                                                        onCheckedChange={(checked) => {
+                                                            setToFollowDocs(prev => ({ ...prev, [storageKey]: !!checked }));
+                                                        }}
+                                                    />
+                                                    <Label htmlFor={`to-follow-${i}`} className="text-[11px] font-medium text-gray-600 cursor-pointer select-none">
+                                                        To Follow
+                                                    </Label>
                                                 </div>
                                             </div>
 
-                                            {!isAttached && !toFollowDocs[storageKey] ? (
-                                                <Input
-                                                    type="file"
-                                                    accept=".pdf,.doc,.docx,.jpg,.png"
-                                                    required={!toFollowDocs[storageKey]}
-                                                    className="bg-white"
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) {
-                                                            handleFileUpload(storageKey, file);
-                                                        }
-                                                    }}
-                                                />
-                                            ) : (
-                                                <div className="text-xs text-gray-500 italic pl-1 flex justify-between items-center bg-white/50 p-2 rounded">
-                                                    <span>{toFollowDocs[storageKey] ? 'Marked as "To Follow".' : (hasManualContent ? 'Ready to upload.' : 'Using profile document.')}</span>
-                                                    {!toFollowDocs[storageKey] && isAttached && (
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-6 text-red-500 hover:text-red-700 hover:bg-red-50 text-[10px]"
-                                                            onClick={() => {
-                                                                localStorage.removeItem(`doc_${user?.id}_${storageKey}`);
-                                                                localStorage.removeItem(`file_${user?.id}_${storageKey}`);
-                                                                localStorage.removeItem(`content_${user?.id}_${storageKey}`);
-                                                                const newDocs = { ...attachedDocs };
-                                                                delete newDocs[storageKey];
-                                                                setAttachedDocs(newDocs);
-                                                                toast.info("Attachment removed.");
-                                                            }}
-                                                        >
-                                                            {hasManualContent ? 'Remove' : 'Change'}
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            )}
+                                            {/* Bottom Section: File Input or Action Container - Fixed 36px height */}
+                                            <div className="h-[36px] flex items-center">
+                                                {!isAttached && !toFollowDocs[storageKey] ? (
+                                                    <Input
+                                                        type="file"
+                                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                        required={!toFollowDocs[storageKey]}
+                                                        className="bg-white h-8 text-xs border-gray-200 focus:border-[#193153] w-full cursor-pointer"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                handleFileUpload(storageKey, file);
+                                                            }
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div className="text-xs text-gray-600 flex justify-between items-center bg-white px-2.5 py-1 rounded-lg border border-gray-200/80 w-full h-8">
+                                                        <span className="font-medium truncate text-[11px]">{toFollowDocs[storageKey] ? 'Marked as "To Follow".' : (hasManualContent ? 'Ready to upload.' : 'Using profile document.')}</span>
+                                                        {!toFollowDocs[storageKey] && isAttached && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-5 text-red-500 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 font-bold shrink-0"
+                                                                onClick={() => {
+                                                                    localStorage.removeItem(`doc_${user?.id}_${storageKey}`);
+                                                                    localStorage.removeItem(`file_${user?.id}_${storageKey}`);
+                                                                    localStorage.removeItem(`content_${user?.id}_${storageKey}`);
+                                                                    const newDocs = { ...attachedDocs };
+                                                                    delete newDocs[storageKey];
+                                                                    setAttachedDocs(newDocs);
+                                                                    toast.info("Attachment removed.");
+                                                                }}
+                                                            >
+                                                                {hasManualContent ? 'Remove' : 'Change'}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )
                                 })}
+
+                                {/* 8th Slot in Grid: Dashed "+ Add Other Document" Card */}
+                                <div 
+                                    onClick={() => {
+                                        setExtraCustomDocs(prev => [
+                                            ...prev,
+                                            { id: Date.now(), label: '', file: null }
+                                        ]);
+                                    }}
+                                    className="p-3.5 rounded-xl border-2 border-dashed border-blue-300 hover:border-blue-600 bg-blue-50/40 hover:bg-blue-50/80 transition-all flex flex-col items-center justify-center h-[145px] shrink-0 cursor-pointer group text-center space-y-1.5 shadow-2xs"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 group-hover:bg-blue-600 text-blue-600 group-hover:text-white flex items-center justify-center transition-colors shadow-2xs">
+                                        <Plus className="w-5 h-5 stroke-[2.5]" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-xs sm:text-sm text-[#193153] group-hover:text-blue-700">Add Other Document</h4>
+                                        <p className="text-[11px] text-gray-500 font-medium">Click to upload custom supporting files</p>
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* Extra Custom Supporting Documents Upload List */}
+                            {extraCustomDocs.length > 0 && (
+                                <div className="space-y-3 pt-3 border-t border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="font-bold text-xs text-[#193153] flex items-center gap-1.5">
+                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                            Additional Supporting Documents ({extraCustomDocs.length})
+                                        </Label>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="border-dashed border-blue-400 text-blue-700 hover:bg-blue-50 font-bold gap-1 text-xs h-7 px-2.5 shadow-xs cursor-pointer"
+                                            onClick={() => {
+                                                setExtraCustomDocs(prev => [
+                                                    ...prev,
+                                                    { id: Date.now(), label: '', file: null }
+                                                ]);
+                                            }}
+                                        >
+                                            <Plus className="w-3 h-3 text-blue-600" />
+                                            Add Another
+                                        </Button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {extraCustomDocs.map((doc, idx) => (
+                                            <div key={doc.id} className="p-3 bg-blue-50/60 border border-blue-200 rounded-xl space-y-2 relative shadow-xs animate-in fade-in duration-200">
+                                                <div className="flex justify-between items-center gap-2">
+                                                    <Label className="text-xs font-bold text-[#193153]">Other Document #{idx + 1}</Label>
+                                                    <button
+                                                        type="button"
+                                                        className="text-red-500 hover:text-red-700 p-1 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                                                        onClick={() => {
+                                                            setExtraCustomDocs(prev => prev.filter(d => d.id !== doc.id));
+                                                            if (doc.label) {
+                                                                const newFiles = { ...customFiles };
+                                                                delete newFiles[doc.label];
+                                                                setCustomFiles(newFiles);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2 className="w-3 h-3" /> Remove
+                                                    </button>
+                                                </div>
+                                                <Input 
+                                                    type="text"
+                                                    placeholder="Document Name (e.g. Flight Logbook, Medical Cert, NBI Clearance)"
+                                                    value={doc.label}
+                                                    onChange={(e) => {
+                                                        const newLabel = e.target.value;
+                                                        setExtraCustomDocs(prev => prev.map(d => d.id === doc.id ? { ...d, label: newLabel } : d));
+                                                        if (doc.file && newLabel) {
+                                                            setCustomFiles(prev => ({ ...prev, [newLabel]: doc.file }));
+                                                        }
+                                                    }}
+                                                    className="text-xs bg-white border-blue-200 focus:border-[#193153]"
+                                                />
+                                                <Input 
+                                                    type="file"
+                                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setExtraCustomDocs(prev => prev.map(d => d.id === doc.id ? { ...d, file } : d));
+                                                        if (doc.label) {
+                                                            setCustomFiles(prev => ({ ...prev, [doc.label]: file }));
+                                                        }
+                                                    }}
+                                                    className="bg-white text-xs h-9 border-blue-200 cursor-pointer"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        </div>
+                    </div>
 
                         <DialogFooter className="p-4 border-t shrink-0 bg-gray-50 flex items-center justify-end gap-3">
                             <Button type="button" variant="outline" onClick={() => setIsApplyOpen(false)} disabled={isSubmitting}>

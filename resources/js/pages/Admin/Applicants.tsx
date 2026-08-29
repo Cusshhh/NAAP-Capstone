@@ -24,9 +24,10 @@ export default function Applicants({ auth, applications: serverApplications }: {
     const [sortBy, setSortBy] = useState('date');
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [reportStatus, setReportStatus] = useState('all');
+    const [reportPosition, setReportPosition] = useState('all');
 
     const handleDownloadReport = () => {
-        window.location.href = `/admin/reports/export?status=${encodeURIComponent(reportStatus)}`;
+        window.location.href = `/admin/reports/export?status=${encodeURIComponent(reportStatus)}&position=${encodeURIComponent(reportPosition)}`;
         setIsReportModalOpen(false);
     };
     const [applications, setApplications] = useState(serverApplications || getApplications()); // Use server data if available
@@ -589,9 +590,9 @@ export default function Applicants({ auth, applications: serverApplications }: {
                             </DialogHeader>
                             <div className="space-y-4 my-4">
                                 <div className="grid gap-2">
-                                    <label htmlFor="applicant-report-status" className="font-semibold text-gray-700 text-sm">Filter by Status</label>
+                                    <label htmlFor="applicant-report-status" className="font-semibold text-gray-700 text-xs">Filter by Application Status</label>
                                     <Select value={reportStatus} onValueChange={setReportStatus}>
-                                        <SelectTrigger id="applicant-report-status">
+                                        <SelectTrigger id="applicant-report-status" className="text-xs">
                                             <SelectValue placeholder="All Statuses" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -605,13 +606,32 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                         </SelectContent>
                                     </Select>
                                 </div>
+
+                                <div className="grid gap-2">
+                                    <label htmlFor="applicant-report-position" className="font-semibold text-gray-700 text-xs">Filter by Position Applied</label>
+                                    <Select value={reportPosition} onValueChange={setReportPosition}>
+                                        <SelectTrigger id="applicant-report-position" className="text-xs">
+                                            <SelectValue placeholder="All Positions" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Positions</SelectItem>
+                                            {positions.map((pos: string) => (
+                                                <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <p className="text-[11px] text-gray-500 bg-blue-50 p-2.5 rounded-lg border border-blue-100">
+                                    <strong>Includes 25 Columns:</strong> Applicant Name, Email, Contact No., Position, Education, Eligibilities, Years Experience, Training Hours, Awards, Skills, Address, IP/PWD, Uploaded & Custom Documents, Status, Rejection Notes, and Submission Dates.
+                                </p>
                             </div>
                             <DialogFooter className="gap-2">
                                 <Button variant="outline" onClick={() => setIsReportModalOpen(false)}>
                                     Cancel
                                 </Button>
                                 <Button onClick={handleDownloadReport} className="bg-[#193153] hover:bg-[#193153]/90 text-white font-semibold">
-                                    Download CSV
+                                    <Download className="w-4 h-4 mr-1.5" /> Download CSV (Excel)
                                 </Button>
                             </DialogFooter>
                         </DialogContent>

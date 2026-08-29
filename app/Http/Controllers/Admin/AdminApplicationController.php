@@ -73,6 +73,14 @@ class AdminApplicationController extends Controller
                 $query->where('status', $request->status);
             }
 
+            if ($request->filled('job_title') && $request->job_title !== 'all') {
+                $query->where('job_title', $request->job_title);
+            }
+
+            if ($request->filled('position') && $request->position !== 'all') {
+                $query->where('job_title', $request->position);
+            }
+
             // Order chronologically for clean 1, 2, 3... numbering
             $applications = $query->orderBy('id', 'asc')->get();
 
@@ -99,13 +107,19 @@ class AdminApplicationController extends Controller
                     'Position Applied For',
                     'Campus / Station',
                     'Educational Attainment',
+                    'Eligibilities & Licenses',
+                    'Years of Relevant Experience',
+                    'Training / Seminar Hours',
+                    'Awards & Recognitions',
+                    'Skills & Competencies',
                     'Complete Address',
                     'Age',
                     'Sex / Gender',
                     'Civil Status',
-                    'Years of Relevant Experience',
-                    'Training / Seminar Hours',
-                    'Skills & Competencies',
+                    'Indigenous People (IP)',
+                    'Person with Disability (PWD)',
+                    'Uploaded Documents Summary',
+                    'Custom Extra Documents Uploaded',
                     'Documents to Follow',
                     'Application Status',
                     'Status Notes / Rejection Reason',
@@ -116,8 +130,37 @@ class AdminApplicationController extends Controller
                 $rowNum = 1;
                 foreach ($applications as $app) {
                     $dyn = $app->dynamic_responses ?? [];
-                    $skills = isset($dyn['skills']) && is_array($dyn['skills']) ? implode(', ', $dyn['skills']) : ($dyn['skills'] ?? 'N/A');
-                    $toFollow = is_array($app->to_follow_docs) ? implode(', ', $app->to_follow_docs) : ($app->to_follow_docs ?? 'None');
+                    
+                    // Format Eligibilities
+                    $eligibilities = isset($dyn['eligibilities']) && is_array($dyn['eligibilities'])
+                        ? implode('; ', $dyn['eligibilities'])
+                        : ($dyn['eligibilities'] ?? 'N/A');
+
+                    // Format Skills
+                    $skills = isset($dyn['skills']) && is_array($dyn['skills'])
+                        ? implode(', ', $dyn['skills'])
+                        : ($dyn['skills'] ?? 'N/A');
+
+                    // Format Awards
+                    $awards = isset($dyn['awards']) && is_array($dyn['awards'])
+                        ? implode(', ', $dyn['awards'])
+                        : ($dyn['awards'] ?? 'N/A');
+
+                    // Format Uploaded Standard Documents
+                    $uploadedDocsList = isset($dyn['documents']) && is_array($dyn['documents'])
+                        ? implode(', ', array_map(fn($d) => is_array($d) ? ($d['name'] ?? 'Document') : $d, $dyn['documents']))
+                        : 'N/A';
+
+                    // Format Custom File Uploads
+                    $customFilesList = 'None';
+                    if (!empty($app->custom_file_responses) && is_array($app->custom_file_responses)) {
+                        $customFilesList = implode(', ', array_keys($app->custom_file_responses));
+                    }
+
+                    // Format Documents to Follow
+                    $toFollow = is_array($app->to_follow_docs) && !empty($app->to_follow_docs)
+                        ? implode(', ', $app->to_follow_docs)
+                        : 'None';
 
                     // Clean phone number formatting for Excel text display (prevents 9.22E+09)
                     $rawPhone = $app->phone_number ?? ($dyn['contactNumber'] ?? 'N/A');
@@ -128,9 +171,13 @@ class AdminApplicationController extends Controller
                     $civilFormatted = isset($dyn['civilStatus']) && $dyn['civilStatus'] ? ucfirst(strtolower($dyn['civilStatus'])) : 'N/A';
                     $educationFormatted = $app->education ? ucfirst($app->education) : 'N/A';
 
+                    // Standardize IP and PWD
+                    $isIPFormatted = isset($dyn['isIP']) && $dyn['isIP'] ? ucfirst($dyn['isIP']) : 'No';
+                    $isPWDFormatted = isset($dyn['isPWD']) && $dyn['isPWD'] ? ucfirst($dyn['isPWD']) : 'No';
+
                     // Format dates cleanly to prevent ### hashtag display in Excel
-                    $submittedDate = $app->created_at ? $app->created_at->format('Y-m-d') : 'N/A';
-                    $updatedDate = $app->updated_at ? $app->updated_at->format('Y-m-d') : 'N/A';
+                    $submittedDate = $app->created_at ? $app->created_at->format('Y-m-d H:i:s') : 'N/A';
+                    $updatedDate = $app->updated_at ? $app->updated_at->format('Y-m-d H:i:s') : 'N/A';
 
                     fputcsv($file, [
                         $rowNum++,
@@ -139,15 +186,21 @@ class AdminApplicationController extends Controller
                         $app->email,
                         $phoneFormatted,
                         $app->job_title,
-                        $app->campus ?? 'Villamor Air Base, Pasay City',
+                        'Villamor Air Base, Pasay City',
                         $educationFormatted,
+                        $eligibilities,
+                        $dyn['yearsOfExperience'] ?? 'N/A',
+                        $dyn['trainingHours'] ?? 'N/A',
+                        $awards,
+                        $skills,
                         $dyn['address'] ?? 'N/A',
                         $dyn['age'] ?? 'N/A',
                         $sexFormatted,
                         $civilFormatted,
-                        $dyn['yearsOfExperience'] ?? 'N/A',
-                        $dyn['trainingHours'] ?? 'N/A',
-                        $skills,
+                        $isIPFormatted,
+                        $isPWDFormatted,
+                        $uploadedDocsList,
+                        $customFilesList,
                         $toFollow,
                         $app->status,
                         $dyn['rejection_reason'] ?? 'N/A',
