@@ -1203,8 +1203,8 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 <div className="flex items-center justify-between max-w-md mx-auto pt-2 pb-4">
                                     {[
                                         { label: 'Applied', active: true },
-                                        { label: 'Review', active: ['Under Review', 'Shortlisted', 'Interview Scheduled', 'Interview', 'Hired', 'Rejected'].includes(application.status) },
-                                        { label: 'Interview', active: ['Shortlisted', 'Interview Scheduled', 'Interview', 'Hired', 'Rejected'].includes(application.status) },
+                                        { label: 'Review', active: ['Under Review', 'Interview Scheduled', 'Interview', 'Hired', 'Rejected'].includes(application.status) },
+                                        { label: 'Interview', active: ['Interview Scheduled', 'Interview', 'Hired', 'Rejected'].includes(application.status) },
                                         { label: 'Result', active: ['Hired', 'Rejected'].includes(application.status), isEnd: true }
                                     ].map((step, i) => (
                                         <div key={i} className="flex-1 flex items-center">
@@ -1240,7 +1240,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 </div>
                             )}
 
-                            {/* 2. Scheduled Interview Details (If status is shortlisted or interview is loaded) */}
+                            {/* 2. Scheduled Interview Details (If interview is loaded) */}
                             {interview && (
                                 <div className="bg-[#193153] text-white p-5 rounded-lg shadow-inner border border-blue-900 relative overflow-hidden">
                                     <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-4 translate-y-4">

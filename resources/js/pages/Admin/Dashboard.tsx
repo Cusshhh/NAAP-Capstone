@@ -21,13 +21,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getAnalyticsData, mockInterviews, getActivities, getStaffingData, getJobs, mockEvents } from '@/data/mockData';
+import { getAnalyticsData, mockInterviews, getActivities, getStaffingData, getJobs, mockEvents, getApplications } from '@/data/mockData';
 import axios from 'axios';
 import AdminLayout from '@/layouts/AdminLayout';
 
 export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [], unfilledStaffingCount = 16 }: { auth: any, dbApplications?: any[], dbJobs?: any[], unfilledStaffingCount?: number }) {
     const admin = auth?.user || { name: 'Admin' };
     const [analytics, setAnalytics] = useState(() => getAnalyticsData(undefined, dbApplications, dbJobs, unfilledStaffingCount));
+    const allApps = getApplications(dbApplications);
+    const archivedCount = allApps.filter((a: any) => a.status === 'Archived' || (a.status || '').includes('Archived')).length;
     const [activities, setActivities] = useState(() => getActivities(dbApplications, dbJobs));
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [realEvents, setRealEvents] = useState<any[]>([]);
@@ -174,9 +176,10 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                             <SelectItem value="all">All Statuses</SelectItem>
                                             <SelectItem value="Submitted">Submitted</SelectItem>
                                             <SelectItem value="Under Review">Under Review</SelectItem>
-                                            <SelectItem value="Shortlisted">Shortlisted</SelectItem>
+                                            <SelectItem value="Interview Scheduled">Interview Scheduled</SelectItem>
                                             <SelectItem value="Hired">Hired</SelectItem>
                                             <SelectItem value="Rejected">Rejected</SelectItem>
+                                            <SelectItem value="Archived">Archived</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -195,6 +198,10 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                         </SelectContent>
                                     </Select>
                                 </div>
+
+                                <p className="text-[11px] text-gray-500 bg-blue-50 p-2.5 rounded-lg border border-blue-100">
+                                    <strong>Includes 25 Columns:</strong> Applicant Name, Email, Contact No., Position, Education, Eligibilities, Years Experience, Training Hours, Awards, Skills, Address, IP/PWD, Uploaded & Custom Documents, Status, Rejection Notes, and Submission Dates.
+                                </p>
                             </div>
                             <DialogFooter className="gap-2">
                                 <Button variant="outline" onClick={() => setIsReportModalOpen(false)}>
@@ -277,14 +284,14 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                         </Card>
                     </Link>
 
-                    {/* Shortlisted Candidates Card */}
-                    <Link href="/admin/applicants?status=Shortlisted">
+                    {/* Archived Applications Card */}
+                    <Link href="/admin/applicants?status=Archived">
                         <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-0 shadow-lg cursor-pointer hover:scale-105 transition-transform">
                             <CardContent className="p-6">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-indigo-100 mb-1 text-sm font-medium uppercase tracking-wider">Shortlisted</p>
-                                        <p className="text-3xl font-bold">{currentData.shortlistedCandidates}</p>
+                                        <p className="text-indigo-100 mb-1 text-sm font-medium uppercase tracking-wider">Archived</p>
+                                        <p className="text-3xl font-bold">{archivedCount}</p>
                                     </div>
                                     <div className="bg-white/20 p-3 rounded-xl">
                                         <Award className="h-8 w-8 text-white" />

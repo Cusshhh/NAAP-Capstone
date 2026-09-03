@@ -224,7 +224,7 @@ const ChatBot = () => {
             }
             // Interviews
             else if (lowerInput.includes('interview') || lowerInput.includes('schedule')) {
-                botResponse = "If shortlisted, you'll receive an email with your interview schedule. Confirmed interviews will also appear in the 'Interviews & Events' section on your dashboard.";
+                botResponse = "If selected for interview, you'll receive an email with your interview schedule. Confirmed interviews will also appear in the 'Interviews & Events' section on your dashboard.";
             }
             // Documents/Resume
             else if (lowerInput.includes('document') || lowerInput.includes('resume') || lowerInput.includes('cv') || lowerInput.includes('file')) {
@@ -271,7 +271,7 @@ const ChatBot = () => {
             if (lowerInput.includes('status') || lowerInput.includes('application') || lowerInput.includes('track')) {
                 botResponse = "You can track your application status directly on your dashboard under 'My Applications'. Use the 'Check Status' button above for a quick view!";
             } else if (lowerInput.includes('interview') || lowerInput.includes('schedule')) {
-                botResponse = "If shortlisted, you'll receive an email with your interview schedule. Confirmed interviews will also appear in the 'Interviews & Events' section on your dashboard.";
+                botResponse = "If selected for interview, you'll receive an email with your interview schedule. Confirmed interviews will also appear in the 'Interviews & Events' section on your dashboard.";
             } else if (lowerInput.includes('benefits') || lowerInput.includes('salary')) {
                 botResponse = "We offer competitive compensation packages! You can view our general benefits on the 'Employee Benefits' page.";
             } else if (lowerInput.includes('withdraw') || lowerInput.includes('cancel')) {
@@ -692,7 +692,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         if (filterStatus === 'Total') return true;
         if (filterStatus === 'Submitted') return app.status === 'Submitted';
         if (filterStatus === 'In Review') return app.status === 'Under Review';
-        if (filterStatus === 'Interview') return app.status === 'Shortlisted';
+        if (filterStatus === 'Interview') return app.status === 'Interview Scheduled' || app.status === 'Interview';
         return false;
     });
 
@@ -1001,7 +1001,6 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         total: myApplications.length,
         submitted: myApplications.filter(a => a.status === 'Submitted').length,
         underReview: myApplications.filter(a => a.status === 'Under Review').length,
-        shortlisted: myApplications.filter(a => a.status === 'Shortlisted').length,
         rejected: myApplications.filter(a => a.status === 'Rejected').length,
         hired: myApplications.filter(a => a.status === 'Hired').length,
     };
@@ -1213,7 +1212,6 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         const styles: Record<string, string> = {
             'Submitted': 'bg-blue-100 text-blue-700 border-blue-200',
             'Under Review': 'bg-yellow-100 text-yellow-700 border-yellow-200',
-            'Shortlisted': 'bg-[#eef2ff] text-[#4f46e5] border-[#c7d2fe]',
             'Interview': 'bg-purple-100 text-purple-700 border-purple-200',
             'Hired': 'bg-emerald-100 text-emerald-700 border-emerald-200',
             'Rejected': 'bg-red-100 text-red-700 border-red-200',
@@ -1222,7 +1220,6 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         const icons: Record<string, any> = {
             'Submitted': Clock,
             'Under Review': FileText,
-            'Shortlisted': Award,
             'Interview': Calendar,
             'Hired': CheckCircle,
             'Rejected': XCircle,
@@ -1519,7 +1516,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                             { label: 'Total', value: statusCounts.total, color: 'text-gray-700', bg: 'bg-gray-50', border: 'border-gray-200' },
                                             { label: 'Submitted', value: statusCounts.submitted, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
                                             { label: 'In Review', value: statusCounts.underReview, color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200' },
-                                            { label: 'Interview', value: statusCounts.shortlisted, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
+                                            { label: 'Interview', value: scheduledInterviewsCount, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
                                         ].map((stat, i) => (
                                             <div
                                                 key={i}

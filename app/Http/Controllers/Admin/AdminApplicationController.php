@@ -15,7 +15,7 @@ class AdminApplicationController extends Controller
     {
         try {
             $validated = $request->validate([
-                'status' => 'required|string|in:Submitted,Under Review,Shortlisted,Interview,Interview Scheduled,Rejected,Hired,Archived',
+                'status' => 'required|string|in:Submitted,Under Review,Interview,Interview Scheduled,Rejected,Hired,Archived',
                 'rejection_reason' => 'nullable|string',
             ]);
 

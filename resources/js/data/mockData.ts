@@ -597,7 +597,7 @@ const generateMockApplications = (count: number) => {
     const firstNames = ['Juan', 'Maria', 'Pedro', 'Ana', 'Carlos', 'John', 'Sarah', 'Michael', 'Emma', 'David', 'James', 'Emily', 'Robert', 'Linda', 'William', 'Elizabeth', 'Joseph', 'Jennifer', 'Thomas', 'Susan', 'Daniel', 'Margaret', 'Matthew', 'Lisa', 'Anthony', 'Nancy', 'Mark', 'Karen', 'Donald', 'Betty'];
     const lastNames = ['Dela Cruz', 'Santos', 'Penduko', 'Reyes', 'Garcia', 'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White'];
     const positions = ['Flight Instructor', 'Aircraft Mechanic', 'Ground Instructor', 'Administrative Assistant', 'HR Specialist', 'Maintenance Technician', 'Safety Officer', 'Operations Manager', 'student Pilot'];
-    const statuses = ['Submitted', 'Under Review', 'Shortlisted', 'Rejected', 'Hired'];
+    const statuses = ['Submitted', 'Under Review', 'Interview Scheduled', 'Rejected', 'Hired'];
     const educationList = ['BS Aviation Major in Flying', 'BS Aircraft Maintenance Technology', 'BS Business Administration', 'BS Tourism', 'BS Psychology', 'BS Education', 'Vocational Diploma'];
     const skillsList = ['CPL', 'Instrument', 'Safety Management', 'AMT License', 'Troubleshooting', 'Logbook', 'MS Office', 'Organization', 'Communication', 'Customer Service', 'Public Speaking', 'Aviation Law', 'Project Management', 'Team Leadership'];
 
@@ -606,10 +606,9 @@ const generateMockApplications = (count: number) => {
     // Status weights for realistic distribution
     const getWeightedStatus = () => {
         const rand = Math.random();
-        if (rand < 0.30) return 'Submitted';
-        if (rand < 0.55) return 'Under Review';
-        if (rand < 0.80) return 'Rejected';
-        if (rand < 0.92) return 'Shortlisted';
+        if (rand < 0.35) return 'Submitted';
+        if (rand < 0.65) return 'Under Review';
+        if (rand < 0.85) return 'Rejected';
         return 'Hired';
     };
 
@@ -628,8 +627,6 @@ const generateMockApplications = (count: number) => {
         let targetScore = 0;
         if (status === 'Hired') {
             targetScore = 35 + Math.floor(Math.random() * 11); // 35-45
-        } else if (status === 'Shortlisted') {
-            targetScore = 28 + Math.floor(Math.random() * 13); // 28-40
         } else if (status === 'Under Review') {
             targetScore = 15 + Math.floor(Math.random() * 21); // 15-35
         } else if (status === 'Rejected') {
@@ -854,25 +851,19 @@ export const getActivities = (dbApps: any[] = [], dbJobs: any[] = []) => {
                 campus: app.campus || 'Pasay City',
                 timestamp: dateObj.getTime()
             });
-        } else if (app.status === 'Shortlisted' || app.status === 'Interview' || app.status === 'Interview Scheduled' || app.status === 'Under Review') {
+        } else if (app.status === 'Interview' || app.status === 'Interview Scheduled' || app.status === 'Under Review') {
             const isInterview = app.status === 'Interview' || app.status === 'Interview Scheduled';
             const actionName = isInterview
                 ? 'Interview Scheduled' 
-                : app.status === 'Under Review' 
-                    ? 'Application Under Review' 
-                    : 'Candidate Shortlisted';
+                : 'Application Under Review';
 
             const iconName = isInterview
                 ? 'Calendar' 
-                : app.status === 'Under Review' 
-                    ? 'FileText' 
-                    : 'Users';
+                : 'FileText';
 
             const colorClass = isInterview
                 ? 'text-purple-500 bg-purple-50' 
-                : app.status === 'Under Review' 
-                    ? 'text-amber-600 bg-amber-50' 
-                    : 'text-indigo-500 bg-indigo-50';
+                : 'text-amber-600 bg-amber-50';
 
             activities.push({
                 id: `db_app_short_${app.id}`,
@@ -1106,7 +1097,7 @@ export const getAnalyticsData = (campus?: string, dbApps?: any[], dbJobs?: any[]
     const totalApplicants = isNaN(totalCount) ? 0 : totalCount;
     const openPositions = filteredJobs.filter(job => job.status === 'Open').length;
     const pendingApplications = filteredApplications.filter(app => ['Submitted', 'Under Review'].includes(app.status)).length;
-    const shortlistedCandidates = filteredApplications.filter(app => app.status === 'Shortlisted').length;
+    const shortlistedCandidates = 0;
     const rejectedApplications = filteredApplications.filter(app => app.status === 'Rejected').length;
 
     // Calculate trends based on the current month
@@ -1151,7 +1142,7 @@ export const getAnalyticsData = (campus?: string, dbApps?: any[], dbJobs?: any[]
     const applicationsByStatus = [
         { name: 'Submitted', value: statusCounts['Submitted'] || 0 },
         { name: 'Under Review', value: statusCounts['Under Review'] || 0 },
-        { name: 'Shortlisted', value: statusCounts['Shortlisted'] || 0 },
+        { name: 'Interview Scheduled', value: statusCounts['Interview Scheduled'] || statusCounts['Interview'] || 0 },
         { name: 'Rejected', value: statusCounts['Rejected'] || 0 },
         { name: 'Hired', value: statusCounts['Hired'] || 0 },
     ];

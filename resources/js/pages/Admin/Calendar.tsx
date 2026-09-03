@@ -128,13 +128,15 @@ export default function AdminCalendar() {
         title: '',
         date: '',
         time: '',
-        type: 'Personal'
+        venue: '',
+        meetingLink: '',
+        type: 'Meeting'
     });
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const handleAddEvent = async () => {
         if (!newEvent.title || !newEvent.date || !newEvent.time) {
-            toast.error("Please fill in all fields.");
+            toast.error("Please fill in all required fields.");
             return;
         }
 
@@ -171,7 +173,9 @@ export default function AdminCalendar() {
                 title: newEvent.title,
                 date: isoDate,
                 time: newEvent.time,
-                type: newEvent.type
+                type: newEvent.type,
+                venue: newEvent.venue,
+                meeting_link: newEvent.meetingLink
             });
             dbEvent = response.data;
         } catch (e: any) {
@@ -183,13 +187,17 @@ export default function AdminCalendar() {
             title: dbEvent.title,
             date: formattedDate,
             time: dbEvent.time,
-            type: dbEvent.type
+            type: dbEvent.type,
+            venue: dbEvent.venue || newEvent.venue,
+            meetingLink: dbEvent.meeting_link || newEvent.meetingLink
         } : {
             id: `local_${Date.now()}`,
             title: newEvent.title,
             date: formattedDate,
             time: newEvent.time,
-            type: newEvent.type
+            type: newEvent.type,
+            venue: newEvent.venue,
+            meetingLink: newEvent.meetingLink
         };
 
         const storageKey = `admin_custom_events_${auth?.user?.id || 'admin'}`;
@@ -204,7 +212,7 @@ export default function AdminCalendar() {
             setEvents(prev => [eventToAdd, ...prev]);
         }
 
-        setNewEvent({ title: '', date: '', time: '', type: 'Personal' });
+        setNewEvent({ title: '', date: '', time: '', venue: '', meetingLink: '', type: 'Meeting' });
         setIsDialogOpen(false);
         toast.success("Event added successfully!");
     };
@@ -458,12 +466,32 @@ export default function AdminCalendar() {
                                                             <SelectValue placeholder="Select type" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="Personal">Personal</SelectItem>
                                                             <SelectItem value="Interview">Interview</SelectItem>
+                                                            <SelectItem value="Meeting">Meeting / Webinar</SelectItem>
                                                             <SelectItem value="Deadline">Deadline</SelectItem>
-                                                            <SelectItem value="Meeting">Meeting</SelectItem>
+                                                            <SelectItem value="Personal">Corporate Event</SelectItem>
                                                         </SelectContent>
                                                     </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="venue">Venue / Location</Label>
+                                                    <Input
+                                                        id="venue"
+                                                        value={newEvent.venue}
+                                                        onChange={e => setNewEvent({ ...newEvent, venue: e.target.value })}
+                                                        placeholder="e.g., NAAP Main Auditorium / Zoom"
+                                                        className="h-12 border-gray-200 focus:ring-[#193153]"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="meetingLink">Online Meeting Link / URL (Optional)</Label>
+                                                    <Input
+                                                        id="meetingLink"
+                                                        value={newEvent.meetingLink}
+                                                        onChange={e => setNewEvent({ ...newEvent, meetingLink: e.target.value })}
+                                                        placeholder="e.g., https://zoom.us/j/123456789"
+                                                        className="h-12 border-gray-200 focus:ring-[#193153]"
+                                                    />
                                                 </div>
                                             </div>
                                             <DialogFooter className="gap-2 sm:gap-0">

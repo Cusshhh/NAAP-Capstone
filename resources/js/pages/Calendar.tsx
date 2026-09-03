@@ -1,13 +1,11 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Calendar as CalendarIcon, ChevronLeft, Clock, MapPin, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, Clock, MapPin, ExternalLink, FileText, Users, Info, Video, Link as LinkIcon } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mockEvents, getJobs } from '@/data/mockData';
 
@@ -22,6 +20,18 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
 
     const [dbCustomEvents, setDbCustomEvents] = useState<any[]>([]);
     const [dbInterviews, setDbInterviews] = useState<any[]>([]);
+    const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+
+    const extractUrl = (event: any) => {
+        if (!event) return null;
+        if (event.meetingLink) return event.meetingLink;
+        if (event.link) return event.link;
+        if (event.url) return event.url;
+        if (event.meeting_link) return event.meeting_link;
+        const combinedText = `${event.venue || ''} ${event.notes || ''} ${event.description || ''}`;
+        const urlMatch = combinedText.match(/https?:\/\/[^\s]+/i);
+        return urlMatch ? urlMatch[0] : null;
+    };
 
     // Helper to build dynamic and custom user events
     const buildEvents = (customEventsList: any[] = [], interviewsList: any[] = []) => {
@@ -33,10 +43,12 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
             title: 'NAAP Career Fair Webinar',
             date: 'Feb 20, 2026',
             time: '2:00 PM',
-            type: 'Meeting'
+            venue: 'NAAP Main Auditorium & Online Zoom',
+            meetingLink: 'https://zoom.us/j/naap-career-fair-2026',
+            type: 'Meeting',
+            description: 'Annual NAAP Career Fair and Aviation Industry Orientation. Click the Join Meeting button below to enter the Zoom webinar room.',
+            panelMembers: 'NAAP HR Selection Board & Guest Panelists'
         });
-
-
 
         // Load real Scheduled Interviews from admin
         const localSavedInterviews = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]') : [];
@@ -78,18 +90,21 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                 eventsList.push({
                     id: `real_interview_${interview.id || interview.date + '_' + interview.time}`,
                     title: `Interview: ${interview.position || 'School Nurse'}`,
+                    position: interview.position,
+                    candidateName: interview.candidateName || interview.candidate_name,
                     date: formattedDate,
                     time: interview.time,
-                    venue: interview.venue,
-                    panelMembers: interview.panelMembers || interview.panel_members,
+                    venue: interview.venue || 'NAAP Administrative Building - Room 101B',
+                    meetingLink: interview.meetingLink || interview.meeting_link || interview.link || null,
+                    panelMembers: interview.panelMembers || interview.panel_members || 'NAAP HR Committee & Department Chair',
+                    notes: interview.notes || interview.instructions || interview.description || 'Please arrive 15 minutes before your scheduled slot. Bring 2 valid photo IDs and original hardcopies of submitted documents.',
                     type: 'Interview',
                     jobId: matchingApp ? matchingApp.jobId : null
                 });
             }
         });
 
-        // Load custom events from database & applicant LocalStorage
-        const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(`applicant_custom_events_${user?.id || 'guest'}`) || '[]') : [];
+        // Add official DB events (e.g. general HR announcements/deadlines)
         const formattedDbEvents = customEventsList.map((e: any) => {
             let formattedDate = e.date;
             try {
@@ -102,19 +117,21 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                 date: formattedDate,
                 time: e.time,
                 type: e.type,
-                venue: e.venue,
+                venue: e.venue || 'NAAP Main Campus',
+                meetingLink: e.meetingLink || e.meeting_link || e.link || null,
+                notes: e.notes || e.description || e.instructions,
+                panelMembers: e.panelMembers || e.panel_members
             };
         });
 
-        const allCustomEvents = [...formattedDbEvents, ...localCustom].reduce((acc: any[], item: any) => {
-            if (!acc.some(x => String(x.id) === String(item.id))) {
-                acc.push(item);
+        formattedDbEvents.forEach((e: any) => {
+            if (!eventsList.some(item => String(item.id) === String(e.id))) {
+                eventsList.push(e);
             }
-            return acc;
-        }, []);
+        });
         
         // Sort events by date descending (newest/most recent first)
-        return [...eventsList, ...allCustomEvents].sort((a, b) => {
+        return eventsList.sort((a, b) => {
             const dateA = a.date ? new Date(a.date).getTime() : 0;
             const dateB = b.date ? new Date(b.date).getTime() : 0;
             return dateB - dateA;
@@ -146,121 +163,13 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
         setEvents(buildEvents(dbCustomEvents, dbInterviews));
 
         const handleStorage = (e: StorageEvent) => {
-            if (e.key === 'custom_calendar_events' || e.key === 'scheduled_interviews_custom') {
+            if (e.key === 'scheduled_interviews_custom') {
                 setEvents(buildEvents(dbCustomEvents, dbInterviews));
             }
         };
         window.addEventListener('storage', handleStorage);
         return () => window.removeEventListener('storage', handleStorage);
     }, [dbCustomEvents, dbInterviews, applications, jobs]);
-
-    // Form state
-    const [newEvent, setNewEvent] = useState({
-        title: '',
-        date: '',
-        time: '',
-        type: 'Personal'
-    });
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-    const handleAddEvent = async () => {
-        if (!newEvent.title || !newEvent.date || !newEvent.time) {
-            toast.error("Please fill in all fields.");
-            return;
-        }
-
-        let dateObj = new Date(newEvent.date);
-        if (isNaN(dateObj.getTime()) && newEvent.date.includes('-')) {
-            const parts = newEvent.date.split('-').map(Number);
-            if (parts[0] > 1000) {
-                dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
-            } else {
-                dateObj = new Date(parts[2], parts[0] - 1, parts[1]);
-            }
-        } else if (isNaN(dateObj.getTime()) && newEvent.date.includes('/')) {
-            const parts = newEvent.date.split('/').map(Number);
-            if (parts[2] > 1000) {
-                dateObj = new Date(parts[2], parts[0] - 1, parts[1]);
-            } else {
-                dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
-            }
-        }
-
-        if (isNaN(dateObj.getTime())) {
-            dateObj = new Date();
-        }
-
-        const yyyy = dateObj.getFullYear();
-        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const dd = String(dateObj.getDate()).padStart(2, '0');
-        const isoDate = `${yyyy}-${mm}-${dd}`;
-        const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-        let dbEvent: any = null;
-        try {
-            const response = await axios.post('/calendar/events', {
-                title: newEvent.title,
-                date: isoDate,
-                time: newEvent.time,
-                type: newEvent.type
-            });
-            dbEvent = response.data;
-        } catch (e: any) {
-            console.warn("Saving event with local fallback", e);
-        }
-
-        const eventToAdd = dbEvent ? {
-            id: dbEvent.id,
-            title: dbEvent.title,
-            date: formattedDate,
-            time: dbEvent.time,
-            type: dbEvent.type
-        } : {
-            id: `local_${Date.now()}`,
-            title: newEvent.title,
-            date: formattedDate,
-            time: newEvent.time,
-            type: newEvent.type
-        };
-
-        const storageKey = `applicant_custom_events_${user?.id || 'guest'}`;
-        if (dbEvent) {
-            setDbCustomEvents([dbEvent, ...dbCustomEvents]);
-        } else {
-            const localCustom = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(storageKey) || '[]') : [];
-            const updated = [eventToAdd, ...localCustom];
-            if (typeof window !== 'undefined') {
-                localStorage.setItem(storageKey, JSON.stringify(updated));
-            }
-            setEvents(prev => [eventToAdd, ...prev]);
-        }
-
-        setNewEvent({ title: '', date: '', time: '', type: 'Personal' });
-        setIsDialogOpen(false);
-        toast.success("Event added successfully!");
-    };
-
-    const handleDeleteEvent = async (id: any) => {
-        const storageKey = `applicant_custom_events_${user?.id || 'guest'}`;
-        const isDbEvent = dbCustomEvents.some(e => String(e.id) === String(id));
-        if (isDbEvent) {
-            try {
-                await axios.delete(`/calendar/events/${id}`);
-                setDbCustomEvents(dbCustomEvents.filter(e => String(e.id) !== String(id)));
-            } catch (e: any) {
-                console.error(e);
-                toast.error(e.response?.data?.error || "Failed to delete event from database.");
-                return;
-            }
-        } else {
-            const localCustom = JSON.parse(localStorage.getItem(storageKey) || '[]');
-            const updated = localCustom.filter((e: any) => String(e.id) !== String(id));
-            localStorage.setItem(storageKey, JSON.stringify(updated));
-            setEvents(buildEvents(dbCustomEvents, dbInterviews));
-        }
-
-        toast.success("Event removed.");
-    };
 
     // State for current view (Month/Year)
     // Default to current Date() or URL date query parameter if present
@@ -363,7 +272,7 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                 <span className="text-white font-medium">Calendar</span>
                             </div>
                             <h1 className="text-4xl font-extrabold mb-2 tracking-tight">NAAP Schedule</h1>
-                            <p className="text-blue-100 max-w-xl text-lg">Manage interviews, deadlines, and upcoming events with ease.</p>
+                            <p className="text-blue-100 max-w-xl text-lg">View your assigned interview schedules, application deadlines, and official NAAP events.</p>
                         </div>
                         <div className="text-left md:text-right bg-white/10 backdrop-blur-sm p-4 rounded-2xl border border-white/20">
                             <p className="text-xl font-bold">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
@@ -431,7 +340,7 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                 </div>
 
                                 <div className="flex gap-2 items-center">
-                                    <div className="flex bg-white rounded-xl border p-1 shadow-sm mr-2">
+                                    <div className="flex bg-white rounded-xl border p-1 shadow-sm">
                                         <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 rounded-lg">
                                             <ChevronLeft className="h-4 w-4" />
                                         </Button>
@@ -439,70 +348,6 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                             <ChevronLeft className="h-4 w-4 rotate-180" />
                                         </Button>
                                     </div>
-
-                                    {/* Add Event Dialog */}
-                                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                                        <DialogContent className="sm:max-w-[425px]">
-                                            <DialogHeader>
-                                                <DialogTitle className="text-2xl font-bold text-[#193153]">Add Calendar Event</DialogTitle>
-                                            </DialogHeader>
-                                            <div className="grid gap-6 py-6">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="title">Event Title</Label>
-                                                    <Input
-                                                        id="title"
-                                                        value={newEvent.title}
-                                                        onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
-                                                        placeholder="e.g., Document Submission"
-                                                        className="h-12 border-gray-200 focus:ring-[#193153]"
-                                                    />
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="date">Date</Label>
-                                                        <Input
-                                                            id="date"
-                                                            type="date"
-                                                            value={newEvent.date}
-                                                            onChange={e => setNewEvent({ ...newEvent, date: e.target.value })}
-                                                            className="h-12 border-gray-200 focus:ring-[#193153]"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="time">Time</Label>
-                                                        <Input
-                                                            id="time"
-                                                            type="time"
-                                                            value={newEvent.time}
-                                                            onChange={e => setNewEvent({ ...newEvent, time: e.target.value })}
-                                                            className="h-12 border-gray-200 focus:ring-[#193153]"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="type">Event Category</Label>
-                                                    <Select
-                                                        value={newEvent.type}
-                                                        onValueChange={val => setNewEvent({ ...newEvent, type: val })}
-                                                    >
-                                                        <SelectTrigger className="h-12 border-gray-200 focus:ring-[#193153]">
-                                                            <SelectValue placeholder="Select type" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="Personal">Personal</SelectItem>
-                                                            <SelectItem value="Interview">Interview</SelectItem>
-                                                            <SelectItem value="Deadline">Deadline</SelectItem>
-                                                            <SelectItem value="Meeting">Meeting</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
-                                            <DialogFooter className="gap-2 sm:gap-0">
-                                                <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-12 rounded-xl">Cancel</Button>
-                                                <Button onClick={handleAddEvent} className="h-12 rounded-xl bg-[#193153] hover:bg-[#2a4a75]">Create Event</Button>
-                                            </DialogFooter>
-                                        </DialogContent>
-                                    </Dialog>
                                 </div>
                             </CardHeader>
                             <CardContent className="p-0">
@@ -520,10 +365,9 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                     {calendarDays.map((date, idx) => (
                                         <div
                                             key={idx}
-                                            onClick={() => date && handleDateClick(date.day)}
                                             className={`
                                                 relative p-3 border-r border-b last:border-r-0 transition-all overflow-hidden group
-                                                ${!date ? 'bg-gray-50/50' : 'bg-white hover:bg-blue-50/30 cursor-pointer'}
+                                                ${!date ? 'bg-gray-50/50' : 'bg-white hover:bg-blue-50/20'}
                                             `}
                                         >
                                             {date && (
@@ -538,31 +382,26 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                                         `}>
                                                             {date.day}
                                                         </span>
-                                                        <div className="bg-blue-50 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <Plus className="w-3 h-3 text-blue-600" />
-                                                        </div>
                                                     </div>
 
                                                     <div className="space-y-1.5 max-h-[100px] overflow-hidden">
-                                                        {date.events.map((event, i) => {
-                                                            const tag = (
-                                                                <div className={`
-                                                                    text-[10px] px-2 py-1 rounded-md truncate font-semibold shadow-sm
-                                                                    ${event.type === 'Deadline' ? 'bg-red-50 text-red-700 border border-red-100' :
-                                                                        event.type === 'Interview' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                                                                            'bg-gray-50 text-gray-700 border border-gray-100'}
-                                                                `}>
-                                                                    {event.title}
-                                                                </div>
-                                                            );
-                                                            return event.jobId ? (
-                                                                <Link key={i} href={`/jobs/${event.jobId}`} className="block">
-                                                                    {tag}
-                                                                </Link>
-                                                            ) : (
-                                                                <div key={i}>{tag}</div>
-                                                            );
-                                                        })}
+                                                        {date.events.map((event, i) => (
+                                                            <div 
+                                                                key={i} 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedEvent(event);
+                                                                }}
+                                                                className={`
+                                                                    text-[10px] px-2 py-1 rounded-md truncate font-semibold shadow-sm cursor-pointer hover:scale-[1.02] transition-transform
+                                                                    ${event.type === 'Deadline' ? 'bg-red-50 text-red-700 border border-red-100 hover:bg-red-100' :
+                                                                        event.type === 'Interview' ? 'bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100' :
+                                                                            'bg-gray-50 text-gray-700 border border-gray-100 hover:bg-gray-100'}
+                                                                `}
+                                                            >
+                                                                {event.title}
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </>
                                             )}
@@ -586,24 +425,14 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                 {events.length === 0 ? (
                                     <div className="p-12 text-center text-gray-400">
                                         <CalendarIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                                        <p className="font-medium">No events scheduled yet.</p>
-                                        <p className="text-xs mt-1">Click on a date to add one.</p>
+                                        <p className="font-medium">No interview schedules or events assigned yet.</p>
                                     </div>
                                 ) : (
                                     events.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((event, index) => (
                                         <div 
                                             key={index} 
-                                            onClick={() => {
-                                                if (event.jobId) {
-                                                    window.location.href = `/jobs/${event.jobId}`;
-                                                } else {
-                                                    const d = new Date(event.date);
-                                                    if (!isNaN(d.getTime())) {
-                                                        setCurrentDate(d);
-                                                    }
-                                                }
-                                            }}
-                                            className="px-6 py-5 border-b last:border-0 hover:bg-gray-50 transition-all group relative cursor-pointer"
+                                            onClick={() => setSelectedEvent(event)}
+                                            className="px-6 py-5 border-b last:border-0 hover:bg-blue-50/40 transition-all group relative cursor-pointer"
                                         >
                                             <div className="flex items-start gap-5">
                                                 <div className={`flex-shrink-0 w-14 text-center rounded-2xl py-3 shadow-md ${
@@ -616,7 +445,7 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex justify-between items-start mb-1">
-                                                        <h4 className="text-sm font-black text-gray-900 leading-none truncate pr-6">{event.title}</h4>
+                                                        <h4 className="text-sm font-black text-gray-900 leading-none truncate pr-6 group-hover:text-blue-600 transition-colors">{event.title}</h4>
                                                     </div>
                                                     <div className="flex flex-wrap gap-2 mt-2">
                                                         <span className="text-[10px] flex items-center gap-1 text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full">
@@ -638,18 +467,6 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                                     )}
                                                 </div>
                                             </div>
-                                            {(!event.id.toString().startsWith('real_interview_') && event.id !== 'gen_1') && (
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button
-                                                        size="icon"
-                                                        variant="secondary"
-                                                        className="h-8 w-8 rounded-full text-red-500 hover:bg-red-50 hover:text-red-600 shadow-sm"
-                                                        onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                            )}
                                         </div>
                                     ))
                                 )}
@@ -658,6 +475,134 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                     </div>
                 </div>
             </div>
+
+            {/* Event Details Modal */}
+            <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
+                {selectedEvent && (
+                    <DialogContent className="sm:max-w-[500px] rounded-3xl p-6 border-none shadow-2xl bg-white">
+                        <DialogHeader className="pb-4 border-b">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="outline" className={`px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider rounded-full ${
+                                    selectedEvent.type === 'Deadline' ? 'bg-red-50 text-red-700 border-red-200' :
+                                    selectedEvent.type === 'Interview' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                    'bg-gray-100 text-gray-800 border-gray-200'
+                                }`}>
+                                    {selectedEvent.type}
+                                </Badge>
+                            </div>
+                            <DialogTitle className="text-2xl font-black text-[#193153] leading-snug">
+                                {selectedEvent.title}
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="space-y-4 py-4 text-sm">
+                            <div className="grid grid-cols-2 gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 bg-blue-100/60 rounded-xl text-blue-700">
+                                        <CalendarIcon className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Date</p>
+                                        <p className="font-extrabold text-gray-900">{selectedEvent.date}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 bg-blue-100/60 rounded-xl text-blue-700">
+                                        <Clock className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Time</p>
+                                        <p className="font-extrabold text-gray-900">{selectedEvent.time || 'TBA'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {extractUrl(selectedEvent) && (
+                                <a
+                                    href={extractUrl(selectedEvent)!}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-2xl shadow-lg transition-all transform hover:-translate-y-0.5 group"
+                                >
+                                    <div className="flex items-center gap-3 min-w-0 pr-2">
+                                        <div className="p-2.5 bg-white/20 rounded-xl flex-shrink-0">
+                                            <Video className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[11px] font-black text-blue-100 uppercase tracking-wider">Online Meeting / Webinar Link</p>
+                                            <p className="font-bold text-sm underline text-white truncate max-w-[260px] sm:max-w-[300px]">
+                                                {extractUrl(selectedEvent)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1 bg-white/20 px-3 py-1.5 rounded-xl text-xs font-black flex-shrink-0 group-hover:bg-white group-hover:text-blue-700 transition-all">
+                                        <span>Join Meeting</span>
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                    </div>
+                                </a>
+                            )}
+
+                            {selectedEvent.venue && (
+                                <div className="flex items-start gap-3 p-3.5 bg-white border border-gray-100 rounded-2xl shadow-sm">
+                                    <div className="p-2 bg-amber-50 rounded-xl text-amber-600 mt-0.5">
+                                        <MapPin className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Venue / Location</p>
+                                        <p className="font-bold text-gray-800 text-sm mt-0.5">{selectedEvent.venue}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedEvent.panelMembers && (
+                                <div className="flex items-start gap-3 p-3.5 bg-white border border-gray-100 rounded-2xl shadow-sm">
+                                    <div className="p-2 bg-purple-50 rounded-xl text-purple-600 mt-0.5">
+                                        <Users className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Panel Members / Committee</p>
+                                        <p className="font-semibold text-gray-800 text-sm mt-0.5">{selectedEvent.panelMembers}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {(selectedEvent.notes || selectedEvent.description) && (
+                                <div className="flex items-start gap-3 p-3.5 bg-blue-50/50 border border-blue-100 rounded-2xl">
+                                    <div className="p-2 bg-blue-100 rounded-xl text-blue-700 mt-0.5">
+                                        <FileText className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-blue-900 uppercase tracking-wider">HR Notes & Instructions</p>
+                                        <p className="text-blue-950 font-medium text-xs leading-relaxed mt-1">
+                                            {selectedEvent.notes || selectedEvent.description}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t">
+                            {selectedEvent.jobId && (
+                                <Button
+                                    onClick={() => window.location.href = `/jobs/${selectedEvent.jobId}`}
+                                    className="bg-[#193153] hover:bg-[#2a4a75] font-bold rounded-xl gap-2 text-xs h-11"
+                                >
+                                    <ExternalLink className="w-4 h-4" />
+                                    View Job Vacancy
+                                </Button>
+                            )}
+                            <Button
+                                variant="outline"
+                                onClick={() => setSelectedEvent(null)}
+                                className="font-bold rounded-xl h-11"
+                            >
+                                Close
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                )}
+            </Dialog>
         </div>
     );
 }
