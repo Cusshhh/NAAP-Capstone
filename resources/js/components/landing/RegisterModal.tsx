@@ -39,7 +39,7 @@ export default function RegisterModal({ isOpen, onClose, onSwitchToLogin }: Regi
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="w-[92vw] max-h-[90vh] overflow-y-auto sm:max-w-md p-6">
                 <DialogHeader>
                     <DialogTitle>Create an account</DialogTitle>
                     <DialogDescription>

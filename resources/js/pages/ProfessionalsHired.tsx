@@ -12,7 +12,9 @@ import {
     FileText,
     ChevronLeft,
     ChevronRight,
-    Clock
+    Clock,
+    Menu,
+    X
 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -173,17 +175,19 @@ export default function ProfessionalsHired({ serverStats }: { serverStats?: any 
     };
 
     // --- MODAL STATE ---
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
-    const openLogin = () => { setIsLoginOpen(true); setIsRegisterOpen(false); };
-    const openRegister = () => { setIsRegisterOpen(true); setIsLoginOpen(false); };
+    const openLogin = () => { setIsLoginOpen(true); setIsRegisterOpen(false); setIsMobileMenuOpen(false); };
+    const openRegister = () => { setIsRegisterOpen(true); setIsLoginOpen(false); setIsMobileMenuOpen(false); };
 
     const scrollToSection = (id: string) => {
         const section = document.getElementById(id);
         if (section) {
             section.scrollIntoView({ behavior: 'smooth' });
         }
+        setIsMobileMenuOpen(false);
     };
 
     useEffect(() => {
@@ -209,32 +213,65 @@ export default function ProfessionalsHired({ serverStats }: { serverStats?: any 
                 onSwitchToLogin={openLogin}
             />
 
-
-
             <div className="min-h-screen bg-gray-50 font-sans text-[#1b1b18]">
 
                 {/* --- NAVIGATION --- */}
                 <nav className="bg-[#193153] text-white sticky top-0 z-50 shadow-lg">
-                    <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-                        <Link href="/" className="flex items-center space-x-3">
-                            <img src="/images/PhilSCA_Logo.png" alt="NAAP Logo" className="h-10 w-auto bg-white/10 rounded-full p-1" />
-                            <span className="font-bold text-xl tracking-tight">NAAP Careers</span>
+                    <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
+                        <Link href="/" className="flex items-center space-x-2 sm:space-x-3">
+                            <img src="/images/PhilSCA_Logo.png" alt="NAAP Logo" className="h-8 sm:h-10 w-auto bg-white/10 rounded-full p-1" />
+                            <span className="font-bold text-lg sm:text-xl tracking-tight">NAAP Careers</span>
                         </Link>
 
-                        <div className="flex gap-8 items-center">
+                        {/* Desktop Menu */}
+                        <div className="hidden md:flex gap-8 items-center">
                             <Link href="/">
                                 <span className="hover:text-[#ffdd59] transition-colors cursor-pointer font-medium text-white/90">Home</span>
                             </Link>
-
+                            <button onClick={() => scrollToSection('job-board')} className="hover:text-[#ffdd59] transition-colors cursor-pointer font-medium text-white/90 bg-transparent border-0 p-0 outline-none">
+                                Job Openings
+                            </button>
+                            <button onClick={() => scrollToSection('employee-benefits')} className="hover:text-[#ffdd59] transition-colors cursor-pointer font-medium text-white/90 bg-transparent border-0 p-0 outline-none">
+                                Benefits
+                            </button>
                             <button onClick={openLogin} className="hover:text-[#ffdd59] transition-colors cursor-pointer font-medium text-white/90 bg-transparent border-0 p-0 outline-none">
                                 Login
                             </button>
                         </div>
+
+                        {/* Mobile Menu Toggle Button */}
+                        <button
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            className="md:hidden p-2 text-white hover:text-[#ffdd59] focus:outline-none"
+                        >
+                            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                        </button>
                     </div>
+
+                    {/* Mobile Dropdown Menu */}
+                    {isMobileMenuOpen && (
+                        <div className="md:hidden bg-[#152843] border-t border-white/10 px-4 py-4 flex flex-col space-y-3">
+                            <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="text-white/90 hover:text-[#ffdd59] font-medium py-1">
+                                Home
+                            </Link>
+                            <button onClick={() => scrollToSection('job-board')} className="text-left text-white/90 hover:text-[#ffdd59] font-medium py-1 bg-transparent border-0">
+                                Job Openings
+                            </button>
+                            <button onClick={() => scrollToSection('employee-benefits')} className="text-left text-white/90 hover:text-[#ffdd59] font-medium py-1 bg-transparent border-0">
+                                Benefits
+                            </button>
+                            <button onClick={openLogin} className="text-left text-white/90 hover:text-[#ffdd59] font-medium py-1 bg-transparent border-0">
+                                Login
+                            </button>
+                            <Button onClick={openRegister} variant="accent" className="w-full justify-center mt-2">
+                                Register / Apply
+                            </Button>
+                        </div>
+                    )}
                 </nav>
 
                 {/* --- DYNAMIC HERO SECTION --- */}
-                <div className="relative h-137.5 flex items-center justify-center overflow-hidden bg-[#193153]">
+                <div className="relative min-h-[500px] md:h-[560px] flex items-center justify-center overflow-hidden bg-[#193153] py-10 md:py-0">
 
                     {/* Background Images Carousel Layer */}
                     {heroImages.map((imgSrc, index) => (
@@ -248,47 +285,47 @@ export default function ProfessionalsHired({ serverStats }: { serverStats?: any 
                                 className="w-full h-full object-cover"
                             />
                             {/* Gradient Overlay */}
-                            <div className="absolute inset-0 bg-linear-to-t from-[#193153]/95 via-[#193153]/70 to-[#193153]/30" />
+                            <div className="absolute inset-0 bg-linear-to-t from-[#193153]/95 via-[#193153]/70 to-[#193153]/40" />
                         </div>
                     ))}
 
                     {/* Carousel Controls */}
                     <button
                         onClick={prevSlide}
-                        className="absolute left-6 z-20 p-3 rounded-full bg-black/20 text-white hover:bg-black/40 hover:text-[#ffdd59] transition-all hidden md:block backdrop-blur-sm border border-white/10"
+                        className="absolute left-4 z-20 p-2.5 rounded-full bg-black/20 text-white hover:bg-black/40 hover:text-[#ffdd59] transition-all hidden md:block backdrop-blur-sm border border-white/10"
                     >
-                        <ChevronLeft className="h-10 w-10" />
+                        <ChevronLeft className="h-8 w-8" />
                     </button>
                     <button
                         onClick={nextSlide}
-                        className="absolute right-6 z-20 p-3 rounded-full bg-black/20 text-white hover:bg-black/40 hover:text-[#ffdd59] transition-all hidden md:block backdrop-blur-sm border border-white/10"
+                        className="absolute right-4 z-20 p-2.5 rounded-full bg-black/20 text-white hover:bg-black/40 hover:text-[#ffdd59] transition-all hidden md:block backdrop-blur-sm border border-white/10"
                     >
-                        <ChevronRight className="h-10 w-10" />
+                        <ChevronRight className="h-8 w-8" />
                     </button>
 
                     {/* Hero Text Content (Dynamic) */}
-                    <div className="container relative z-10 px-4 text-center h-full flex flex-col justify-center">
+                    <div className="container relative z-10 px-4 text-center h-full flex flex-col justify-center py-6 md:py-0">
                         <div className="max-w-4xl mx-auto relative">
 
                             {/* Content Container */}
-                            <div className="relative min-h-55 flex items-center justify-center">
+                            <div className="relative min-h-[220px] sm:min-h-[200px] md:min-h-[220px] flex items-center justify-center">
                                 {heroSlideContent.map((content, index) => (
                                     <div
                                         key={index}
                                         className={`absolute inset-x-0 flex flex-col items-center transition-all duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 -z-10 translate-y-4'}`}
                                     >
                                         {/* BADGE */}
-                                        <div className="inline-flex items-center gap-2 bg-[#ffdd59] text-[#193153] px-4 py-1.5 rounded-full text-sm font-bold mb-3">
+                                        <div className="inline-flex items-center gap-1.5 bg-[#ffdd59] text-[#193153] px-3.5 py-1 rounded-full text-xs sm:text-sm font-bold mb-3">
                                             <Award className="w-4 h-4" /> {content.badge}
                                         </div>
 
                                         {/* TITLE */}
-                                        <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold mb-3 tracking-tight leading-tight text-white drop-shadow-xl whitespace-nowrap">
+                                        <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-3 tracking-tight leading-tight text-white drop-shadow-xl text-center px-2">
                                             {content.title}
                                         </h1>
 
                                         {/* DESCRIPTION */}
-                                        <p className="text-lg md:text-xl text-blue-100 max-w-3xl mx-auto mb-2 leading-normal drop-shadow-md text-justify px-4">
+                                        <p className="text-sm sm:text-base md:text-xl text-blue-100 max-w-3xl mx-auto mb-2 leading-relaxed drop-shadow-md text-center px-2 sm:px-4">
                                             {content.description}
                                         </p>
                                     </div>
@@ -296,12 +333,12 @@ export default function ProfessionalsHired({ serverStats }: { serverStats?: any 
                             </div>
 
                             {/* Static Buttons */}
-                            <div className="flex justify-center gap-4 relative z-20 mt-32">
-                                <Button onClick={openRegister} variant="accent" size="lg" className="h-12 px-8 text-base">
+                            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 relative z-20 mt-6 sm:mt-10 md:mt-24 px-4 sm:px-0">
+                                <Button onClick={openRegister} variant="accent" size="lg" className="h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base w-full sm:w-auto">
                                     Join Our Team <ArrowRight className="ml-2 w-5 h-5" />
                                 </Button>
 
-                                <Button onClick={() => scrollToSection('employee-benefits')} variant="outlineWhite" size="lg">
+                                <Button onClick={() => scrollToSection('employee-benefits')} variant="outlineWhite" size="lg" className="h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base w-full sm:w-auto">
                                     View Employee Benefits
                                 </Button>
                             </div>
@@ -309,12 +346,12 @@ export default function ProfessionalsHired({ serverStats }: { serverStats?: any 
                     </div>
 
                     {/* Dots */}
-                    <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex space-x-3 z-20">
+                    <div className="absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 flex space-x-2.5 z-20">
                         {heroImages.map((_, idx) => (
                             <button
                                 key={idx}
                                 onClick={() => setCurrentSlide(idx)}
-                                className={`h-3 rounded-full transition-all duration-300 ${idx === currentSlide ? 'w-10 bg-[#ffdd59]' : 'w-3 bg-white/50 hover:bg-white'}`}
+                                className={`h-2.5 rounded-full transition-all duration-300 ${idx === currentSlide ? 'w-8 bg-[#ffdd59]' : 'w-2.5 bg-white/50 hover:bg-white'}`}
                             />
                         ))}
                     </div>
@@ -322,23 +359,23 @@ export default function ProfessionalsHired({ serverStats }: { serverStats?: any 
 
                 {/* --- DYNAMIC STATS STRIP --- */}
                 <div className="bg-white border-b border-gray-200">
-                    <div className="max-w-7xl mx-auto px-6 py-4">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-gray-100">
-                            <div>
-                                <div className="text-4xl font-bold text-[#193153] mb-1">{hiredCount}+</div>
-                                <div className="text-sm text-gray-500 uppercase tracking-wide">Hired Professionals</div>
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8 text-center">
+                            <div className="p-3 bg-blue-50/50 sm:bg-transparent rounded-lg">
+                                <div className="text-2xl sm:text-4xl font-bold text-[#193153] mb-1">{hiredCount}+</div>
+                                <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide">Hired Professionals</div>
                             </div>
-                            <div>
-                                <div className="text-4xl font-bold text-[#193153] mb-1">{employmentRate}%</div>
-                                <div className="text-sm text-gray-500 uppercase tracking-wide">Employment Rate</div>
+                            <div className="p-3 bg-blue-50/50 sm:bg-transparent rounded-lg">
+                                <div className="text-2xl sm:text-4xl font-bold text-[#193153] mb-1">{employmentRate}%</div>
+                                <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide">Employment Rate</div>
                             </div>
-                            <div>
-                                <div className="text-4xl font-bold text-[#193153] mb-1">{industryPartnersCount}+</div>
-                                <div className="text-sm text-gray-500 uppercase tracking-wide">Industry Partners</div>
+                            <div className="p-3 bg-blue-50/50 sm:bg-transparent rounded-lg">
+                                <div className="text-2xl sm:text-4xl font-bold text-[#193153] mb-1">{industryPartnersCount}+</div>
+                                <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide">Industry Partners</div>
                             </div>
-                            <div>
-                                <div className="text-4xl font-bold text-[#193153] mb-1">Lvl 2</div>
-                                <div className="text-sm text-gray-500 uppercase tracking-wide">CSC PRIME-HRM</div>
+                            <div className="p-3 bg-blue-50/50 sm:bg-transparent rounded-lg">
+                                <div className="text-2xl sm:text-4xl font-bold text-[#193153] mb-1">Lvl 2</div>
+                                <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide">CSC PRIME-HRM</div>
                             </div>
                         </div>
                     </div>

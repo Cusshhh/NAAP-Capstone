@@ -40,7 +40,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-106.25">
+            <DialogContent className="w-[92vw] max-h-[90vh] overflow-y-auto sm:max-w-md p-6">
                 <DialogHeader>
                     <DialogTitle>Log in to your account</DialogTitle>
                     <DialogDescription>

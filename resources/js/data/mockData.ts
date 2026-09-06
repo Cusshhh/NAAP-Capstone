@@ -30,7 +30,7 @@ export const mockJobs = [
         id: '2', // Fixed: changed duplicate ID from '1' to '2'
         title: 'Senior Flight Instructor',
         department: 'Flight Training',
-        location: 'NAAP - Basa Air Base Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Experienced instructor needed to handle advanced flight phases and instrument ratings for cadets.',
         responsibilities: [
@@ -55,7 +55,7 @@ export const mockJobs = [
         id: '3',
         title: 'Flight Instructor (Basic)',
         department: 'Flight Training',
-        location: 'NAAP - Fernando Air Base Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Provide primary flight instruction to new student pilots in Cessna 172 aircraft.',
         responsibilities: [
@@ -80,7 +80,7 @@ export const mockJobs = [
         id: '4',
         title: 'Flight Instructor (Multi-Engine)',
         department: 'Flight Training',
-        location: 'NAAP - Mactan Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Specialized instructor for Multi-Engine training modules on the Piper Seneca simulator and aircraft.',
         responsibilities: [
@@ -130,7 +130,7 @@ export const mockJobs = [
         id: '6',
         title: 'Aircraft Mechanic (Powerplant)',
         department: 'Maintenance',
-        location: 'NAAP - Basa-Palmayo Extension Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Maintain and overhaul piston engines for training aircraft.',
         responsibilities: [
@@ -155,7 +155,7 @@ export const mockJobs = [
         id: '7',
         title: 'Avionics Technician',
         department: 'Maintenance',
-        location: 'NAAP - Fernando Air Base Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Install, troubleshoot, and repair aircraft communication and navigation systems.',
         responsibilities: [
@@ -180,7 +180,7 @@ export const mockJobs = [
         id: '8',
         title: 'Maintenance Supervisor',
         department: 'Maintenance',
-        location: 'NAAP - Mactan-Medellin Extension Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Lead the maintenance team at the extension campus and ensure aircraft availability.',
         responsibilities: [
@@ -230,7 +230,7 @@ export const mockJobs = [
         id: '10',
         title: 'Ground Instructor (Air Law)',
         department: 'Academics',
-        location: 'NAAP - Basa Air Base Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Part-time',
         description: 'Instruct students on Civil Aviation Regulations and international aviation laws.',
         responsibilities: [
@@ -280,7 +280,7 @@ export const mockJobs = [
         id: '12',
         title: 'Aviation Safety Officer',
         department: 'Safety',
-        location: 'NAAP - Mactan Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Monitor safety metrics and conduct risk assessments for flight operations.',
         responsibilities: [
@@ -355,7 +355,7 @@ export const mockJobs = [
         id: '15',
         title: 'School Registrar',
         department: 'Administration',
-        location: 'NAAP - Basa Air Base Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Manage student records, grades, and licensing documentation for CAAP.',
         responsibilities: [
@@ -380,7 +380,7 @@ export const mockJobs = [
         id: '16',
         title: 'School Nurse',
         department: 'Medical',
-        location: 'NAAP - Basa-Palmayo Extension Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Provide basic medical care and first aid to students and staff.',
         responsibilities: [
@@ -405,7 +405,7 @@ export const mockJobs = [
         id: '17',
         title: 'Guidance Counselor',
         department: 'Student Affairs',
-        location: 'NAAP - Fernando Air Base Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Provide counseling and psychological support to student pilots.',
         responsibilities: [
@@ -430,7 +430,7 @@ export const mockJobs = [
         id: '18',
         title: 'Librarian',
         department: 'Academics',
-        location: 'NAAP - Mactan-Medellin Extension Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Manage the aviation library and technical publications.',
         responsibilities: [
@@ -505,7 +505,7 @@ export const mockJobs = [
         id: '21',
         title: 'Dormitory Manager',
         department: 'Administration',
-        location: 'NAAP - Basa Air Base Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Oversee the operation and maintenance of the student cadet dormitory.',
         responsibilities: [
@@ -530,7 +530,7 @@ export const mockJobs = [
         id: '22',
         title: 'Utility Staff',
         department: 'Maintenance',
-        location: 'NAAP - Fernando Air Base Campus',
+        location: 'NAAP - Villamor Campus',
         employmentType: 'Full-time',
         description: 'Ensure cleanliness and orderliness of the hangar and campus grounds.',
         responsibilities: [

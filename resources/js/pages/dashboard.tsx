@@ -242,10 +242,6 @@ const ChatBot = () => {
             else if (lowerInput.includes('withdraw') || lowerInput.includes('cancel')) {
                 botResponse = "If you wish to withdraw an application, go to your Dashboard history list and click the 'Withdraw' (Icon with X or Log Out symbol) button next to the specific application.";
             }
-            // Location
-            else if (lowerInput.includes('location') || lowerInput.includes('where') || lowerInput.includes('place')) {
-                botResponse = "NAAP has multiple campuses including Villamor, Basa Air Base, and Mactan. The specific location for a role is listed on the job card.";
-            }
 
             setMessages(prev => [...prev, { id: Date.now() + 1, text: botResponse, sender: 'bot' }]);
         }, 800);
@@ -256,7 +252,6 @@ const ChatBot = () => {
         "Check my application status",
         "When is my interview?",
         "What are the benefits?",
-        "Where are the campuses?",
         "How do I withdraw?"
     ];
 
@@ -276,8 +271,6 @@ const ChatBot = () => {
                 botResponse = "We offer competitive compensation packages! You can view our general benefits on the 'Employee Benefits' page.";
             } else if (lowerInput.includes('withdraw') || lowerInput.includes('cancel')) {
                 botResponse = "If you wish to withdraw an application, go to your Dashboard history list and click the 'Withdraw' (Icon with X or Log Out symbol) button next to the specific application.";
-            } else if (lowerInput.includes('campus') || lowerInput.includes('location') || lowerInput.includes('where')) {
-                botResponse = "NAAP has multiple campuses including Villamor, Basa Air Base, and Mactan.";
             }
             setMessages(prev => [...prev, { id: Date.now() + 1, text: botResponse, sender: 'bot' }]);
         }, 800);

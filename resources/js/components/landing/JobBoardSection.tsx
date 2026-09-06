@@ -109,7 +109,7 @@ export default function JobBoardSection() {
                 {/* Filters */}
                 <Card className="mb-8 shadow-md border-0">
                     <CardContent className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="md:col-span-1 relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 <Input
@@ -138,17 +138,6 @@ export default function JobBoardSection() {
                                     <SelectItem value="all">All Types</SelectItem>
                                     {employmentTypes.map(type => (
                                         <SelectItem key={type} value={type}>{type}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Select value={locationFilter} onValueChange={setLocationFilter}>
-                                <SelectTrigger className="border-gray-200">
-                                    <SelectValue placeholder="Location" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Locations</SelectItem>
-                                    {locations.map(loc => (
-                                        <SelectItem key={loc} value={loc}>{loc}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>

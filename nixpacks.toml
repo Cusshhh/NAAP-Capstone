@@ -1,0 +1,5 @@
+[providers]
+providers = ['php', 'node']
+
+[variables]
+NIXPACKS_PHP_SERVER = 'frankenphp'

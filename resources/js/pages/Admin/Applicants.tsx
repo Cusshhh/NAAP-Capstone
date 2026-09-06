@@ -753,8 +753,9 @@ export default function Applicants({ auth, applications: serverApplications }: {
                 {/* Applicants Table */}
                 <Card>
                     <CardContent className="p-6">
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
                             <p className="text-sm text-gray-600"><span className="font-semibold">{filteredApplications.length}</span> applicants found</p>
+                            <span className="md:hidden text-xs text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full font-medium border border-blue-200">💡 Swipe left/right for more details</span>
                         </div>
                         <div className="overflow-x-auto">
                             <Table>
