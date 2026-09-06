@@ -23,8 +23,8 @@ WORKDIR /app
 # Copy application code
 COPY . .
 
-# Install dependencies and build assets
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Install dependencies (including dev dependencies for seeders/faker) and build assets
+RUN composer install --optimize-autoloader --no-interaction
 RUN npm ci && npm run build
 
 # Set permissions
