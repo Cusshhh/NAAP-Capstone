@@ -33,7 +33,11 @@ class RegisterUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        event(new Registered($user));
+        try {
+            event(new Registered($user));
+        } catch (\Throwable $e) {
+            \Log::warning('Email verification event skipped: ' . $e->getMessage());
+        }
 
         Auth::login($user);
 
