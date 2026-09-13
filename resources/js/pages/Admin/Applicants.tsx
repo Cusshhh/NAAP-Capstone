@@ -1,6 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import axios from 'axios';
-import { Shield, Users, LogOut, Search, Download, Star, Calendar, Eye, Edit, Trash, Plus, ChevronDown, ChevronUp, Briefcase, Layout, TrendingUp, GraduationCap, Award, BookOpen, FileText, ExternalLink, X, Send, RotateCcw } from 'lucide-react';
+import { Shield, Users, LogOut, Search, Download, Star, Calendar, Eye, Edit, Trash, Plus, ChevronDown, ChevronUp, Briefcase, Layout, TrendingUp, GraduationCap, Award, BookOpen, FileText, ExternalLink, X, Send, RotateCcw, ArrowLeft } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -164,26 +164,10 @@ export default function Applicants({ auth, applications: serverApplications }: {
         }
     }, [messages, isMessageModalOpen, isChatMinimized]);
 
-    const openMessages = async (appId: number, applicantName: string) => {
-        setActiveMessageAppId(appId);
-        setActiveMessageAppName(applicantName);
-        setIsMessageModalOpen(true);
-        setMessages([]); // clear old
-        try {
-            const response = await axios.get(`/messages/${appId}`);
-            setMessages(response.data);
-
-            // Mark as read in local state immediately
-            setApplications(prev => prev.map(app => {
-                if (app.id === appId) {
-                    return { ...app, hasUnreadMessages: false };
-                }
-                return app;
-            }));
-        } catch (e: any) {
-            console.error(e);
-            toast.error("Failed to load messages.");
-        }
+    const openMessages = (appId: any, applicantName: string, jobTitle?: string, email?: string) => {
+        const matching = (applications || []).find((a: any) => String(a.id) === String(appId));
+        const targetEmail = email || (matching ? matching.email : '');
+        router.visit(`/admin/messages?appId=${appId}&email=${encodeURIComponent(targetEmail || '')}`);
     };
 
     const sendMessage = async () => {
@@ -247,7 +231,73 @@ export default function Applicants({ auth, applications: serverApplications }: {
         }
     };
 
+    const getAppAiData = (app: any) => {
+        if (!app) return { rawScore: 0, percentage: 0, match: 'Low Match', breakdown: { education: 0, experience: 0, accomplishments: 0, training: 0 } };
+
+        const dyn = app.dynamic_responses || {};
+        const edLevel = dyn.educationLevel || app.educationLevel || 'bachelor';
+        const yrs = parseFloat(String(dyn.yearsOfExperience || app.yearsOfExperience || '0')) || 0;
+        const hrs = parseFloat(String(dyn.trainingHours || app.trainingHours || '0')) || 0;
+        const awds = Array.isArray(dyn.awards) ? dyn.awards : (Array.isArray(app.awards) ? app.awards : []);
+
+        // 1. Education score (0 to 5)
+        let edScore = 1; // Bachelor's baseline
+        if (edLevel === 'doctoral_graduate' || edLevel === 'doctoral_27+') edScore = 5;
+        else if (edLevel === 'doctoral_18-24' || edLevel === 'doctoral_15-18') edScore = 4;
+        else if (edLevel === 'doctoral_9-15' || edLevel === 'masters') edScore = 3;
+
+        // 2. Experience score (0 to 25, 2 points per year)
+        const expScore = Math.min(25, Math.max(0, Math.round(yrs * 2)));
+
+        // 3. Accomplishments / Awards score (0 to 5)
+        let awdScore = 0;
+        if (awds.includes('national')) awdScore = 5;
+        else if (awds.includes('csc')) awdScore = 4;
+        else if (awds.includes('president')) awdScore = 3;
+        else if (awds.includes('ngo') || awds.length > 0) awdScore = 2;
+
+        // 4. Training hours score (0 to 10)
+        let trnScore = 0;
+        if (hrs >= 300) trnScore = 10;
+        else if (hrs >= 200) trnScore = 8;
+        else if (hrs >= 100) trnScore = 6;
+        else if (hrs >= 50) trnScore = 4;
+        else if (hrs >= 16) trnScore = 2;
+
+        const breakdown = app.aiScoreBreakdown || {
+            education: edScore,
+            experience: expScore,
+            accomplishments: awdScore,
+            training: trnScore
+        };
+
+        const rawScore = (app.aiScore !== undefined && app.aiScore !== null && app.aiScore > 0)
+            ? app.aiScore
+            : (edScore + expScore + awdScore + trnScore);
+
+        let percentage = 0;
+        if (rawScore <= 45 && rawScore > 0) {
+            percentage = Math.min(100, Math.max(0, Math.round((rawScore / 45) * 100)));
+        } else {
+            percentage = Math.min(100, Math.max(0, Math.round(rawScore)));
+        }
+
+        let match = 'Low Match';
+        if (percentage >= 80) match = 'High Match';
+        else if (percentage >= 50) match = 'Medium Match';
+
+        return {
+            rawScore,
+            percentage,
+            match,
+            breakdown
+        };
+    };
+
     const scoreToPercentage = (score: number) => {
+        if (score <= 45 && score > 0) {
+            return Math.min(100, Math.max(0, Math.round((score / 45) * 100)));
+        }
         return Math.min(100, Math.max(0, Math.round(score)));
     };
 
@@ -337,6 +387,171 @@ export default function Applicants({ auth, applications: serverApplications }: {
         }
         return 0;
     });
+
+    // Grouped Applicant Modal & Account Management State
+    const [selectedApplicantModal, setSelectedApplicantModal] = useState<any | null>(null);
+    const [activeAppIndexInModal, setActiveAppIndexInModal] = useState(0);
+    const [viewingAppDetails, setViewingAppDetails] = useState<any | null>(null);
+    const [deleteUserModal, setDeleteUserModal] = useState<{ isOpen: boolean; applicant: any | null }>({
+        isOpen: false,
+        applicant: null,
+    });
+
+    const handleDeleteApplicantAccount = (applicant: any) => {
+        setDeleteUserModal({ isOpen: true, applicant });
+    };
+
+    const confirmDeleteApplicantAccount = () => {
+        const applicant = deleteUserModal.applicant;
+        setDeleteUserModal({ isOpen: false, applicant: null });
+        if (!applicant) return;
+
+        if (applicant.userId) {
+            router.delete(`/admin/users/${applicant.userId}`, {
+                onSuccess: () => {
+                    toast.success(`User account for ${applicant.applicantName} deleted successfully.`);
+                    setSelectedApplicantModal(null);
+                },
+                onError: (err: any) => {
+                    toast.error((Object.values(err)[0] as string) || "Failed to delete user account.");
+                }
+            });
+        } else {
+            setApplications(prev => prev.filter(a => (a.email || '').toLowerCase() !== (applicant.email || '').toLowerCase()));
+            toast.success(`Applicant records for ${applicant.applicantName} removed.`);
+            setSelectedApplicantModal(null);
+        }
+    };
+
+    // Single Job Application Delete Modal State
+    const [deleteAppModal, setDeleteAppModal] = useState<{
+        isOpen: boolean;
+        appId: any;
+        jobTitle: string;
+        applicantName: string;
+    }>({
+        isOpen: false,
+        appId: null,
+        jobTitle: '',
+        applicantName: '',
+    });
+
+    const handleDeleteSingleApplication = (appId: any, jobTitle: string, applicantName: string) => {
+        setDeleteAppModal({
+            isOpen: true,
+            appId,
+            jobTitle,
+            applicantName,
+        });
+    };
+
+    const confirmDeleteApplication = () => {
+        const { appId, jobTitle, applicantName } = deleteAppModal;
+        setDeleteAppModal({ isOpen: false, appId: null, jobTitle: '', applicantName: '' });
+        if (!appId) return;
+
+        const performLocalRemove = () => {
+            setApplications(prev => prev.filter(a => String(a.id) !== String(appId)));
+
+            if (typeof window !== 'undefined') {
+                const localApps = JSON.parse(localStorage.getItem('mock_applications_custom') || '[]');
+                const updatedLocal = localApps.filter((la: any) => String(la.id) !== String(appId));
+                localStorage.setItem('mock_applications_custom', JSON.stringify(updatedLocal));
+                window.dispatchEvent(new Event('storage'));
+            }
+
+            if (selectedApplicantModal) {
+                const remaining = selectedApplicantModal.applications.filter((a: any) => String(a.id) !== String(appId));
+                if (remaining.length === 0) {
+                    setSelectedApplicantModal(null);
+                    setViewingAppDetails(null);
+                } else {
+                    setSelectedApplicantModal((prev: any) => ({
+                        ...prev,
+                        applications: remaining,
+                        totalApplications: remaining.length,
+                    }));
+                    setViewingAppDetails(null);
+                }
+            }
+            toast.success(`Job application for "${jobTitle}" deleted.`);
+        };
+
+        const isDbApp = serverApplications && serverApplications.some((sa: any) => String(sa.id) === String(appId));
+
+        if (isDbApp) {
+            router.delete(`/admin/applications/${appId}`, {
+                onSuccess: () => {
+                    performLocalRemove();
+                },
+                onError: (err: any) => {
+                    toast.error((Object.values(err)[0] as string) || "Failed to delete job application.");
+                }
+            });
+        } else {
+            performLocalRemove();
+        }
+    };
+
+    const groupedApplicants = React.useMemo(() => {
+        const map = new Map<string, any>();
+
+        filteredApplications.forEach(app => {
+            const emailKey = (app.email || '').toLowerCase().trim() || (app.applicantName || '').toLowerCase().trim();
+            const isNew = (app.status === 'Submitted' || app.status === 'Pending Review') && !viewedAppIds.has(String(app.id));
+            if (!map.has(emailKey)) {
+                map.set(emailKey, {
+                    email: app.email,
+                    applicantName: app.applicantName,
+                    userId: app.userId || null,
+                    avatarUrl: app.avatarUrl || app.dynamic_responses?.photo || null,
+                    applications: [app],
+                    appliedPositions: app.jobTitle ? [app.jobTitle] : [],
+                    totalApplications: 1,
+                    topScore: app.aiScore || 0,
+                    latestSubmittedDate: app.submittedDate,
+                    latestStatus: getFormattedStatus(app),
+                    hasUnreadMessages: !!app.hasUnreadMessages,
+                    hasNewSubmission: isNew,
+                });
+            } else {
+                const existing = map.get(emailKey);
+                existing.applications.push(app);
+                if (app.jobTitle && !existing.appliedPositions.includes(app.jobTitle)) {
+                    existing.appliedPositions.push(app.jobTitle);
+                }
+                existing.totalApplications = existing.applications.length;
+                if ((app.aiScore || 0) > existing.topScore) {
+                    existing.topScore = app.aiScore || 0;
+                }
+                if (new Date(app.submittedDate).getTime() > new Date(existing.latestSubmittedDate).getTime()) {
+                    existing.latestSubmittedDate = app.submittedDate;
+                    existing.latestStatus = getFormattedStatus(app);
+                }
+                if (app.userId && !existing.userId) {
+                    existing.userId = app.userId;
+                }
+                if (app.avatarUrl && !existing.avatarUrl) {
+                    existing.avatarUrl = app.avatarUrl;
+                }
+                if (app.hasUnreadMessages) {
+                    existing.hasUnreadMessages = true;
+                }
+                if (isNew) {
+                    existing.hasNewSubmission = true;
+                }
+            }
+        });
+
+        return Array.from(map.values()).sort((a, b) => {
+            if (sortBy === 'date') {
+                return new Date(b.latestSubmittedDate).getTime() - new Date(a.latestSubmittedDate).getTime();
+            } else if (sortBy === 'score') {
+                return b.topScore - a.topScore;
+            }
+            return 0;
+        });
+    }, [filteredApplications, viewedAppIds, sortBy]);
 
     const handleScheduleInterview = async () => {
         if (!interviewDate || !interviewTime || !venue) {
@@ -562,7 +777,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
             if (originalApp) {
                 let updatedLocalApps;
                 const updatedObj = { 
-                    status: newStatus,
+                    status: nextStatus,
                     dynamic_responses: {
                         ...(appInLocal?.dynamic_responses || originalApp.dynamic_responses || {}),
                         rejection_reason: reason
@@ -587,11 +802,11 @@ export default function Applicants({ auth, applications: serverApplications }: {
         if (isDbApp) {
             // Actual backend call
             router.post(`/admin/applications/${id}/status`, {
-                status: newStatus,
+                status: nextStatus,
                 rejection_reason: reason
             }, {
                 onSuccess: () => {
-                    toast.success(`Applicant status updated to: ${newStatus}`);
+                    toast.success(`Applicant status restored to: ${nextStatus}`);
                 },
                 onError: (errors) => {
                     toast.error(`Failed to update status: ${Object.values(errors)[0]}`);
@@ -600,7 +815,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                 }
             });
         } else {
-            toast.success(`Applicant status updated to: ${newStatus} (Mock Local)`);
+            toast.success(`Applicant status restored to: ${nextStatus}`);
         }
     };
 
@@ -611,16 +826,19 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
     return (
         <AdminLayout auth={auth}>
-            <div className="container mx-auto px-4 py-8">
-                <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="container mx-auto px-4 py-8 space-y-6">
+                {/* User Directory style Header */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Applicants Overview</h1>
-                        <p className="text-gray-600">Reviewing applicants as <span className="text-[#193153] font-bold">{admin.name}</span></p>
+                        <h1 className="text-2xl font-bold text-[#193153]">Applicant Directory</h1>
+                        <p className="text-sm text-gray-500 mt-1">
+                            View applicant users and inspect job applications submitted across NAAP Careers portal.
+                        </p>
                     </div>
 
                     <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-[#193153] hover:bg-[#193153]/90 text-white font-semibold flex items-center gap-2">
+                            <Button className="bg-[#193153] hover:bg-[#193153]/90 text-white font-semibold flex items-center gap-2 shadow-sm">
                                 <Download className="w-4 h-4" /> Export Reports
                             </Button>
                         </DialogTrigger>
@@ -679,586 +897,845 @@ export default function Applicants({ auth, applications: serverApplications }: {
                         </DialogContent>
                     </Dialog>
                 </div>
-                {/* Filters */}
-                <Card className="mb-6">
-                    <CardContent className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            <div className="md:col-span-2">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                    <Input placeholder="Search by name or position..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
-                                </div>
-                            </div>
-                            <Select value={positionFilter} onValueChange={setPositionFilter}>
-                                <SelectTrigger><SelectValue placeholder="All Positions" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Positions</SelectItem>
-                                    {positions.map(position => <SelectItem key={position} value={position}>{position}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger><SelectValue placeholder="All Status" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Status</SelectItem>
-                                    <SelectItem value="Pending Review">Pending Review</SelectItem>
-                                    {statuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                    <SelectItem value="Archived">Archived</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Select value={aiMatchFilter} onValueChange={setAiMatchFilter}>
-                                <SelectTrigger><SelectValue placeholder="AI Match" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Matches</SelectItem>
-                                    <SelectItem value="High Match">High Match</SelectItem>
-                                    <SelectItem value="Medium Match">Medium Match</SelectItem>
-                                    <SelectItem value="Low Match">Low Match</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Select value={sortBy} onValueChange={setSortBy}>
-                                <SelectTrigger><SelectValue placeholder="Sort By" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="date">Latest First</SelectItem>
-                                    <SelectItem value="score">Highest Match</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </CardContent>
-                </Card>
 
-                {/* AI Insights */}
-                <Card className="mb-6 bg-blue-50 border-blue-200">
-                    <CardContent className="p-6">
-                        <div className="flex items-center mb-2">
-                            <Star className="h-5 w-5 text-blue-600 mr-2" />
-                            <h3 className="font-semibold text-blue-900">Qualification Match Insights</h3>
-                        </div>
-                        <p className="text-sm text-blue-800 mb-4">Applications are automatically ranked based on job requirements, skills match, and experience.</p>
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                            <div>
-                                <p className="text-2xl font-bold text-green-600">{filteredApplications.filter(a => getAiMatch(a.aiScore) === 'High Match').length}</p>
-                                <p className="text-sm text-gray-600">High Match</p>
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold text-yellow-600">{filteredApplications.filter(a => getAiMatch(a.aiScore) === 'Medium Match').length}</p>
-                                <p className="text-sm text-gray-600">Medium Match</p>
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold text-red-600">{filteredApplications.filter(a => getAiMatch(a.aiScore) === 'Low Match').length}</p>
-                                <p className="text-sm text-gray-600">Low Match</p>
+                {/* User Directory style Search & Filters bar */}
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <div className="md:col-span-2">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search applicant users by name or email..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#193153]"
+                                />
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
+                        <Select value={positionFilter} onValueChange={setPositionFilter}>
+                            <SelectTrigger className="text-xs bg-gray-50"><SelectValue placeholder="All Positions" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Positions</SelectItem>
+                                {positions.map(position => <SelectItem key={position} value={position}>{position}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="text-xs bg-gray-50"><SelectValue placeholder="All Status" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Status</SelectItem>
+                                <SelectItem value="Pending Review">Pending Review</SelectItem>
+                                {statuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                <SelectItem value="Archived">Archived</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
 
-                {/* Applicants Table */}
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
-                            <p className="text-sm text-gray-600"><span className="font-semibold">{filteredApplications.length}</span> applicants found</p>
-                            <span className="md:hidden text-xs text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full font-medium border border-blue-200">💡 Swipe left/right for more details</span>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Applicant</TableHead>
-                                        <TableHead>Position</TableHead>
-                                        <TableHead>Score Percentage</TableHead>
-                                        <TableHead>Match</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead>Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredApplications.map((app) => (
-                                        <TableRow key={app.id}>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2.5">
-                                                    {app.status === 'Submitted' && !viewedAppIds.has(String(app.id)) && (
-                                                        <span className="relative flex h-2.5 w-2.5 shrink-0" title="New Application">
+                {/* Applicants Table (User Management Design) */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <p className="text-sm text-gray-600">
+                            Showing <span className="font-bold text-gray-900">{groupedApplicants.length}</span> applicant user{groupedApplicants.length === 1 ? '' : 's'} ({filteredApplications.length} total application{filteredApplications.length === 1 ? '' : 's'})
+                        </p>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 font-medium">
+                                    <th className="py-3.5 px-6 text-left">User / Applicant</th>
+                                    <th className="py-3.5 px-6 text-center">Applications Submitted</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {groupedApplicants.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={2} className="py-12 text-center text-gray-400 italic">
+                                            No applicant accounts found matching your search.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    groupedApplicants.map((applicant) => (
+                                        <tr
+                                            key={applicant.email || applicant.applicantName}
+                                            className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
+                                            onClick={() => {
+                                                setSelectedApplicantModal(applicant);
+                                                setViewingAppDetails(null);
+                                            }}
+                                        >
+                                            <td className="py-4 px-6 align-middle">
+                                                <div className="flex items-center gap-3">
+                                                    {applicant.hasNewSubmission && (
+                                                        <span className="relative flex h-2.5 w-2.5 shrink-0" title="New Application Submitted">
                                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                                             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
                                                         </span>
                                                     )}
+                                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-[#193153] flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
+                                                        {applicant.avatarUrl ? (
+                                                            <img src={applicant.avatarUrl} alt={applicant.applicantName} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            (applicant.applicantName || 'A').charAt(0).toUpperCase()
+                                                        )}
+                                                    </div>
                                                     <div>
-                                                        <p className="font-medium text-gray-900">{app.applicantName}</p>
-                                                        <p className="text-xs text-gray-500">{app.email}</p>
+                                                        <div className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors flex items-center gap-2">
+                                                            {applicant.applicantName}
+                                                            {applicant.hasNewSubmission && (
+                                                                <Badge className="bg-red-500 hover:bg-red-600 text-white text-[10px] px-1.5 py-0 font-bold animate-pulse shadow-2xs">
+                                                                    NEW
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">{applicant.email}</div>
                                                     </div>
                                                 </div>
-                                            </TableCell>
-                                            <TableCell>{app.jobTitle}</TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-24 bg-gray-200 rounded-full h-2">
-                                                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${Math.min(scoreToPercentage(app.aiScore || 0), 100)}%` }} />
-                                                    </div>
-                                                    <span className="text-sm font-semibold">{scoreToPercentage(app.aiScore || 0)}%</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="secondary" className={getMatchColor(getAiMatch(app.aiScore))}>
-                                                    <span className="flex items-center">
-                                                        {getMatchIcon(getAiMatch(app.aiScore))}
-                                                        <span className="ml-1">{getAiMatch(app.aiScore)}</span>
+                                            </td>
+                                            <td className="py-4 px-6 text-center align-middle">
+                                                {applicant.hasNewSubmission ? (
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200 shadow-2xs">
+                                                        <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                                                        {applicant.totalApplications} Job Application{applicant.totalApplications === 1 ? '' : 's'}
                                                     </span>
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge className={getStatusColor(getFormattedStatus(app))}>
-                                                    {getFormattedStatus(app)}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-sm">
-                                                {new Date(app.submittedDate).toLocaleDateString()}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex gap-2">
-                                                    <Dialog onOpenChange={(open) => {
-                                                         if (open) {
-                                                             markAsViewed(app.id);
-                                                             if (app.status === 'Submitted') {
-                                                                 handleStatusUpdate(app.id, 'Under Review');
-                                                             }
-                                                         }
-                                                     }}>
-                                                        <DialogTrigger asChild>
-                                                            <Button variant="outline" size="sm" onClick={() => markAsViewed(app.id)}>View</Button>
-                                                        </DialogTrigger>
-                                                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                                                            <DialogHeader>
-                                                                <DialogTitle>Applicant Details</DialogTitle>
-                                                            </DialogHeader>
-                                                            <div className="space-y-4 text-sm">
-                                                                <Tabs defaultValue="application" className="w-full">
-                                                                    <TabsList className="grid w-full grid-cols-4 h-9 bg-gray-100/80 rounded-lg p-1 mb-4 border">
-                                                                        <TabsTrigger value="application" className="text-xs">Application</TabsTrigger>
-                                                                        <TabsTrigger value="personal" className="text-xs">Personal Info</TabsTrigger>
-                                                                        <TabsTrigger value="qualifications" className="text-xs">Qualifications</TabsTrigger>
-                                                                        <TabsTrigger value="documents" className="text-xs">Documents</TabsTrigger>
-                                                                    </TabsList>
-                                                                    <TabsContent value="application" className="space-y-4">
-                                                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                                                            <h3 className="font-semibold text-gray-900 mb-3 text-sm">Position Details</h3>
-                                                                            <div className="grid grid-cols-2 gap-y-2 text-xs">
-                                                                                <span className="text-gray-500">Position Applied:</span>
-                                                                                <span className="font-semibold text-gray-950 text-right">{app.jobTitle}</span>
-                                                                                <span className="text-gray-500">Campus/Location:</span>
-                                                                                <span className="font-semibold text-gray-950 text-right">{app.campus ? app.campus.replace('NAAP - ', '') : 'N/A'}</span>
-                                                                                <span className="text-gray-500">Date Applied:</span>
-                                                                                <span className="font-semibold text-gray-950 text-right">{new Date(app.submittedDate).toLocaleDateString()}</span>
-                                                                                <span className="text-gray-500">Current Status:</span>
-                                                                                <span className="font-semibold text-right">
-                                                                                    <Badge className={`${getStatusColor(getFormattedStatus(app))} px-2 py-0.5 text-[10px]`}>{getFormattedStatus(app)}</Badge>
-                                                                                </span>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200 space-y-3">
-                                                                            <div className="flex justify-between items-center">
-                                                                                <h3 className="font-semibold text-blue-900 text-sm flex items-center gap-1.5">
-                                                                                    <TrendingUp className="w-4 h-4 text-blue-600" /> Qualification Analysis Results
-                                                                                </h3>
-                                                                                <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs px-2.5 py-0.5 font-bold">
-                                                                                    {scoreToPercentage(app.aiScore || 0)}% Match
-                                                                                </Badge>
-                                                                            </div>
-                                                                            <p className="text-xs text-blue-800 leading-relaxed">
-                                                                                <span className="font-semibold">{getAiMatch(app.aiScore)}:</span> This applicant shows {getAiMatch(app.aiScore).toLowerCase()} alignment based on computed education level, years of experience, and training credentials.
-                                                                            </p>
-                                                                            {(() => {
-                                                                                const breakdown = app.aiScoreBreakdown || { education: 0, experience: 0, accomplishments: 0, training: 0 };
-                                                                                return (
-                                                                                    <div className="space-y-3 pt-2 border-t border-blue-200/60">
-                                                                                        <p className="text-[11px] font-semibold text-blue-900 uppercase tracking-wide">PDS Evaluation Breakdown</p>
-                                                                                        
-                                                                                        {/* Education */}
-                                                                                        <div>
-                                                                                            <div className="flex justify-between text-xs mb-1">
-                                                                                                <span className="text-gray-700 font-medium">Education Fit (PDS Sec II)</span>
-                                                                                                <span className="font-bold text-gray-900">{Math.round((breakdown.education / 5) * 100)}%</span>
-                                                                                            </div>
-                                                                                            <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                                                                                <div className="bg-purple-600 h-1.5 rounded-full" style={{ width: `${(breakdown.education / 5) * 100}%` }} />
-                                                                                            </div>
-                                                                                            {app.educationLevel && (
-                                                                                                <p className="text-[11px] text-gray-500 mt-1">
-                                                                                                    <span className="font-medium">Level:</span> {
-                                                                                                        app.educationLevel === 'bachelor' ? "Bachelor's Degree" :
-                                                                                                        app.educationLevel === 'masters' ? "Master's Degree" :
-                                                                                                        app.educationLevel === 'doctoral_9-15' ? "Doctoral (9-15 units)" :
-                                                                                                        app.educationLevel === 'doctoral_15-18' ? "Doctoral (15-18 units)" :
-                                                                                                        app.educationLevel === 'doctoral_18-24' ? "Doctoral (18-24 units)" :
-                                                                                                        app.educationLevel === 'doctoral_27+' ? "Doctoral (27+ units)" :
-                                                                                                        app.educationLevel === 'doctoral_graduate' ? "Doctoral Graduate" :
-                                                                                                        app.educationLevel
-                                                                                                    }
-                                                                                                </p>
-                                                                                            )}
-                                                                                        </div>
+                                                ) : (
+                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                                                        {applicant.totalApplications} Job Application{applicant.totalApplications === 1 ? '' : 's'}
+                                                    </span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
-                                                                                        {/* Work Experience */}
-                                                                                        <div>
-                                                                                            <div className="flex justify-between text-xs mb-1">
-                                                                                                <span className="text-gray-700 font-medium">Work Experience Fit (PDS Sec IV)</span>
-                                                                                                <span className="font-bold text-gray-900">{Math.round((breakdown.experience / 25) * 100)}%</span>
-                                                                                            </div>
-                                                                                            <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                                                                                <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${(breakdown.experience / 25) * 100}%` }} />
-                                                                                            </div>
-                                                                                            {app.yearsOfExperience !== undefined && (
-                                                                                                <p className="text-[11px] text-gray-500 mt-1">
-                                                                                                    <span className="font-medium">Years:</span> {app.yearsOfExperience} years
-                                                                                                </p>
-                                                                                            )}
-                                                                                        </div>
+                {/* Unified Applicant Details & Applications Modal */}
+                {selectedApplicantModal && (
+                    <Dialog open={!!selectedApplicantModal} onOpenChange={(open) => {
+                        if (!open) {
+                            setSelectedApplicantModal(null);
+                            setViewingAppDetails(null);
+                        }
+                    }}>
+                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                            {(() => {
+                                if (!selectedApplicantModal) return null;
 
-                                                                                        {/* Awards & Recognition */}
-                                                                                        <div>
-                                                                                            <div className="flex justify-between text-xs mb-1">
-                                                                                                <span className="text-gray-700 font-medium">Eligibility & Awards Fit (PDS Sec III & VII)</span>
-                                                                                                <span className="font-bold text-gray-900">{Math.round((breakdown.accomplishments / 5) * 100)}%</span>
-                                                                                            </div>
-                                                                                            <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                                                                                <div className="bg-yellow-500 h-1.5 rounded-full" style={{ width: `${(breakdown.accomplishments / 5) * 100}%` }} />
-                                                                                            </div>
-                                                                                            {app.awards && app.awards.length > 0 ? (
-                                                                                                <p className="text-[11px] text-gray-500 mt-1">
-                                                                                                    <span className="font-medium">Received:</span> {app.awards.map((award: string) =>
-                                                                                                        award === 'national' ? 'National Award' :
-                                                                                                        award === 'csc' ? 'CSC Award' :
-                                                                                                        award === 'president' ? "President's Award" :
-                                                                                                        award === 'ngo' ? 'NGO Award' : award
-                                                                                                    ).join(', ')}
-                                                                                                </p>
-                                                                                            ) : (
-                                                                                                <p className="text-[11px] text-gray-400 mt-1 italic">No awards listed</p>
-                                                                                            )}
-                                                                                        </div>
-
-                                                                                        {/* Training & L&D */}
-                                                                                        <div>
-                                                                                            <div className="flex justify-between text-xs mb-1">
-                                                                                                <span className="text-gray-700 font-medium">Training & L&D Fit (PDS Sec VI)</span>
-                                                                                                <span className="font-bold text-gray-900">{Math.round((breakdown.training / 10) * 100)}%</span>
-                                                                                            </div>
-                                                                                            <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                                                                                <div className="bg-green-600 h-1.5 rounded-full" style={{ width: `${(breakdown.training / 10) * 100}%` }} />
-                                                                                            </div>
-                                                                                            {app.trainingHours !== undefined && (
-                                                                                                <p className="text-[11px] text-gray-500 mt-1">
-                                                                                                    <span className="font-medium">Hours:</span> {app.trainingHours} hours
-                                                                                                </p>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                );
-                                                                            })()}
-                                                                        </div>
-                                                                    </TabsContent>
-                                                                    <TabsContent value="personal" className="space-y-4">
-                                                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
-                                                                            <div>
-                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Identity & Personal Information</h3>
-                                                                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">First Name</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.firstName || app.applicantName.split(' ')[0]}</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Middle Name</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.middleName || 'N/A'}</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Last Name</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.lastName || app.applicantName.split(' ').pop()}</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Extension Name</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.extensionName || 'N/A'}</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Age</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.age || 'N/A'}</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Sex / Gender</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{app.dynamic_responses?.sex || 'N/A'}</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Civil Status</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{app.dynamic_responses?.civilStatus || 'N/A'}</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Religion</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{app.dynamic_responses?.religion || 'N/A'}</span></div>
-                                                                                </div>
-                                                                            </div>
-                                                                            <div>
-                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Demographics</h3>
-                                                                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Indigenous Group Member</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.isIP || 'No'}</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Person with Disability (PWD)</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.isPWD || 'No'}</span></div>
-                                                                                </div>
-                                                                            </div>
-                                                                            <div>
-                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Contact Information</h3>
-                                                                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Email Address</span><span className="font-semibold text-gray-900 mt-0.5 truncate" title={app.email}>{app.email}</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Primary Phone Number</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.phone_number || app.phone_number || 'N/A'}</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Alternate Phone Number</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.alternateContact || 'N/A'}</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Source Referral</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{app.dynamic_responses?.source ? app.dynamic_responses.source.replace('_', ' ') : 'N/A'}</span></div>
-                                                                                    <div className="flex flex-col col-span-2"><span className="text-gray-500">Residential Address</span><span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{app.dynamic_responses?.address || 'N/A'}</span></div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </TabsContent>
-                                                                    <TabsContent value="qualifications" className="space-y-4">
-                                                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
-                                                                            <div>
-                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Professional Credentials</h3>
-                                                                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Highest Education Attained</span><span className="font-semibold text-gray-900 mt-0.5">{(() => {
-                                                                                        const rawEd = app.educationLevel || app.dynamic_responses?.educationLevel || app.education || '';
-                                                                                        if (rawEd === 'bachelor') return "Bachelor's Degree";
-                                                                                        if (rawEd === 'masters') return "Master's Degree";
-                                                                                        if (rawEd === 'doctoral_9-15') return "Doctoral (9-15 units)";
-                                                                                        if (rawEd === 'doctoral_15-18') return "Doctoral (15-18 units)";
-                                                                                        if (rawEd === 'doctoral_18-24') return "Doctoral (18-24 units)";
-                                                                                        if (rawEd === 'doctoral_27+') return "Doctoral (27+ units)";
-                                                                                        if (rawEd === 'doctoral_graduate') return "Doctoral Graduate";
-                                                                                        if (rawEd.includes('doctoral')) return "Doctoral / Ph.D. Degree";
-                                                                                        if (rawEd.includes('master')) return "Master's Degree";
-                                                                                        if (rawEd.includes('bachelor')) return "Bachelor's Degree";
-                                                                                        if (rawEd.includes('vocational')) return "Vocational / Technical Diploma";
-                                                                                        if (rawEd.includes('highschool')) return "High School Graduate";
-                                                                                        return rawEd || 'N/A';
-                                                                                    })()}</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Years of Experience</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.yearsOfExperience || (app.aiScoreBreakdown?.experience ? Math.max(1, app.aiScoreBreakdown.experience) : 'N/A')} years</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Training hours</span><span className="font-semibold text-gray-900 mt-0.5">{app.dynamic_responses?.trainingHours || 'N/A'} hours</span></div>
-                                                                                    <div className="flex flex-col"><span className="text-gray-500">Open to other positions?</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{app.dynamic_responses?.openToOthers || 'Yes'}</span></div>
-                                                                                    <div className="flex flex-col col-span-2"><span className="text-gray-500">Detailed Experience Summary</span><span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{app.experience}</span></div>
-                                                                                </div>
-                                                                            </div>
-                                                                            <div>
-                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Awards & Recognition</h3>
-                                                                                {app.dynamic_responses?.awards && app.dynamic_responses.awards.length > 0 ? (
-                                                                                    <div className="flex flex-wrap gap-1.5 mt-1">
-                                                                                        {app.dynamic_responses.awards.map((award: string, i: number) => (
-                                                                                            <Badge key={i} variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 capitalize">
-                                                                                                {award.replace('_', ' ')}
-                                                                                            </Badge>
-                                                                                        ))}
-                                                                                    </div>
-                                                                                ) : (
-                                                                                    <p className="text-xs text-gray-500 italic">No awards listed</p>
-                                                                                )}
-                                                                            </div>
-                                                                            <div>
-                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Verified Skills</h3>
-                                                                                <div className="flex flex-wrap gap-1.5 mt-1">
-                                                                                    {app.skills && app.skills.length > 0 ? (
-                                                                                        app.skills.map((skill: string, i: number) => (
-                                                                                            <Badge key={i} variant="secondary" className="text-xs px-1.5 py-0.5">{skill}</Badge>
-                                                                                        ))
-                                                                                    ) : (
-                                                                                        <span className="text-xs text-gray-500 italic">No skills listed</span>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                            <div>
-                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Civil Service & Board Eligibilities</h3>
-                                                                                {app.dynamic_responses?.eligibilities && app.dynamic_responses.eligibilities.length > 0 ? (
-                                                                                    <ul className="list-disc pl-4 text-xs text-gray-700 space-y-1 mt-1">
-                                                                                        {app.dynamic_responses.eligibilities.map((eligibility: string, i: number) => (
-                                                                                            <li key={i} className="font-semibold">{eligibility}</li>
-                                                                                        ))}
-                                                                                    </ul>
-                                                                                ) : (
-                                                                                    <p className="text-xs text-gray-500 italic">No CS/Board eligibilities declared</p>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    </TabsContent>
-                                                                    <TabsContent value="documents" className="space-y-4">
-                                                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
-                                                                            <div className="space-y-2">
-                                                                                <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Uploaded Documents</h3>
-                                                                                <div className="grid grid-cols-1 gap-2">
-                                                                                    {app.documents && app.documents.length > 0 ? (
-                                                                                        app.documents.map((doc: any, i: number) => (
-                                                                                            <div key={i} className="flex items-center justify-between p-2 bg-white rounded border border-gray-100 shadow-sm animate-fade-in">
-                                                                                                <div className="flex items-center overflow-hidden mr-2">
-                                                                                                    <FileText className="shrink-0 h-4 w-4 text-blue-500 mr-2" />
-                                                                                                    <span className="text-sm text-gray-700 font-medium truncate">{doc.name}</span>
-                                                                                                    {doc.fileName && (
-                                                                                                        <span className="text-xs text-gray-500 ml-2 italic truncate max-w-37.5">({doc.fileName})</span>
-                                                                                                    )}
-                                                                                                </div>
-                                                                                                <Button
-                                                                                                    variant="ghost"
-                                                                                                    size="sm"
-                                                                                                    className="h-6 w-6 p-0 hover:bg-blue-100"
-                                                                                                    type="button"
-                                                                                                    onClick={(e) => {
-                                                                                                        e.preventDefault();
-                                                                                                        e.stopPropagation();
-                                                                                                        handleViewDocument(doc.name, doc.url || '#', doc.fileName);
-                                                                                                    }}
-                                                                                                    title="View Document"
-                                                                                                >
-                                                                                                    <Eye className="h-3 w-3 text-blue-600" />
-                                                                                                </Button>
-                                                                                            </div>
-                                                                                        ))
-                                                                                    ) : (
-                                                                                        <p className="text-xs text-gray-500 italic">No documents uploaded.</p>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                            {app.toFollowDocs && app.toFollowDocs.length > 0 && (
-                                                                                <div className="space-y-2">
-                                                                                    <div className="flex items-center gap-2 border-b pb-1.5 mb-2">
-                                                                                        <h3 className="font-semibold text-orange-700 text-sm">Pending Requirements</h3>
-                                                                                        <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700 border-orange-200">To Follow</Badge>
-                                                                                    </div>
-                                                                                    <div className="grid grid-cols-1 gap-2">
-                                                                                        {app.toFollowDocs.map((docName: string, i: number) => (
-                                                                                            <div key={i} className="flex items-center p-2 bg-orange-50/20 rounded border border-orange-100">
-                                                                                                <FileText className="shrink-0 h-4 w-4 text-orange-400 mr-2" />
-                                                                                                <span className="text-sm text-gray-700 font-medium truncate">{docName}</span>
-                                                                                            </div>
-                                                                                        ))}
-                                                                                    </div>
-                                                                                </div>
-                                                                            )}
-                                                                            {app.custom_file_responses && Object.keys(app.custom_file_responses).length > 0 && (
-                                                                                <div className="space-y-2">
-                                                                                    <h3 className="font-semibold text-blue-900 text-sm border-b pb-1.5 mb-2">Custom File Requirements</h3>
-                                                                                    <div className="grid grid-cols-1 gap-2">
-                                                                                        {Object.entries(app.custom_file_responses).map(([label, path]: [string, any]) => (
-                                                                                            <div key={label} className="flex items-center justify-between p-2 bg-white rounded border border-blue-100 shadow-sm">
-                                                                                                <div className="flex items-center overflow-hidden mr-2">
-                                                                                                    <FileText className="shrink-0 h-4 w-4 text-blue-500 mr-2" />
-                                                                                                    <span className="text-sm text-gray-700 font-medium truncate">{label}</span>
-                                                                                                </div>
-                                                                                                <Button
-                                                                                                    variant="ghost"
-                                                                                                    size="sm"
-                                                                                                    className="h-6 w-6 p-0 hover:bg-blue-100"
-                                                                                                    type="button"
-                                                                                                    onClick={(e) => {
-                                                                                                        e.preventDefault();
-                                                                                                        e.stopPropagation();
-                                                                                                        window.open(`/storage/${path}`, '_blank');
-                                                                                                    }}
-                                                                                                    title="View Document"
-                                                                                                >
-                                                                                                    <Eye className="h-3 w-3 text-blue-600" />
-                                                                                                </Button>
-                                                                                            </div>
-                                                                                        ))}
-                                                                                    </div>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </TabsContent>
-                                                                </Tabs>
-                                                                {(() => {
-                                                                    const isHired = app.status === 'Hired';
-                                                                    const isRejected = app.status === 'Rejected';
-                                                                    const isArchived = app.status === 'Archived';
-                                                                    const isTerminal = isHired || isRejected || isArchived;
-
-                                                                    return (
-                                                                        <>
-                                                                            {isHired && (
-                                                                                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-center text-xs font-semibold text-emerald-800 flex items-center justify-center gap-1.5 mt-2">
-                                                                                    <span>🎉</span> Applicant has been officially Hired! Status actions locked.
-                                                                                </div>
-                                                                            )}
-                                                                            {isRejected && (
-                                                                                <div className="bg-red-50 border border-red-200 rounded-lg p-2.5 text-center text-xs font-semibold text-red-800 flex items-center justify-center gap-1.5 mt-2">
-                                                                                    <span>🚫</span> Application is Rejected. Status actions locked.
-                                                                                </div>
-                                                                            )}
-                                                                            {isArchived && (
-                                                                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-center text-xs font-semibold text-amber-800 flex items-center justify-center gap-1.5 mt-2">
-                                                                                    <span>📦</span> Application is currently Archived. Unarchive to enable status actions.
-                                                                                </div>
-                                                                            )}
-                                                                            <div className="flex gap-2 pt-2 border-t mt-2">
-                                                                                <Button
-                                                                                    size="sm"
-                                                                                    disabled={isTerminal}
-                                                                                    className={`flex-1 font-bold ${
-                                                                                        isTerminal
-                                                                                            ? 'bg-gray-200 text-gray-400 hover:bg-gray-200 cursor-not-allowed border-none shadow-none'
-                                                                                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                                                                    }`}
-                                                                                    onClick={() => handleStatusUpdate(app.id, 'Hired')}
-                                                                                >
-                                                                                    {isHired ? 'Hired' : 'Hire Applicant'}
-                                                                                </Button>
-                                                                                <Button
-                                                                                    size="sm"
-                                                                                    variant="destructive"
-                                                                                    disabled={isTerminal}
-                                                                                    className={`flex-1 ${
-                                                                                        isTerminal
-                                                                                            ? 'bg-gray-200 text-gray-400 hover:bg-gray-200 cursor-not-allowed border-none shadow-none'
-                                                                                            : ''
-                                                                                    }`}
-                                                                                    onClick={() => {
-                                                                                        setRejectionAppId(app.id);
-                                                                                        setRejectionReason('Minimum educational requirements not met');
-                                                                                        setCustomRejectionReason('');
-                                                                                        setIsRejectionModalOpen(true);
-                                                                                    }}
-                                                                                >
-                                                                                    Reject Applicant
-                                                                                </Button>
-                                                                            </div>
-                                                                            <div className="pt-2 border-t flex flex-col gap-2">
-                                                                                <div className="flex gap-2">
-                                                                                    {isArchived ? (
-                                                                                        <Button
-                                                                                            variant="outline"
-                                                                                            size="sm"
-                                                                                            className="flex-1 border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold"
-                                                                                            onClick={() => handleStatusUpdate(app.id, 'RESTORE')}
-                                                                                        >
-                                                                                            <RotateCcw className="mr-2 h-3.5 w-3.5" />
-                                                                                            Unarchive Application
-                                                                                        </Button>
-                                                                                    ) : (
-                                                                                        <Button
-                                                                                            variant="outline"
-                                                                                            size="sm"
-                                                                                            disabled={isTerminal}
-                                                                                            className={`flex-1 ${
-                                                                                                isTerminal
-                                                                                                    ? 'bg-gray-100 text-gray-400 hover:bg-gray-100 cursor-not-allowed border-gray-200'
-                                                                                                    : 'border-gray-300 text-gray-600 hover:bg-gray-100'
-                                                                                            }`}
-                                                                                            onClick={() => handleStatusUpdate(app.id, 'Archived')}
-                                                                                        >
-                                                                                            <Trash className="mr-2 h-3.5 w-3.5" />
-                                                                                            Archive
-                                                                                        </Button>
-                                                                                    )}
-                                                                                    <Button
-                                                                                        disabled={isTerminal}
-                                                                                        className={`flex-2 font-bold ${
-                                                                                            isTerminal
-                                                                                                ? 'bg-gray-200 text-gray-400 hover:bg-gray-200 cursor-not-allowed border-none shadow-none'
-                                                                                                : 'bg-purple-600 hover:bg-purple-700 text-white'
-                                                                                        }`}
-                                                                                        onClick={() => {
-                                                                                            setCandidateName(app.applicantName);
-                                                                                            setPosition(app.jobTitle);
-                                                                                            setSelectedAppId(app.id);
-                                                                                            setSelectedAppEmail(app.email || app.applicantEmail || '');
-                                                                                            setIsInterviewModalOpen(true);
-                                                                                        }}
-                                                                                    >
-                                                                                        <Calendar className="mr-2 h-4 w-4" />
-                                                                                        Schedule Interview
-                                                                                    </Button>
-                                                                                </div>
-                                                                            </div>
-                                                                        </>
-                                                                    );
-                                                                })()}
-                                                            </div>
-                                                        </DialogContent>
-                                                    </Dialog>
-                                
+                                // Level 1: Applied Jobs List view for this specific applicant
+                                if (!viewingAppDetails) {
+                                    return (
+                                        <>
+                                            <DialogHeader className="border-b pb-3">
+                                                <div className="flex items-center gap-3">
+                                                    {selectedApplicantModal.avatarUrl ? (
+                                                        <img
+                                                            src={selectedApplicantModal.avatarUrl}
+                                                            alt={selectedApplicantModal.applicantName}
+                                                            className="w-10 h-10 rounded-full object-cover border border-slate-300 shadow-sm shrink-0"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-full bg-[#193153] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                                                            {selectedApplicantModal.applicantName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <DialogTitle className="text-lg font-bold text-gray-900">{selectedApplicantModal.applicantName}</DialogTitle>
+                                                        <p className="text-xs text-gray-500 mt-0.5">{selectedApplicantModal.email}</p>
+                                                    </div>
                                                 </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                            </DialogHeader>
+
+                                            <div className="py-4 space-y-3">
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                    <div>
+                                                        <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                                                            <Briefcase className="w-4.5 h-4.5 text-blue-600" />
+                                                            Positions Applied ({selectedApplicantModal.totalApplications})
+                                                        </h3>
+                                                        <p className="text-xs text-gray-500">
+                                                            Click "View Application" on any position below to inspect complete details, qualifications, and manage application status.
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white">
+                                                    <Table>
+                                                        <TableHeader className="bg-slate-50">
+                                                            <TableRow className="border-b border-slate-200">
+                                                                <TableHead className="font-bold text-slate-800 text-xs text-left align-middle py-3 px-4">Position Applied</TableHead>
+                                                                <TableHead className="font-bold text-slate-800 text-xs text-center align-middle py-3 px-4">Score Percentage</TableHead>
+                                                                <TableHead className="font-bold text-slate-800 text-xs text-center align-middle py-3 px-4">Match</TableHead>
+                                                                <TableHead className="font-bold text-slate-800 text-xs text-center align-middle py-3 px-4">Status</TableHead>
+                                                                <TableHead className="font-bold text-slate-800 text-xs text-right align-middle py-3 px-4">Action</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                             {selectedApplicantModal.applications.map((appItem: any) => {
+                                                                 const liveApp = applications.find(a => String(a.id) === String(appItem.id)) || appItem;
+                                                                 const aiData = getAppAiData(liveApp);
+                                                                 const appScore = aiData.percentage;
+                                                                 const appMatch = aiData.match;
+                                                                 const appStatus = getFormattedStatus(liveApp);
+
+                                                                  const isNewApp = (liveApp.status === 'Submitted' || liveApp.status === 'Pending Review') && !viewedAppIds.has(String(liveApp.id));
+
+                                                                 return (
+                                                                     <TableRow
+                                                                         key={appItem.id}
+                                                                         className={`hover:bg-slate-50/70 transition-colors border-b border-slate-100 ${isNewApp ? 'bg-red-50/20' : ''}`}
+                                                                     >
+                                                                         <TableCell className="font-bold text-xs text-gray-900 text-left align-middle py-3.5 px-4">
+                                                                             <div className="flex items-center gap-2">
+                                                                                 {isNewApp && (
+                                                                                     <span className="relative flex h-2 w-2 shrink-0" title="New Application Submitted">
+                                                                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                                                         <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                                                                     </span>
+                                                                                 )}
+                                                                                 <span>{liveApp.jobTitle}</span>
+                                                                                 {isNewApp && (
+                                                                                     <Badge className="bg-red-500 text-white text-[9px] px-1.5 py-0 font-bold animate-pulse shadow-2xs">
+                                                                                         NEW
+                                                                                     </Badge>
+                                                                                 )}
+                                                                             </div>
+                                                                             {liveApp.campus && (
+                                                                                 <span className="block text-[11px] font-normal text-gray-500 mt-0.5">
+                                                                                     {liveApp.campus.replace('NAAP - ', '')}
+                                                                                 </span>
+                                                                             )}
+                                                                         </TableCell>
+                                                                        <TableCell className="text-center align-middle py-3.5 px-4">
+                                                                            <span className="font-bold text-xs text-blue-700">{appScore}%</span>
+                                                                        </TableCell>
+                                                                        <TableCell className="text-center align-middle py-3.5 px-4">
+                                                                            <Badge variant="secondary" className={`${getMatchColor(appMatch)} text-[10px] py-0.5 px-2.5 font-semibold inline-flex items-center justify-center`}>
+                                                                                {appMatch}
+                                                                            </Badge>
+                                                                        </TableCell>
+                                                                        <TableCell className="text-center align-middle py-3.5 px-4">
+                                                                            <Badge className={`${getStatusColor(appStatus)} text-[10px] px-2.5 py-0.5 font-bold inline-flex items-center justify-center`}>
+                                                                                {appStatus}
+                                                                            </Badge>
+                                                                        </TableCell>
+                                                                        <TableCell className="text-right align-middle py-3.5 px-4">
+                                                                            <Button
+                                                                                size="sm"
+                                                                                className="bg-[#193153] hover:bg-[#193153]/90 text-white font-semibold text-xs px-3 py-1 h-8 shadow-2xs inline-flex items-center justify-center gap-1"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    markAsViewed(liveApp.id);
+                                                                                    if (liveApp.status === 'Submitted') {
+                                                                                        handleStatusUpdate(liveApp.id, 'Under Review');
+                                                                                    }
+                                                                                    setViewingAppDetails(liveApp);
+                                                                                }}
+                                                                            >
+                                                                                <Eye className="w-3.5 h-3.5" /> View Application
+                                                                            </Button>
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                );
+                                                            })}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                }
+
+                                // Level 2: Detailed Application View for viewingAppDetails
+                                const currentApp = applications.find(a => String(a.id) === String(viewingAppDetails.id)) || viewingAppDetails;
+                                const currentStatus = getFormattedStatus(currentApp);
+
+                                return (
+                                    <>
+                                        <DialogHeader className="border-b pb-3">
+                                            <div className="flex items-center justify-between gap-3 mb-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setViewingAppDetails(null)}
+                                                    className="text-xs font-semibold text-blue-700 border-blue-200 bg-blue-50/70 hover:bg-blue-100 flex items-center gap-1.5 h-8 px-2.5"
+                                                >
+                                                    <ArrowLeft className="w-3.5 h-3.5" />
+                                                    Back to Applied Jobs List
+                                                </Button>
+
+                                                <div className="flex items-center gap-2 mr-6">
+                                                    <Badge className={`${getStatusColor(currentStatus)} px-2.5 py-0.5 text-xs font-bold shrink-0`}>
+                                                        {currentStatus}
+                                                    </Badge>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleDeleteSingleApplication(currentApp.id, currentApp.jobTitle, selectedApplicantModal.applicantName)}
+                                                        className="text-xs font-semibold text-red-600 border-red-200 bg-red-50 hover:bg-red-100 flex items-center gap-1.5 h-8 px-2.5 shadow-2xs"
+                                                        title="Delete this job application"
+                                                    >
+                                                        <Trash className="w-3.5 h-3.5" /> Delete Application
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 pt-1">
+                                                {selectedApplicantModal.avatarUrl ? (
+                                                    <img
+                                                        src={selectedApplicantModal.avatarUrl}
+                                                        alt={selectedApplicantModal.applicantName}
+                                                        className="w-9 h-9 rounded-full object-cover border border-slate-300 shadow-sm shrink-0"
+                                                    />
+                                                ) : (
+                                                    <div className="w-9 h-9 rounded-full bg-[#193153] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                                                        {selectedApplicantModal.applicantName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                    </div>
+                                                )}
+                                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                                    <DialogTitle className="text-base font-bold text-gray-900">{selectedApplicantModal.applicantName}</DialogTitle>
+                                                    <span className="hidden sm:inline text-gray-300">•</span>
+                                                    <span className="text-xs font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{currentApp.jobTitle}</span>
+                                                    <span className="text-xs text-gray-400">({selectedApplicantModal.email})</span>
+                                                </div>
+                                            </div>
+                                        </DialogHeader>
+
+                                        <div className="space-y-4 text-sm mt-3">
+                                            <Tabs defaultValue="application" className="w-full">
+                                                <TabsList className="grid w-full grid-cols-4 h-9 bg-gray-100/80 rounded-lg p-1 mb-4 border">
+                                                    <TabsTrigger value="application" className="text-xs">Application</TabsTrigger>
+                                                    <TabsTrigger value="personal" className="text-xs">Personal Info</TabsTrigger>
+                                                    <TabsTrigger value="qualifications" className="text-xs">Qualifications</TabsTrigger>
+                                                    <TabsTrigger value="documents" className="text-xs">Documents</TabsTrigger>
+                                                </TabsList>
+                                                <TabsContent value="application" className="space-y-4">
+                                                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                                        <h3 className="font-semibold text-gray-900 mb-3 text-sm">Position Details</h3>
+                                                        <div className="grid grid-cols-2 gap-y-2 text-xs">
+                                                            <span className="text-gray-500">Position Applied:</span>
+                                                            <span className="font-semibold text-gray-950 text-right">{currentApp.jobTitle}</span>
+                                                            <span className="text-gray-500">Campus/Location:</span>
+                                                            <span className="font-semibold text-gray-950 text-right">{currentApp.campus ? currentApp.campus.replace('NAAP - ', '') : 'N/A'}</span>
+                                                            <span className="text-gray-500">Date Applied:</span>
+                                                            <span className="font-semibold text-gray-950 text-right">{new Date(currentApp.submittedDate).toLocaleDateString()}</span>
+                                                            <span className="text-gray-500">Current Status:</span>
+                                                            <span className="font-semibold text-right">
+                                                                <Badge className={`${getStatusColor(getFormattedStatus(currentApp))} px-2 py-0.5 text-[10px]`}>{getFormattedStatus(currentApp)}</Badge>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200 space-y-3">
+                                                        {(() => {
+                                                            const aiData = getAppAiData(currentApp);
+                                                            const breakdown = aiData.breakdown;
+                                                            return (
+                                                                <>
+                                                                    <div className="flex justify-between items-center">
+                                                                        <h3 className="font-semibold text-blue-900 text-sm flex items-center gap-1.5">
+                                                                            <TrendingUp className="w-4 h-4 text-blue-600" /> Qualification Analysis Results
+                                                                        </h3>
+                                                                        <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs px-2.5 py-0.5 font-bold">
+                                                                            {aiData.percentage}% Match
+                                                                        </Badge>
+                                                                    </div>
+                                                                    <p className="text-xs text-blue-800 leading-relaxed">
+                                                                        <span className="font-semibold">{aiData.match}:</span> This applicant shows {aiData.match.toLowerCase()} alignment based on computed education level, years of experience, and training credentials.
+                                                                    </p>
+                                                                    <div className="space-y-3 pt-2 border-t border-blue-200/60">
+                                                                    <p className="text-[11px] font-semibold text-blue-900 uppercase tracking-wide">PDS Evaluation Breakdown</p>
+                                                                    
+                                                                    {/* Education */}
+                                                                    <div>
+                                                                        <div className="flex justify-between text-xs mb-1">
+                                                                            <span className="text-gray-700 font-medium">Education Fit (PDS Sec II)</span>
+                                                                            <span className="font-bold text-gray-900">{Math.round((breakdown.education / 5) * 100)}%</span>
+                                                                        </div>
+                                                                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                                                            <div className="bg-purple-600 h-1.5 rounded-full" style={{ width: `${(breakdown.education / 5) * 100}%` }} />
+                                                                        </div>
+                                                                        {currentApp.educationLevel && (
+                                                                            <p className="text-[11px] text-gray-500 mt-1">
+                                                                                <span className="font-medium">Level:</span> {
+                                                                                    currentApp.educationLevel === 'bachelor' ? "Bachelor's Degree" :
+                                                                                    currentApp.educationLevel === 'masters' ? "Master's Degree" :
+                                                                                    currentApp.educationLevel === 'doctoral_9-15' ? "Doctoral (9-15 units)" :
+                                                                                    currentApp.educationLevel === 'doctoral_15-18' ? "Doctoral (15-18 units)" :
+                                                                                    currentApp.educationLevel === 'doctoral_18-24' ? "Doctoral (18-24 units)" :
+                                                                                    currentApp.educationLevel === 'doctoral_27+' ? "Doctoral (27+ units)" :
+                                                                                    currentApp.educationLevel === 'doctoral_graduate' ? "Doctoral Graduate" :
+                                                                                    currentApp.educationLevel
+                                                                                }
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Work Experience */}
+                                                                    <div>
+                                                                        <div className="flex justify-between text-xs mb-1">
+                                                                            <span className="text-gray-700 font-medium">Work Experience Fit (PDS Sec IV)</span>
+                                                                            <span className="font-bold text-gray-900">{Math.round((breakdown.experience / 25) * 100)}%</span>
+                                                                        </div>
+                                                                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                                                            <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${(breakdown.experience / 25) * 100}%` }} />
+                                                                        </div>
+                                                                        {currentApp.yearsOfExperience !== undefined && (
+                                                                            <p className="text-[11px] text-gray-500 mt-1">
+                                                                                <span className="font-medium">Years:</span> {currentApp.yearsOfExperience} years
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Awards & Recognition */}
+                                                                    <div>
+                                                                        <div className="flex justify-between text-xs mb-1">
+                                                                            <span className="text-gray-700 font-medium">Eligibility & Awards Fit (PDS Sec III & VII)</span>
+                                                                            <span className="font-bold text-gray-900">{Math.round((breakdown.accomplishments / 5) * 100)}%</span>
+                                                                        </div>
+                                                                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                                                            <div className="bg-yellow-500 h-1.5 rounded-full" style={{ width: `${(breakdown.accomplishments / 5) * 100}%` }} />
+                                                                        </div>
+                                                                        {currentApp.awards && currentApp.awards.length > 0 ? (
+                                                                            <p className="text-[11px] text-gray-500 mt-1">
+                                                                                <span className="font-medium">Received:</span> {currentApp.awards.map((award: string) =>
+                                                                                    award === 'national' ? 'National Award' :
+                                                                                    award === 'csc' ? 'CSC Award' :
+                                                                                    award === 'president' ? "President's Award" :
+                                                                                    award === 'ngo' ? 'NGO Award' : award
+                                                                                ).join(', ')}
+                                                                            </p>
+                                                                        ) : (
+                                                                            <p className="text-[11px] text-gray-400 mt-1 italic">No awards listed</p>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Training & L&D */}
+                                                                    <div>
+                                                                        <div className="flex justify-between text-xs mb-1">
+                                                                            <span className="text-gray-700 font-medium">Training & L&D Fit (PDS Sec VI)</span>
+                                                                            <span className="font-bold text-gray-900">{Math.round((breakdown.training / 10) * 100)}%</span>
+                                                                        </div>
+                                                                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                                                            <div className="bg-green-600 h-1.5 rounded-full" style={{ width: `${(breakdown.training / 10) * 100}%` }} />
+                                                                        </div>
+                                                                        {currentApp.trainingHours !== undefined && (
+                                                                            <p className="text-[11px] text-gray-500 mt-1">
+                                                                                <span className="font-medium">Hours:</span> {currentApp.trainingHours} hours
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                </TabsContent>
+                                                <TabsContent value="personal" className="space-y-4">
+                                                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
+                                                        <div>
+                                                            <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Identity & Personal Information</h3>
+                                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                                                <div className="flex flex-col"><span className="text-gray-500">First Name</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.firstName || currentApp.applicantName.split(' ')[0]}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Middle Name</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.middleName || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Last Name</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.lastName || currentApp.applicantName.split(' ').pop()}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Extension Name</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.extensionName || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Age</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.age || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Sex / Gender</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{currentApp.dynamic_responses?.sex || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Civil Status</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{currentApp.dynamic_responses?.civilStatus || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Religion</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{currentApp.dynamic_responses?.religion || 'N/A'}</span></div>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Demographics & Government Issued IDs (PDS Sec I)</h3>
+                                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                                                <div className="flex flex-col"><span className="text-gray-500">Indigenous Group Member</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.isIP || 'No'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Person with Disability (PWD)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.isPWD || 'No'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">GSIS ID No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.gsisNo || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">SSS No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.sssNo || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">TIN No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.tinNo || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">PAG-IBIG ID No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.pagibigNo || 'N/A'}</span></div>
+                                                                <div className="flex flex-col col-span-2"><span className="text-gray-500">PhilHealth No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.philhealthNo || 'N/A'}</span></div>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Contact Information</h3>
+                                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                                                <div className="flex flex-col"><span className="text-gray-500">Email Address</span><span className="font-semibold text-gray-900 mt-0.5 truncate" title={currentApp.email}>{currentApp.email}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Primary Phone Number</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.phone_number || currentApp.phone_number || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Alternate Phone Number</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.alternateContact || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Source Referral</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{currentApp.dynamic_responses?.source ? currentApp.dynamic_responses.source.replace('_', ' ') : 'N/A'}</span></div>
+                                                                <div className="flex flex-col col-span-2"><span className="text-gray-500">Residential Address</span><span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{currentApp.dynamic_responses?.address || 'N/A'}</span></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </TabsContent>
+                                                <TabsContent value="qualifications" className="space-y-4">
+                                                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
+                                                        <div>
+                                                            <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Professional Credentials & PDS Background</h3>
+                                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                                                <div className="flex flex-col"><span className="text-gray-500">Highest Education Attained</span><span className="font-semibold text-gray-900 mt-0.5">{(() => {
+                                                                    const rawEd = currentApp.educationLevel || currentApp.dynamic_responses?.educationLevel || currentApp.education || '';
+                                                                    if (rawEd === 'bachelor') return "Bachelor's Degree";
+                                                                    if (rawEd === 'masters') return "Master's Degree";
+                                                                    if (rawEd === 'doctoral_9-15') return "Doctoral (9-15 units)";
+                                                                    if (rawEd === 'doctoral_15-18') return "Doctoral (15-18 units)";
+                                                                    if (rawEd === 'doctoral_18-24') return "Doctoral (18-24 units)";
+                                                                    if (rawEd === 'doctoral_27+') return "Doctoral (27+ units)";
+                                                                    if (rawEd === 'doctoral_graduate') return "Doctoral Graduate";
+                                                                    if (rawEd.includes('doctoral')) return "Doctoral / Ph.D. Degree";
+                                                                    if (rawEd.includes('master')) return "Master's Degree";
+                                                                    if (rawEd.includes('bachelor')) return "Bachelor's Degree";
+                                                                    if (rawEd.includes('vocational')) return "Vocational / Technical Diploma";
+                                                                    if (rawEd.includes('highschool')) return "High School Graduate";
+                                                                    return rawEd || 'N/A';
+                                                                })()}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">School / University (Sec II)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.schoolName || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Degree / Course Title (Sec II)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.degreeCourse || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Year Graduated (Sec II)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.yearGraduated || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">License / Registration No. (Sec III)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.licenseNo || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Years of Experience (Sec IV)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.yearsOfExperience || (currentApp.aiScoreBreakdown?.experience ? Math.max(1, currentApp.aiScoreBreakdown.experience) : 'N/A')} years</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Recent Position Title (Sec IV)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.recentPositionTitle || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Recent Employer / Agency (Sec IV)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.recentEmployer || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Training Hours (Sec VI)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.trainingHours || 'N/A'} hours</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Recent Seminar / Training (Sec VI)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.recentTrainingTitle || 'N/A'}</span></div>
+                                                                <div className="flex flex-col col-span-2"><span className="text-gray-500">Open to other positions?</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{currentApp.dynamic_responses?.openToOthers || 'Yes'}</span></div>
+                                                                <div className="flex flex-col col-span-2"><span className="text-gray-500">Detailed Experience Summary</span><span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{currentApp.experience}</span></div>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Awards & Recognition</h3>
+                                                            {currentApp.dynamic_responses?.awards && currentApp.dynamic_responses.awards.length > 0 ? (
+                                                                <div className="flex flex-wrap gap-1.5 mt-1">
+                                                                    {currentApp.dynamic_responses.awards.map((award: string, i: number) => (
+                                                                        <Badge key={i} variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 capitalize">
+                                                                            {award.replace('_', ' ')}
+                                                                        </Badge>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-xs text-gray-500 italic">No awards listed</p>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Verified Skills</h3>
+                                                            <div className="flex flex-wrap gap-1.5 mt-1">
+                                                                {currentApp.skills && currentApp.skills.length > 0 ? (
+                                                                    currentApp.skills.map((skill: string, i: number) => (
+                                                                        <Badge key={i} variant="secondary" className="text-xs px-1.5 py-0.5">{skill}</Badge>
+                                                                    ))
+                                                                ) : (
+                                                                    <span className="text-xs text-gray-500 italic">No skills listed</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Civil Service & Board Eligibilities</h3>
+                                                            {currentApp.dynamic_responses?.eligibilities && currentApp.dynamic_responses.eligibilities.length > 0 ? (
+                                                                <ul className="list-disc pl-4 text-xs text-gray-700 space-y-1 mt-1">
+                                                                    {currentApp.dynamic_responses.eligibilities.map((eligibility: string, i: number) => (
+                                                                        <li key={i} className="font-semibold">{eligibility}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            ) : (
+                                                                <p className="text-xs text-gray-500 italic">No CS/Board eligibilities declared</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </TabsContent>
+                                                <TabsContent value="documents" className="space-y-4">
+                                                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
+                                                        <div className="space-y-2">
+                                                            <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Uploaded Documents</h3>
+                                                            <div className="grid grid-cols-1 gap-2">
+                                                                {currentApp.documents && currentApp.documents.length > 0 ? (
+                                                                    currentApp.documents.map((doc: any, i: number) => (
+                                                                        <div key={i} className="flex items-center justify-between p-2 bg-white rounded border border-gray-100 shadow-sm animate-fade-in">
+                                                                            <div className="flex items-center overflow-hidden mr-2">
+                                                                                <FileText className="shrink-0 h-4 w-4 text-blue-500 mr-2" />
+                                                                                <span className="text-sm text-gray-700 font-medium truncate">{doc.name}</span>
+                                                                                {doc.fileName && (
+                                                                                    <span className="text-xs text-gray-500 ml-2 italic truncate max-w-37.5">({doc.fileName})</span>
+                                                                                )}
+                                                                            </div>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                className="h-6 w-6 p-0 hover:bg-blue-100"
+                                                                                type="button"
+                                                                                onClick={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    e.stopPropagation();
+                                                                                    handleViewDocument(doc.name, doc.url || '#', doc.fileName);
+                                                                                }}
+                                                                                title="View Document"
+                                                                            >
+                                                                                <Eye className="h-3 w-3 text-blue-600" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    ))
+                                                                ) : (
+                                                                    <p className="text-xs text-gray-500 italic">No documents uploaded.</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        {currentApp.toFollowDocs && currentApp.toFollowDocs.length > 0 && (
+                                                            <div className="space-y-2">
+                                                                <div className="flex items-center gap-2 border-b pb-1.5 mb-2">
+                                                                    <h3 className="font-semibold text-orange-700 text-sm">Pending Requirements</h3>
+                                                                    <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700 border-orange-200">To Follow</Badge>
+                                                                </div>
+                                                                <div className="grid grid-cols-1 gap-2">
+                                                                    {currentApp.toFollowDocs.map((docName: string, i: number) => (
+                                                                        <div key={i} className="flex items-center p-2 bg-orange-50/20 rounded border border-orange-100">
+                                                                            <FileText className="shrink-0 h-4 w-4 text-orange-400 mr-2" />
+                                                                            <span className="text-sm text-gray-700 font-medium truncate">{docName}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {currentApp.custom_file_responses && Object.keys(currentApp.custom_file_responses).length > 0 && (
+                                                            <div className="space-y-2">
+                                                                <h3 className="font-semibold text-blue-900 text-sm border-b pb-1.5 mb-2">Custom File Requirements</h3>
+                                                                <div className="grid grid-cols-1 gap-2">
+                                                                    {Object.entries(currentApp.custom_file_responses).map(([label, path]: [string, any]) => (
+                                                                        <div key={label} className="flex items-center justify-between p-2 bg-white rounded border border-blue-100 shadow-sm">
+                                                                            <div className="flex items-center overflow-hidden mr-2">
+                                                                                <FileText className="shrink-0 h-4 w-4 text-blue-500 mr-2" />
+                                                                                <span className="text-sm text-gray-700 font-medium truncate">{label}</span>
+                                                                            </div>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                className="h-6 w-6 p-0 hover:bg-blue-100"
+                                                                                type="button"
+                                                                                onClick={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    e.stopPropagation();
+                                                                                    window.open(`/storage/${path}`, '_blank');
+                                                                                }}
+                                                                                title="View Document"
+                                                                            >
+                                                                                <Eye className="h-3 w-3 text-blue-600" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </TabsContent>
+                                            </Tabs>
+                                            {(() => {
+                                                const isHired = currentApp.status === 'Hired';
+                                                const isRejected = currentApp.status === 'Rejected';
+                                                const isArchived = currentApp.status === 'Archived';
+                                                const isTerminal = isHired || isRejected || isArchived;
+
+                                                return (
+                                                    <>
+                                                        {isHired && (
+                                                            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-center text-xs font-semibold text-emerald-800 flex items-center justify-center gap-1.5 mt-2">
+                                                                <span>🎉</span> Applicant has been Hired for this position! Status actions locked.
+                                                            </div>
+                                                        )}
+                                                        {isRejected && (
+                                                            <div className="bg-red-50 border border-red-200 rounded-lg p-2.5 text-center text-xs font-semibold text-red-800 flex items-center justify-center gap-1.5 mt-2">
+                                                                <span>🚫</span> Application is Rejected for this position. Status actions locked.
+                                                            </div>
+                                                        )}
+                                                        {isArchived && (
+                                                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-center text-xs font-semibold text-amber-800 flex items-center justify-center gap-1.5 mt-2">
+                                                                <span>📦</span> Application is currently Archived. Unarchive to enable status actions.
+                                                            </div>
+                                                        )}
+                                                        <div className="flex gap-2 pt-2 border-t mt-2">
+                                                            <Button
+                                                                size="sm"
+                                                                disabled={isTerminal}
+                                                                className={`flex-1 font-bold ${
+                                                                    isTerminal
+                                                                        ? 'bg-gray-200 text-gray-400 hover:bg-gray-200 cursor-not-allowed border-none shadow-none'
+                                                                        : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                                                }`}
+                                                                onClick={() => handleStatusUpdate(currentApp.id, 'Hired')}
+                                                            >
+                                                                {isHired ? 'Hired' : 'Hire Applicant'}
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                disabled={isTerminal}
+                                                                className={`flex-1 ${
+                                                                    isTerminal
+                                                                        ? 'bg-gray-200 text-gray-400 hover:bg-gray-200 cursor-not-allowed border-none shadow-none'
+                                                                        : ''
+                                                                }`}
+                                                                onClick={() => {
+                                                                    setRejectionAppId(currentApp.id);
+                                                                    setRejectionReason('Minimum educational requirements not met');
+                                                                    setCustomRejectionReason('');
+                                                                    setIsRejectionModalOpen(true);
+                                                                }}
+                                                            >
+                                                                Reject Applicant
+                                                            </Button>
+                                                        </div>
+                                                        <div className="pt-2 border-t flex flex-col gap-2">
+                                                            <div className="flex gap-2">
+                                                                {isArchived ? (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="flex-1 border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold"
+                                                                        onClick={() => handleStatusUpdate(currentApp.id, 'RESTORE')}
+                                                                    >
+                                                                        <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                                                                        Unarchive Application
+                                                                    </Button>
+                                                                ) : (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        disabled={isTerminal}
+                                                                        className={`flex-1 ${
+                                                                            isTerminal
+                                                                                ? 'bg-gray-100 text-gray-400 hover:bg-gray-100 cursor-not-allowed border-gray-200'
+                                                                                : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                                                                        }`}
+                                                                        onClick={() => handleStatusUpdate(currentApp.id, 'Archived')}
+                                                                    >
+                                                                        <Trash className="mr-2 h-3.5 w-3.5" />
+                                                                        Archive
+                                                                    </Button>
+                                                                )}
+                                                                <Button
+                                                                    disabled={isTerminal}
+                                                                    className={`flex-1 font-bold ${
+                                                                        isTerminal
+                                                                            ? 'bg-gray-200 text-gray-400 hover:bg-gray-200 cursor-not-allowed border-none shadow-none'
+                                                                            : 'bg-purple-600 hover:bg-purple-700 text-white'
+                                                                    }`}
+                                                                    onClick={() => {
+                                                                        setCandidateName(currentApp.applicantName);
+                                                                        setPosition(currentApp.jobTitle);
+                                                                        setSelectedAppId(currentApp.id);
+                                                                        setSelectedAppEmail(currentApp.email || currentApp.applicantEmail || '');
+                                                                        setIsInterviewModalOpen(true);
+                                                                    }}
+                                                                >
+                                                                    <Calendar className="mr-2 h-4 w-4" />
+                                                                    Schedule Interview
+                                                                </Button>
+                                                                <Button
+                                                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4"
+                                                                    size="sm"
+                                                                    onClick={() => openMessages(currentApp.id, currentApp.applicantName, currentApp.jobTitle, currentApp.email)}
+                                                                >
+                                                                    <Send className="mr-1.5 h-3.5 w-3.5" />
+                                                                    Message
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </DialogContent>
+                    </Dialog>
+                )}
+
+                {/* Delete User Account Confirmation Dialog */}
+                <Dialog open={deleteUserModal.isOpen} onOpenChange={(open) => !open && setDeleteUserModal(prev => ({ ...prev, isOpen: false }))}>
+                    <DialogContent className="sm:max-w-md bg-white border-red-100 shadow-2xl rounded-2xl p-6">
+                        <DialogHeader className="flex flex-col items-center text-center space-y-3 pt-2">
+                            <div className="w-14 h-14 rounded-full bg-red-100 text-red-600 border border-red-200 flex items-center justify-center">
+                                <Trash className="w-7 h-7" />
+                            </div>
+                            <DialogTitle className="text-xl font-bold text-gray-900 tracking-wide">
+                                Delete Applicant Account?
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="text-center text-gray-600 text-sm py-3 space-y-2">
+                            <p>
+                                Are you sure you want to delete the user account for{' '}
+                                <strong className="text-gray-900 font-semibold">{deleteUserModal.applicant?.applicantName}</strong>{' '}
+                                (<span className="text-blue-600">{deleteUserModal.applicant?.email}</span>)?
+                            </p>
+                            <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200 font-medium">
+                                ⚠️ This action will permanently remove this user account from the system database.
+                            </p>
                         </div>
-                    </CardContent>
-                </Card>
+
+                        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end border-t pt-4 mt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setDeleteUserModal(prev => ({ ...prev, isOpen: false }))}
+                                className="w-full sm:w-auto"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={confirmDeleteApplicantAccount}
+                                className="bg-red-600 hover:bg-red-700 text-white font-semibold shadow-md shadow-red-900/20 w-full sm:w-auto"
+                            >
+                                Yes, Delete Account
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Delete Single Job Application Confirmation Dialog */}
+                <Dialog open={deleteAppModal.isOpen} onOpenChange={(open) => !open && setDeleteAppModal(prev => ({ ...prev, isOpen: false }))}>
+                    <DialogContent className="sm:max-w-md bg-white border-red-100 shadow-2xl rounded-2xl p-6">
+                        <DialogHeader className="flex flex-col items-center text-center space-y-3 pt-2">
+                            <div className="w-14 h-14 rounded-full bg-red-100 text-red-600 border border-red-200 flex items-center justify-center">
+                                <Trash className="w-7 h-7" />
+                            </div>
+                            <DialogTitle className="text-xl font-bold text-gray-900 tracking-wide">
+                                Delete Job Application?
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="text-center text-gray-600 text-sm py-3 space-y-2">
+                            <p>
+                                Are you sure you want to delete the job application for{' '}
+                                <strong className="text-gray-900 font-semibold">{deleteAppModal.jobTitle}</strong>{' '}
+                                submitted by <strong className="text-blue-700">{deleteAppModal.applicantName}</strong>?
+                            </p>
+                            <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200 font-medium">
+                                ⚠️ This action will permanently remove this application record from the system database.
+                            </p>
+                        </div>
+
+                        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end border-t pt-4 mt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setDeleteAppModal(prev => ({ ...prev, isOpen: false }))}
+                                className="w-full sm:w-auto text-xs border-gray-300 font-semibold"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={confirmDeleteApplication}
+                                className="bg-red-600 hover:bg-red-700 text-white font-bold shadow-md shadow-red-900/20 w-full sm:w-auto text-xs"
+                            >
+                                Yes, Delete Job Application
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 {/* Interview Scheduling Module */}
                 <Dialog open={isInterviewModalOpen} onOpenChange={setIsInterviewModalOpen}>
@@ -1521,10 +1998,10 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
             {/* --- FLOATING CHAT BOX (FACEBOOK-STYLE) --- */}
             {isMessageModalOpen && (
-                <div className="fixed bottom-0 right-4 md:right-10 z-50 flex flex-col w-[320px] h-[400px] bg-white border border-gray-200 shadow-2xl rounded-t-2xl overflow-hidden transition-all duration-300">
+                <div className="fixed bottom-0 right-4 md:right-10 z-[100] flex flex-col w-[340px] h-[420px] bg-white border border-gray-200 shadow-2xl rounded-t-2xl overflow-hidden transition-all duration-300 animate-in slide-in-from-bottom-5 duration-200">
                     {/* Header */}
                     <div className="bg-[#193153] text-white px-4 py-2.5 flex items-center justify-between select-none shrink-0 border-b border-white/10">
-                        <div className="flex items-center gap-2.5 max-w-[85%]">
+                        <div className="flex items-center gap-2.5 max-w-[75%]">
                             <span className="bg-blue-600 text-[#ffdd59] p-1.5 rounded-full shrink-0 shadow-xs">
                                 <Users className="h-4 w-4" />
                             </span>
@@ -1537,7 +2014,15 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                 )}
                             </div>
                         </div>
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-1">
+                            {/* Open Full Messages Page */}
+                            <button 
+                                className="text-gray-300 hover:text-white transition-colors p-1"
+                                onClick={() => router.visit('/admin/messages')}
+                                title="Open Full Messages Page"
+                            >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                            </button>
                             {/* Close Button */}
                             <button 
                                 className="text-gray-300 hover:text-white transition-colors p-1"

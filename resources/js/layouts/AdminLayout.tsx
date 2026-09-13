@@ -1,5 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { Users, Briefcase, Shield, LogOut, Menu, Layout, Clock, FileText, Calendar, ChevronRight, Key, MessageSquare, ChevronDown, User, Settings, ShieldCheck } from 'lucide-react';
+import { Users, Briefcase, Shield, LogOut, Menu, Layout, Clock, FileText, Calendar, ChevronRight, Key, MessageSquare, ChevronDown, User, Settings, ShieldCheck, Bell, CheckCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import React from 'react';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,88 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
     const { url, props } = usePage<any>();
     const unreadMessagesCount = (props as any)?.unread_messages_count || 0;
     const pendingApplicantsCount = (props as any)?.pending_applicants_count || 0;
+
+    const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+    const storageKey = `read_admin_notifs_${admin.id || admin.email || 'admin'}`;
+    const [readNotifIds, setReadNotifIds] = React.useState<string[]>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                return JSON.parse(localStorage.getItem(storageKey) || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+        return [];
+    });
+
+    const buildAdminNotifs = () => {
+        const list: any[] = [];
+        if (pendingApplicantsCount > 0) {
+            list.push({
+                id: `pending_apps_${pendingApplicantsCount}`,
+                text: `${pendingApplicantsCount} job application(s) pending HR review & screening.`,
+                time: 'Live Alert',
+                isRead: readNotifIds.includes(`pending_apps_${pendingApplicantsCount}`),
+                href: '/admin/applicants',
+                type: 'applicant'
+            });
+        }
+        if (unreadMessagesCount > 0) {
+            list.push({
+                id: `unread_msgs_${unreadMessagesCount}`,
+                text: `${unreadMessagesCount} unread message(s) received from applicants.`,
+                time: 'Live Alert',
+                isRead: readNotifIds.includes(`unread_msgs_${unreadMessagesCount}`),
+                href: '/admin/messages',
+                type: 'message'
+            });
+        }
+        if (typeof window !== 'undefined') {
+            try {
+                const ints = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+                if (Array.isArray(ints) && ints.length > 0) {
+                    const latest = ints[ints.length - 1];
+                    list.push({
+                        id: `interview_${latest.id || latest.date}`,
+                        text: `Upcoming interview scheduled for ${latest.candidateName || 'Applicant'} (${latest.position || 'Vacancy'}) on ${latest.date || 'Soon'}.`,
+                        time: latest.time || 'Scheduled',
+                        isRead: readNotifIds.includes(`interview_${latest.id || latest.date}`),
+                        href: '/admin/dashboard',
+                        type: 'interview'
+                    });
+                }
+            } catch (e) {}
+        }
+        list.push({
+            id: `activity_system_log`,
+            text: `System Activity Audit Logs are active & recording user events.`,
+            time: 'Active System',
+            isRead: readNotifIds.includes(`activity_system_log`),
+            href: '/admin/activity-log',
+            type: 'system'
+        });
+
+        return list;
+    };
+
+    const adminNotifications = buildAdminNotifs();
+    const hasUnreadAdminNotif = adminNotifications.some(n => !n.isRead);
+
+    const handleMarkAllRead = () => {
+        const allIds = adminNotifications.map(n => n.id);
+        const updated = Array.from(new Set([...readNotifIds, ...allIds]));
+        setReadNotifIds(updated);
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+    };
+
+    const handleMarkSingleRead = (id: string, href: string) => {
+        if (!readNotifIds.includes(id)) {
+            const updated = [...readNotifIds, id];
+            setReadNotifIds(updated);
+            localStorage.setItem(storageKey, JSON.stringify(updated));
+        }
+        router.visit(href);
+    };
 
     const handleLogout = () => {
         router.post('/logout');
@@ -95,6 +177,66 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
                             <div className="h-6 w-px bg-white/20 mx-2"></div>
 
                             {headerActions}
+
+                            {/* Admin Notification Bell */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setNotificationsOpen(!notificationsOpen)}
+                                    className="p-2 hover:bg-white/10 rounded-full transition-colors relative cursor-pointer outline-none flex items-center justify-center"
+                                    title="Admin Notifications"
+                                >
+                                    <Bell className="w-5 h-5 text-white" />
+                                    {hasUnreadAdminNotif && (
+                                        <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#193153] animate-pulse"></span>
+                                    )}
+                                </button>
+
+                                {notificationsOpen && (
+                                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 text-gray-800 animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+                                            <span className="font-bold text-xs uppercase tracking-wider text-[#193153]">System Alerts</span>
+                                            {hasUnreadAdminNotif && (
+                                                <button 
+                                                    onClick={handleMarkAllRead} 
+                                                    className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer"
+                                                >
+                                                    <CheckCheck className="w-3.5 h-3.5" /> Mark read
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="max-h-72 overflow-y-auto">
+                                            {adminNotifications.length === 0 ? (
+                                                <div className="px-4 py-6 text-center text-gray-400 text-xs">No notifications yet</div>
+                                            ) : (
+                                                adminNotifications.map(n => (
+                                                    <div
+                                                        key={n.id}
+                                                        onClick={() => {
+                                                            setNotificationsOpen(false);
+                                                            handleMarkSingleRead(n.id, n.href);
+                                                        }}
+                                                        className={`px-4 py-3 border-b border-gray-50 last:border-0 cursor-pointer transition-colors ${
+                                                            n.isRead ? 'bg-gray-50/70 hover:bg-gray-100/60' : 'bg-blue-50/40 hover:bg-blue-50/80'
+                                                        }`}
+                                                    >
+                                                        <div className="flex gap-2.5 items-start">
+                                                            {!n.isRead && <div className="mt-1.5 w-2 h-2 bg-red-500 rounded-full shrink-0 animate-pulse"></div>}
+                                                            <div className="flex-1">
+                                                                <p className={`text-xs leading-snug ${n.isRead ? 'text-gray-500 font-normal' : 'text-gray-900 font-semibold'}`}>
+                                                                    {n.text}
+                                                                </p>
+                                                                <span className="text-[10px] text-blue-600 font-medium mt-1 inline-block">
+                                                                    {n.time} &bull; Click to open
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Admin User Profile Dropdown */}
                             <DropdownMenu>

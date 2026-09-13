@@ -421,11 +421,31 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 sex: '',
                 civilStatus: '',
                 religion: '',
-                ipGroup: '',
-                pwd: '',
+                ipGroup: 'No',
+                pwd: 'No',
                 phone: '',
+                alternateContact: '',
                 address: 'Pasay City, Philippines',
                 email: auth.user.email,
+                // CS Form No. 212 (Revised 2026 PDS) Additional Fields
+                gsisNo: '',
+                sssNo: '',
+                tinNo: '',
+                pagibigNo: '',
+                philhealthNo: '',
+                educationLevel: 'bachelor',
+                schoolName: '',
+                degreeCourse: '',
+                yearGraduated: '',
+                eligibilities: ['Civil Service Professional (CS Prof)'],
+                licenseNo: '',
+                yearsOfExperience: '3',
+                recentPositionTitle: '',
+                recentEmployer: '',
+                trainingHours: '16',
+                recentTrainingTitle: '',
+                skills: ['Aviation Operations', 'Communication', 'Technical Support'],
+                awards: ['national']
             };
         }
 
@@ -1349,7 +1369,16 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                         key={n.id}
                                                         onClick={() => {
                                                             handleMarkAsRead(n.id);
-                                                            if (n.jobId) {
+                                                            if (n.type === 'message') {
+                                                                const matchingApp = (myApplications || []).find((a: any) => String(a.jobId) === String(n.jobId) || String(a.id) === String(n.jobId));
+                                                                if (matchingApp) {
+                                                                    openMessages(matchingApp.id, matchingApp.jobTitle || 'Job Position');
+                                                                } else if ((myApplications || []).length > 0) {
+                                                                    openMessages(myApplications[0].id, myApplications[0].jobTitle || 'Job Position');
+                                                                } else {
+                                                                    router.visit('/jobs');
+                                                                }
+                                                            } else if (n.jobId) {
                                                                 router.visit(`/jobs/${n.jobId}`);
                                                             } else {
                                                                 router.visit(`/jobs`);
@@ -1935,31 +1964,32 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                 </div>
 
                                 <div className="grid md:grid-cols-2 gap-8">
+                                    {/* CS Form No. 212 (Revised 2026 PDS) Section I: Personal Information & Gov't IDs */}
                                     <Card className="md:col-span-2">
-                                        <CardHeader>
-                                            <h3 className="font-bold text-[#193153] flex items-center gap-2">
-                                                <User className="w-5 h-5" /> Personal Info
+                                        <CardHeader className="border-b border-gray-100 pb-3">
+                                            <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                <User className="w-5 h-5 text-blue-600" /> CS Form 212 - Sec I: Personal Information & Government IDs
                                             </h3>
                                         </CardHeader>
-                                        <CardContent className="space-y-4 pt-0">
+                                        <CardContent className="space-y-4 pt-4">
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                 {/* Name Fields */}
                                                 <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Last Name</label>
                                                     {isEditingProfile ? (
-                                                        <input type="text" name="lastName" value={profileData.lastName} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.lastName}</p>}
+                                                        <input type="text" name="lastName" value={profileData.lastName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                    ) : <p className="font-medium text-gray-900">{profileData.lastName || '-'}</p>}
                                                 </div>
                                                 <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">First Name</label>
                                                     {isEditingProfile ? (
-                                                        <input type="text" name="firstName" value={profileData.firstName} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.firstName}</p>}
+                                                        <input type="text" name="firstName" value={profileData.firstName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                    ) : <p className="font-medium text-gray-900">{profileData.firstName || '-'}</p>}
                                                 </div>
                                                 <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Middle Name</label>
                                                     {isEditingProfile ? (
-                                                        <input type="text" name="middleName" value={profileData.middleName} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                        <input type="text" name="middleName" value={profileData.middleName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
                                                     ) : <p className="font-medium text-gray-900">{profileData.middleName || '-'}</p>}
                                                 </div>
 
@@ -1967,19 +1997,19 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Extension Name</label>
                                                     {isEditingProfile ? (
-                                                        <input type="text" name="extensionName" placeholder="e.g. Jr., III" value={profileData.extensionName} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                        <input type="text" name="extensionName" placeholder="e.g. Jr., III" value={profileData.extensionName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
                                                     ) : <p className="font-medium text-gray-900">{profileData.extensionName || '-'}</p>}
                                                 </div>
                                                 <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Age</label>
                                                     {isEditingProfile ? (
-                                                        <input type="number" name="age" value={profileData.age} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                        <input type="number" name="age" value={profileData.age || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
                                                     ) : <p className="font-medium text-gray-900">{profileData.age || '-'}</p>}
                                                 </div>
                                                 <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Sex</label>
                                                     {isEditingProfile ? (
-                                                        <select name="sex" value={profileData.sex} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                                                        <select name="sex" value={profileData.sex || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
                                                             <option value="">Select</option>
                                                             <option value="Male">Male</option>
                                                             <option value="Female">Female</option>
@@ -1991,7 +2021,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Civil Status</label>
                                                     {isEditingProfile ? (
-                                                        <select name="civilStatus" value={profileData.civilStatus} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                                                        <select name="civilStatus" value={profileData.civilStatus || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
                                                             <option value="">Select</option>
                                                             <option value="Single">Single</option>
                                                             <option value="Married">Married</option>
@@ -2004,13 +2034,13 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Religion</label>
                                                     {isEditingProfile ? (
-                                                        <input type="text" name="religion" value={profileData.religion} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                        <input type="text" name="religion" value={profileData.religion || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
                                                     ) : <p className="font-medium text-gray-900">{profileData.religion || '-'}</p>}
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Phone</label>
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Phone Number</label>
                                                     {isEditingProfile ? (
-                                                        <input type="tel" name="phone" value={profileData.phone} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                        <input type="tel" name="phone" value={profileData.phone || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
                                                     ) : <p className="font-medium text-gray-900">{profileData.phone || '-'}</p>}
                                                 </div>
 
@@ -2018,34 +2048,166 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 <div className="md:col-span-3">
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Residential Address</label>
                                                     {isEditingProfile ? (
-                                                        <textarea name="address" value={profileData.address} onChange={handleProfileChange} rows={2} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                        <textarea name="address" value={profileData.address || ''} onChange={handleProfileChange} rows={2} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
                                                     ) : <p className="font-medium text-gray-900">{profileData.address}</p>}
                                                 </div>
 
                                                 {/* Additional Demographics */}
-                                                <div className="md:col-span-3 grid grid-cols-2 gap-4">
+                                                <div className="md:col-span-3 grid grid-cols-2 gap-4 border-t pt-3 mt-1">
                                                     <div>
-                                                        <label className="text-xs font-bold text-gray-400 uppercase">IP Group?</label>
+                                                        <label className="text-xs font-bold text-gray-400 uppercase">IP Member (Indigenous People)</label>
                                                         {isEditingProfile ? (
-                                                            <select name="ipGroup" value={profileData.ipGroup} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
-                                                                <option value="">Select</option>
-                                                                <option value="Yes">Yes</option>
+                                                            <select name="ipGroup" value={profileData.ipGroup || 'No'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
                                                                 <option value="No">No</option>
+                                                                <option value="Yes">Yes</option>
                                                             </select>
-                                                        ) : <p className="font-medium text-gray-900">{profileData.ipGroup || '-'}</p>}
+                                                        ) : <p className="font-medium text-gray-900">{profileData.ipGroup || 'No'}</p>}
                                                     </div>
                                                     <div>
-                                                        <label className="text-xs font-bold text-gray-400 uppercase">PWD?</label>
+                                                        <label className="text-xs font-bold text-gray-400 uppercase">PWD Member (Person with Disability)</label>
                                                         {isEditingProfile ? (
-                                                            <select name="pwd" value={profileData.pwd} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
-                                                                <option value="">Select</option>
-                                                                <option value="Yes">Yes</option>
+                                                            <select name="pwd" value={profileData.pwd || 'No'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
                                                                 <option value="No">No</option>
+                                                                <option value="Yes">Yes</option>
                                                             </select>
-                                                        ) : <p className="font-medium text-gray-900">{profileData.pwd || '-'}</p>}
+                                                        ) : <p className="font-medium text-gray-900">{profileData.pwd || 'No'}</p>}
                                                     </div>
                                                 </div>
 
+                                                {/* Government Identification Numbers */}
+                                                <div className="md:col-span-3 pt-3 border-t">
+                                                    <p className="text-xs font-bold text-blue-900 uppercase tracking-wide mb-3">Government Issued Identification Numbers (PDS Sec I)</p>
+                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                        <div>
+                                                            <label className="text-[11px] font-semibold text-gray-500">GSIS ID No.</label>
+                                                            {isEditingProfile ? (
+                                                                <input type="text" name="gsisNo" value={profileData.gsisNo || ''} onChange={handleProfileChange} placeholder="N/A" className="w-full mt-1 p-1.5 border border-gray-300 rounded text-xs" />
+                                                            ) : <p className="text-xs font-semibold text-gray-800">{profileData.gsisNo || 'N/A'}</p>}
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[11px] font-semibold text-gray-500">SSS No.</label>
+                                                            {isEditingProfile ? (
+                                                                <input type="text" name="sssNo" value={profileData.sssNo || ''} onChange={handleProfileChange} placeholder="N/A" className="w-full mt-1 p-1.5 border border-gray-300 rounded text-xs" />
+                                                            ) : <p className="text-xs font-semibold text-gray-800">{profileData.sssNo || 'N/A'}</p>}
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[11px] font-semibold text-gray-500">TIN No.</label>
+                                                            {isEditingProfile ? (
+                                                                <input type="text" name="tinNo" value={profileData.tinNo || ''} onChange={handleProfileChange} placeholder="N/A" className="w-full mt-1 p-1.5 border border-gray-300 rounded text-xs" />
+                                                            ) : <p className="text-xs font-semibold text-gray-800">{profileData.tinNo || 'N/A'}</p>}
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[11px] font-semibold text-gray-500">PAG-IBIG ID No.</label>
+                                                            {isEditingProfile ? (
+                                                                <input type="text" name="pagibigNo" value={profileData.pagibigNo || ''} onChange={handleProfileChange} placeholder="N/A" className="w-full mt-1 p-1.5 border border-gray-300 rounded text-xs" />
+                                                            ) : <p className="text-xs font-semibold text-gray-800">{profileData.pagibigNo || 'N/A'}</p>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* CS Form No. 212 Section II & III: Education & Eligibilities */}
+                                    <Card className="md:col-span-2">
+                                        <CardHeader className="border-b border-gray-100 pb-3">
+                                            <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                <GraduationCap className="w-5 h-5 text-purple-600" /> CS Form 212 - Sec II & III: Education & Civil Service Eligibilities
+                                            </h3>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4 pt-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Highest Education Attained</label>
+                                                    {isEditingProfile ? (
+                                                        <select name="educationLevel" value={profileData.educationLevel || 'bachelor'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                                                            <option value="bachelor">Bachelor's Degree</option>
+                                                            <option value="masters">Master's Degree</option>
+                                                            <option value="doctoral_9-15">Doctoral (9-15 units)</option>
+                                                            <option value="doctoral_15-18">Doctoral (15-18 units)</option>
+                                                            <option value="doctoral_18-24">Doctoral (18-24 units)</option>
+                                                            <option value="doctoral_27+">Doctoral (27+ units)</option>
+                                                            <option value="doctoral_graduate">Doctoral Graduate</option>
+                                                        </select>
+                                                    ) : (
+                                                        <p className="font-semibold text-purple-900 bg-purple-50 px-2.5 py-1 rounded inline-block text-xs mt-1 border border-purple-100">
+                                                            {
+                                                                profileData.educationLevel === 'bachelor' ? "Bachelor's Degree" :
+                                                                profileData.educationLevel === 'masters' ? "Master's Degree" :
+                                                                profileData.educationLevel === 'doctoral_9-15' ? "Doctoral (9-15 units)" :
+                                                                profileData.educationLevel === 'doctoral_15-18' ? "Doctoral (15-18 units)" :
+                                                                profileData.educationLevel === 'doctoral_18-24' ? "Doctoral (18-24 units)" :
+                                                                profileData.educationLevel === 'doctoral_27+' ? "Doctoral (27+ units)" :
+                                                                profileData.educationLevel === 'doctoral_graduate' ? "Doctoral Graduate" :
+                                                                profileData.educationLevel || "Bachelor's Degree"
+                                                            }
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">School / College / University</label>
+                                                    {isEditingProfile ? (
+                                                        <input type="text" name="schoolName" placeholder="e.g. NAAP Pasay Campus / PUP" value={profileData.schoolName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                    ) : <p className="font-medium text-gray-900">{profileData.schoolName || 'Aviation State College'}</p>}
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Degree / Course Title</label>
+                                                    {isEditingProfile ? (
+                                                        <input type="text" name="degreeCourse" placeholder="e.g. BS Aeronautical Engineering" value={profileData.degreeCourse || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                    ) : <p className="font-medium text-gray-900">{profileData.degreeCourse || 'BS Aviation / Public Admin'}</p>}
+                                                </div>
+
+                                                {/* Eligibilities */}
+                                                <div className="md:col-span-3 border-t pt-3">
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Civil Service & Professional Eligibilities (PDS Sec III)</label>
+                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                        {(profileData.eligibilities || ['Civil Service Professional (CS Prof)']).map((elig: string, idx: number) => (
+                                                            <span key={idx} className="text-xs font-bold bg-green-50 text-green-800 px-3 py-1 rounded-full border border-green-200 flex items-center gap-1">
+                                                                <CheckCircle className="w-3.5 h-3.5 text-green-600" /> {elig}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* CS Form No. 212 Section IV, VI & VII: Experience, Training, Skills & Awards */}
+                                    <Card className="md:col-span-2">
+                                        <CardHeader className="border-b border-gray-100 pb-3">
+                                            <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                <Briefcase className="w-5 h-5 text-orange-600" /> CS Form 212 - Sec IV, VI & VII: Experience, Training & Awards
+                                            </h3>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4 pt-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Years of Relevant Work Experience</label>
+                                                    {isEditingProfile ? (
+                                                        <input type="number" name="yearsOfExperience" min="0" value={profileData.yearsOfExperience || '0'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                    ) : <p className="font-bold text-gray-900">{profileData.yearsOfExperience || '0'} years</p>}
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Total Training / Seminar Hours</label>
+                                                    {isEditingProfile ? (
+                                                        <input type="number" name="trainingHours" min="0" value={profileData.trainingHours || '0'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                    ) : <p className="font-bold text-gray-900">{profileData.trainingHours || '0'} hours</p>}
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Non-Academic Distinctions / Awards</label>
+                                                    <div className="flex flex-wrap gap-1.5 mt-1">
+                                                        {(profileData.awards || ['national']).map((award: string, idx: number) => (
+                                                            <span key={idx} className="text-xs font-bold bg-amber-50 text-amber-800 px-2.5 py-0.5 rounded border border-amber-200 capitalize">
+                                                                {award === 'national' ? 'National Award' : award === 'csc' ? 'CSC Award' : award === 'president' ? "President's Award" : award}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </CardContent>
                                     </Card>

@@ -172,6 +172,29 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
         }
     };
 
+    // Auto-select applicant from URL query param or default to first applicant
+    useEffect(() => {
+        if (filteredApps.length > 0 && !selectedApp) {
+            const params = new URLSearchParams(window.location.search);
+            const targetId = params.get('appId') || params.get('applicantId');
+            const targetEmail = params.get('email');
+
+            let target = null;
+            if (targetId || targetEmail) {
+                target = filteredApps.find(a => 
+                    (targetId && String(a.id) === String(targetId)) ||
+                    (targetEmail && a.email?.toLowerCase() === targetEmail.toLowerCase())
+                );
+            }
+
+            if (target) {
+                handleSelectApp(target);
+            } else {
+                handleSelectApp(filteredApps[0]);
+            }
+        }
+    }, [filteredApps]);
+
     // Auto-poll messages for the active conversation every 5 seconds
     useEffect(() => {
         if (!selectedApp) return;

@@ -162,6 +162,9 @@ Route::get('/admin-login', function () {
     ]);
 })->name('admin.login');
 
+// Redirect /admin to /admin/dashboard
+Route::redirect('/admin', '/admin/dashboard');
+
 // --- 2. Authentication Routes ---
 
 // Custom Logout (Fixes the React router issue)
@@ -233,7 +236,43 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/departments/{department}', [\App\Http\Controllers\Admin\JobController::class, 'destroyDepartment'])->name('departments.destroy');
 
         Route::post('/applications/{application}/status', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'updateStatus'])->name('applications.status');
+        Route::delete('/applications/{application}', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'destroy'])->name('applications.destroy');
         Route::get('/reports/export', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'exportReport'])->name('reports.export');
+
+        Route::get('/users', function () {
+            $users = \App\Models\User::query()
+                ->select('id', 'name', 'email', 'profile_data', 'created_at')
+                ->latest()
+                ->get()
+                ->map(function ($u) {
+                    $profile = is_array($u->profile_data) ? $u->profile_data : json_decode($u->profile_data ?? '{}', true);
+                    $avatarUrl = $profile['avatar_url'] ?? $profile['avatar'] ?? $profile['photo'] ?? null;
+
+                    // Fallback to Application photo if profile avatar is not set
+                    if (! $avatarUrl) {
+                        $app = \App\Models\Application::where('email', $u->email)->latest()->first();
+                        if ($app && is_array($app->dynamic_responses) && ! empty($app->dynamic_responses['photo'])) {
+                            $avatarUrl = $app->dynamic_responses['photo'];
+                        }
+                    }
+
+                    return [
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'email' => $u->email,
+                        'role' => $profile['role'] ?? ($u->isAdmin() ? 'admin' : 'applicant'),
+                        'designation' => $profile['designation'] ?? null,
+                        'avatar_url' => $avatarUrl,
+                        'is_super_admin' => $u->isSuperAdmin(),
+                        'created_at' => $u->created_at ? $u->created_at->toISOString() : null,
+                    ];
+                });
+
+            return Inertia::render('Admin/UserManagement', [
+                'auth' => ['user' => \Illuminate\Support\Facades\Auth::user()],
+                'users' => $users,
+            ]);
+        })->name('users.index');
 
         Route::post('/users/create', [\App\Http\Controllers\Admin\AdminUserController::class, 'store'])->name('users.store');
         Route::delete('/users/{user}', [\App\Http\Controllers\Admin\AdminUserController::class, 'destroy'])->name('users.destroy');
@@ -252,8 +291,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             return Inertia::render('Admin/Applicants', [
                 'applications' => $rawApps->map(function ($app) use ($unreadAppIds) {
+                    $user = \App\Models\User::where('email', $app->email)->first();
+                    $profile = $user && is_array($user->profile_data) ? $user->profile_data : ($user ? json_decode($user->profile_data ?? '{}', true) : []);
+                    $avatarUrl = $profile['avatar_url'] ?? $profile['avatar'] ?? $profile['photo'] ?? ($app->dynamic_responses['photo'] ?? null);
+
                     return [
                         'id' => $app->id,
+                        'userId' => $user ? $user->id : null,
+                        'avatarUrl' => $avatarUrl,
                         'applicantName' => $app->applicant_name,
                         'email' => $app->email,
                         'jobTitle' => $app->job_title,

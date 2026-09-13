@@ -33,11 +33,6 @@ const mainNavItems: NavItem[] = [
         icon: Users,
     },
     {
-        title: 'Staffing Monitoring',
-        href: '/admin/staffing',
-        icon: PieChart,
-    },
-    {
         title: 'Manage Content',
         href: '/admin/cms',
         icon: Layout,

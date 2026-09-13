@@ -14,6 +14,10 @@ class AdminApplicationController extends Controller
     public function updateStatus(Request $request, Application $application)
     {
         try {
+            if ($request->input('status') === 'RESTORE') {
+                $request->merge(['status' => 'Under Review']);
+            }
+
             $validated = $request->validate([
                 'status' => 'required|string|in:Submitted,Under Review,Interview,Interview Scheduled,Rejected,Hired,Archived',
                 'rejection_reason' => 'nullable|string',
@@ -219,4 +223,32 @@ class AdminApplicationController extends Controller
             return back()->withErrors(['error' => 'Failed to export CSV report: '.$ex->getMessage()]);
         }
     }
+
+    public function destroy(Application $application)
+    {
+        try {
+            $applicantName = $application->applicant_name;
+            $jobTitle = $application->job_title;
+            $application->delete();
+
+            try {
+                \App\Models\ActivityLog::write(
+                    "Application Deleted",
+                    "{$applicantName}'s application for {$jobTitle} was deleted",
+                    'Villamor Campus',
+                    'Trash2',
+                    'text-red-600 bg-red-50'
+                );
+            } catch (\Exception $ex) {
+                Log::warning('Failed writing ActivityLog: '.$ex->getMessage());
+            }
+
+            return back()->with('message', 'Job application deleted successfully.');
+        } catch (\Throwable $ex) {
+            Log::error("Error deleting application ID {$application->id}: ".$ex->getMessage());
+
+            return back()->withErrors(['error' => 'Failed to delete job application: '.$ex->getMessage()]);
+        }
+    }
 }
+

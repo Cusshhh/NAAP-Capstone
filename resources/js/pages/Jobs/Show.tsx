@@ -71,14 +71,31 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
         alternateContact: '',
         address: '',
         openToOthers: 'yes',
+        // CS Form No. 212 Gov IDs (PDS Sec I)
+        gsisNo: '',
+        sssNo: '',
+        tinNo: '',
+        pagibigNo: '',
+        philhealthNo: '',
+        // Education Details (PDS Sec II)
+        schoolName: '',
+        degreeCourse: '',
+        yearGraduated: '',
+        // Eligibility License (PDS Sec III)
+        licenseNo: '',
+        // Experience Details (PDS Sec IV)
+        recentPositionTitle: '',
+        recentEmployer: '',
+        // Training Details (PDS Sec VI)
+        recentTrainingTitle: '',
+        // Skills (PDS Sec VII)
+        skills: [] as string[],
         // AI Scoring fields
         educationLevel: 'bachelor' as 'bachelor' | 'masters' | 'doctoral_graduate' | 'doctoral_27+' | 'doctoral_18-24' | 'doctoral_15-18' | 'doctoral_9-15',
         yearsOfExperience: '0',
         awards: [] as ('national' | 'csc' | 'president' | 'ngo')[],
         trainingHours: '0'
     });
-
-
 
     const [attachedDocs, setAttachedDocs] = useState<Record<string, boolean>>({});
     const [toFollowDocs, setToFollowDocs] = useState<Record<string, boolean>>({});
@@ -98,18 +115,46 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                     ...prev,
                     lastName: profile.lastName || prev.lastName,
                     firstName: profile.firstName || prev.firstName,
-                    middleName: profile.middleName || '',
-                    extensionName: profile.extensionName || '',
-                    age: profile.age || '',
-                    sex: profile.sex ? profile.sex.toLowerCase() : '',
-                    civilStatus: profile.civilStatus ? profile.civilStatus.toLowerCase() : '',
-                    religion: profile.religion || '',
-                    isIP: profile.ipGroup || 'No',
-                    isPWD: profile.pwd || 'No',
-                    contactNumber: profile.phone || '',
-                    address: profile.address || '',
-                    email: profile.email || prev.email
+                    middleName: profile.middleName || prev.middleName || '',
+                    extensionName: profile.extensionName || prev.extensionName || '',
+                    age: profile.age || prev.age || '',
+                    sex: profile.sex ? profile.sex.toLowerCase() : prev.sex,
+                    civilStatus: profile.civilStatus ? profile.civilStatus.toLowerCase() : prev.civilStatus,
+                    religion: profile.religion || prev.religion || '',
+                    isIP: profile.ipGroup || prev.isIP || 'No',
+                    isPWD: profile.pwd || prev.isPWD || 'No',
+                    contactNumber: profile.phone || prev.contactNumber || '',
+                    alternateContact: profile.alternateContact || prev.alternateContact || '',
+                    address: profile.address || prev.address || '',
+                    email: profile.email || prev.email,
+                    // CS Form No. 212 Gov IDs (PDS Sec I)
+                    gsisNo: profile.gsisNo || prev.gsisNo || '',
+                    sssNo: profile.sssNo || prev.sssNo || '',
+                    tinNo: profile.tinNo || prev.tinNo || '',
+                    pagibigNo: profile.pagibigNo || prev.pagibigNo || '',
+                    philhealthNo: profile.philhealthNo || prev.philhealthNo || '',
+                    // Education Details (PDS Sec II)
+                    educationLevel: profile.educationLevel || prev.educationLevel || 'bachelor',
+                    schoolName: profile.schoolName || prev.schoolName || '',
+                    degreeCourse: profile.degreeCourse || prev.degreeCourse || '',
+                    yearGraduated: profile.yearGraduated || prev.yearGraduated || '',
+                    // Eligibility License (PDS Sec III)
+                    licenseNo: profile.licenseNo || prev.licenseNo || '',
+                    // Work Experience Details (PDS Sec IV)
+                    yearsOfExperience: String(profile.yearsOfExperience || prev.yearsOfExperience || '0'),
+                    recentPositionTitle: profile.recentPositionTitle || prev.recentPositionTitle || '',
+                    recentEmployer: profile.recentEmployer || prev.recentEmployer || '',
+                    // Training Details (PDS Sec VI)
+                    trainingHours: String(profile.trainingHours || prev.trainingHours || '0'),
+                    recentTrainingTitle: profile.recentTrainingTitle || prev.recentTrainingTitle || '',
+                    // Skills & Awards (PDS Sec VII)
+                    skills: Array.isArray(profile.skills) && profile.skills.length > 0 ? profile.skills : prev.skills,
+                    awards: profile.awards || prev.awards || ['national']
                 }));
+
+                if (profile.eligibilities && Array.isArray(profile.eligibilities) && profile.eligibilities.length > 0) {
+                    setSelectedEligibilities(profile.eligibilities);
+                }
             }
 
             // Check for attached docs
@@ -275,15 +320,27 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                 sex: formData.sex,
                 civilStatus: formData.civilStatus,
                 educationLevel: formData.educationLevel,
+                schoolName: formData.schoolName,
+                degreeCourse: formData.degreeCourse,
+                yearGraduated: formData.yearGraduated,
+                licenseNo: formData.licenseNo,
                 yearsOfExperience: formData.yearsOfExperience,
+                recentPositionTitle: formData.recentPositionTitle,
+                recentEmployer: formData.recentEmployer,
                 trainingHours: formData.trainingHours,
+                recentTrainingTitle: formData.recentTrainingTitle,
                 awards: formData.awards,
-                skills: skills,
+                skills: formData.skills && formData.skills.length > 0 ? formData.skills : skills,
                 experience: experienceDescription,
                 documents: uploadedDocs,
                 religion: formData.religion,
                 isIP: formData.isIP,
                 isPWD: formData.isPWD,
+                gsisNo: formData.gsisNo,
+                sssNo: formData.sssNo,
+                tinNo: formData.tinNo,
+                pagibigNo: formData.pagibigNo,
+                philhealthNo: formData.philhealthNo,
                 alternateContact: formData.alternateContact,
                 source: formData.source,
                 openToOthers: formData.openToOthers,
@@ -657,9 +714,9 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                             </div>
                         </div>
 
-                        {/* 2. Demographics */}
+                        {/* 2. Demographics & Government Identification Numbers */}
                         <div className="space-y-4">
-                            <h3 className="font-bold text-lg text-[#193153] border-b pb-2">Demographics</h3>
+                            <h3 className="font-bold text-lg text-[#193153] border-b pb-2">Demographics & Government Identification</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <Label>Are you a member of any Indigenous Group?</Label>
@@ -686,11 +743,38 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     </Select>
                                 </div>
                             </div>
+
+                            {/* PDS Sec I Government Issued ID Numbers */}
+                            <div className="pt-2">
+                                <Label className="text-xs font-bold text-blue-900 uppercase tracking-wide block mb-2">Government Issued Identification Numbers (PDS Sec I)</Label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="gsisNo" className="text-[11px] font-semibold text-gray-600">GSIS ID No.</Label>
+                                        <Input id="gsisNo" placeholder="N/A" value={formData.gsisNo} onChange={(e) => setFormData({ ...formData, gsisNo: e.target.value })} className="h-8 text-xs" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="sssNo" className="text-[11px] font-semibold text-gray-600">SSS No.</Label>
+                                        <Input id="sssNo" placeholder="N/A" value={formData.sssNo} onChange={(e) => setFormData({ ...formData, sssNo: e.target.value })} className="h-8 text-xs" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="tinNo" className="text-[11px] font-semibold text-gray-600">TIN No.</Label>
+                                        <Input id="tinNo" placeholder="N/A" value={formData.tinNo} onChange={(e) => setFormData({ ...formData, tinNo: e.target.value })} className="h-8 text-xs" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="pagibigNo" className="text-[11px] font-semibold text-gray-600">PAG-IBIG ID No.</Label>
+                                        <Input id="pagibigNo" placeholder="N/A" value={formData.pagibigNo} onChange={(e) => setFormData({ ...formData, pagibigNo: e.target.value })} className="h-8 text-xs" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="philhealthNo" className="text-[11px] font-semibold text-gray-600">PhilHealth No.</Label>
+                                        <Input id="philhealthNo" placeholder="N/A" value={formData.philhealthNo} onChange={(e) => setFormData({ ...formData, philhealthNo: e.target.value })} className="h-8 text-xs" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* 3. Eligibilities */}
                         <div className="space-y-4">
-                            <h3 className="font-bold text-lg text-[#193153] border-b pb-2">Eligibilities</h3>
+                            <h3 className="font-bold text-lg text-[#193153] border-b pb-2">Eligibilities & Professional Licenses</h3>
                             <p className="text-sm text-gray-500">Please tick all the eligibilities you have.</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {[
@@ -729,23 +813,35 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 ))}
                             </div>
 
-                            {selectedEligibilities.includes("Other") && (
-                                <div className="mt-3 p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl animate-in fade-in slide-in-from-top-2 duration-200 shadow-xs">
-                                    <Label htmlFor="other-eligibility-input" className="text-xs font-bold text-[#193153] mb-1.5 flex items-center gap-1.5">
-                                        <span>Specify Other Eligibility / Rating / License:</span>
-                                        <span className="text-red-500">*</span>
-                                    </Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="licenseNo" className="text-xs font-semibold text-gray-700">License / Registration No. <span className="text-[11px] text-gray-400 font-normal">(PRC / CAAP / CSC, Optional)</span></Label>
                                     <Input 
-                                        id="other-eligibility-input"
+                                        id="licenseNo"
                                         type="text"
-                                        placeholder="e.g. CAAP Commercial Pilot License / ATO Rating, CPA, PMP, etc."
-                                        value={otherEligibilityText}
-                                        onChange={(e) => setOtherEligibilityText(e.target.value)}
-                                        className="w-full text-sm bg-white border-blue-300 focus:border-[#193153] focus:ring-[#193153]"
+                                        placeholder="e.g. PRC License No. 0123456"
+                                        value={formData.licenseNo}
+                                        onChange={(e) => setFormData({ ...formData, licenseNo: e.target.value })}
+                                        className="h-9 text-xs"
                                     />
-                                    <p className="text-[11px] text-gray-500 mt-1">Specify your license title, CSC rating, or professional certification.</p>
                                 </div>
-                            )}
+
+                                {selectedEligibilities.includes("Other") && (
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="other-eligibility-input" className="text-xs font-semibold text-[#193153]">
+                                            Specify Other Eligibility / Rating: <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Input 
+                                            id="other-eligibility-input"
+                                            type="text"
+                                            placeholder="e.g. CAAP Commercial Pilot License, CPA, PMP"
+                                            value={otherEligibilityText}
+                                            onChange={(e) => setOtherEligibilityText(e.target.value)}
+                                            className="h-9 text-xs border-blue-300 focus:border-[#193153]"
+                                        />
+                                    </div>
+                                )}
+                            </div>
 
                                 {job.custom_file_requirements && job.custom_file_requirements.length > 0 && (
                                     <div className="space-y-4 pt-4 border-t border-gray-100">
@@ -850,6 +946,45 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     </Select>
                                 </div>
 
+                                {/* School / University Name */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="schoolName">School / College / University <span className="text-[11px] text-gray-400 font-normal">(PDS Sec II)</span></Label>
+                                    <Input
+                                        id="schoolName"
+                                        type="text"
+                                        value={formData.schoolName}
+                                        onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
+                                        placeholder="e.g. NAAP Pasay Campus / PUP"
+                                        className="bg-white text-xs"
+                                    />
+                                </div>
+
+                                {/* Degree / Course Title */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="degreeCourse">Degree / Course Title <span className="text-[11px] text-gray-400 font-normal">(PDS Sec II)</span></Label>
+                                    <Input
+                                        id="degreeCourse"
+                                        type="text"
+                                        value={formData.degreeCourse}
+                                        onChange={(e) => setFormData({ ...formData, degreeCourse: e.target.value })}
+                                        placeholder="e.g. BS Aeronautical Engineering / Public Admin"
+                                        className="bg-white text-xs"
+                                    />
+                                </div>
+
+                                {/* Year Graduated */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="yearGraduated">Year Graduated <span className="text-[11px] text-gray-400 font-normal">(PDS Sec II)</span></Label>
+                                    <Input
+                                        id="yearGraduated"
+                                        type="text"
+                                        value={formData.yearGraduated}
+                                        onChange={(e) => setFormData({ ...formData, yearGraduated: e.target.value })}
+                                        placeholder="e.g. 2022"
+                                        className="bg-white text-xs"
+                                    />
+                                </div>
+
                                 {/* Years of Experience */}
                                 <div className="space-y-2">
                                     <Label htmlFor="yearsOfExperience">Years of Relevant Work Experience *</Label>
@@ -866,6 +1001,32 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     <p className="text-xs text-gray-500">Enter total years in related field</p>
                                 </div>
 
+                                {/* Recent Position Title */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="recentPositionTitle">Most Recent Position / Designation <span className="text-[11px] text-gray-400 font-normal">(PDS Sec IV)</span></Label>
+                                    <Input
+                                        id="recentPositionTitle"
+                                        type="text"
+                                        value={formData.recentPositionTitle}
+                                        onChange={(e) => setFormData({ ...formData, recentPositionTitle: e.target.value })}
+                                        placeholder="e.g. Air Traffic Specialist II"
+                                        className="bg-white text-xs"
+                                    />
+                                </div>
+
+                                {/* Recent Employer */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="recentEmployer">Most Recent Employer / Agency <span className="text-[11px] text-gray-400 font-normal">(PDS Sec IV)</span></Label>
+                                    <Input
+                                        id="recentEmployer"
+                                        type="text"
+                                        value={formData.recentEmployer}
+                                        onChange={(e) => setFormData({ ...formData, recentEmployer: e.target.value })}
+                                        placeholder="e.g. CAAP / NAAP Pasay"
+                                        className="bg-white text-xs"
+                                    />
+                                </div>
+
                                 {/* Training Hours */}
                                 <div className="space-y-2">
                                     <Label htmlFor="trainingHours">Total Training Hours (Relevant) *</Label>
@@ -880,6 +1041,19 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                         required
                                     />
                                     <p className="text-xs text-gray-500">Include seminars, workshops, certifications</p>
+                                </div>
+
+                                {/* Recent Training Title */}
+                                <div className="space-y-2 md:col-span-2">
+                                    <Label htmlFor="recentTrainingTitle">Most Recent Seminar / Training Title <span className="text-[11px] text-gray-400 font-normal">(PDS Sec VI)</span></Label>
+                                    <Input
+                                        id="recentTrainingTitle"
+                                        type="text"
+                                        value={formData.recentTrainingTitle}
+                                        onChange={(e) => setFormData({ ...formData, recentTrainingTitle: e.target.value })}
+                                        placeholder="e.g. Advanced Aviation Safety & Public Service Excellence Seminar (2026)"
+                                        className="bg-white text-xs"
+                                    />
                                 </div>
 
                                 {/* Awards/Accomplishments */}

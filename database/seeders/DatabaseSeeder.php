@@ -28,13 +28,6 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        // Create gabriel1 user for testing
-        User::factory()->create([
-            'name' => 'Gabriel Fontejon',
-            'email' => 'gabriel1@gmail.com',
-            'password' => 'Gabriel123456',
-        ]);
-
         $this->call([
             VacancySeeder::class,
             StaffingPositionSeeder::class,

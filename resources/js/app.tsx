@@ -6,12 +6,11 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from 'sonner';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'NAAP Careers';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
-    // 👇 ITO ANG BAGUHIN MO: Gawing small 'p' pareho
-    resolve: (name) => resolvePageComponent(`./pages/${name}.tsx`, import.meta.glob('./pages/**/*.tsx')),
+    resolve: (name) => resolvePageComponent(`./pages/${name}.tsx`, import.meta.glob(['./pages/**/*.tsx', './Pages/**/*.tsx'])),
     setup({ el, App, props }) {
         const root = createRoot(el);
 
