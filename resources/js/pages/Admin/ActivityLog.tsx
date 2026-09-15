@@ -123,9 +123,9 @@ export default function ActivityLog({ auth, dbApplications = [], dbJobs = [] }: 
                 </div>
 
                 {/* Timeline Feed */}
-                <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
-                    {filteredActivities.length > 0 ? (
-                        filteredActivities.map((activity, index) => (
+                {filteredActivities.length > 0 ? (
+                    <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
+                        {filteredActivities.map((activity, index) => (
                             <div key={activity.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
                                 {/* Dot */}
                                 <div className={`flex items-center justify-center w-10 h-10 rounded-full border border-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 ${activity.color}`}>
@@ -149,24 +149,24 @@ export default function ActivityLog({ auth, dbApplications = [], dbJobs = [] }: 
                                     </div>
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-100">
-                            <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Search className="h-8 w-8 text-gray-300" />
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900">No activities found</h3>
-                            <p className="text-gray-500">Try adjusting your filters or search term</p>
-                            <Button
-                                variant="ghost"
-                                className="mt-4 text-[#193153] underline font-bold"
-                                onClick={() => { setSearchTerm(''); setTypeFilter('all'); }}
-                            >
-                                Clear all filters
-                            </Button>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200 shadow-2xs">
+                        <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
+                            <Search className="h-8 w-8 text-gray-400" />
                         </div>
-                    )}
-                </div>
+                        <h3 className="text-lg font-bold text-gray-900">No activities found</h3>
+                        <p className="text-sm text-gray-500 mt-1">Try adjusting your filters or search term</p>
+                        <Button
+                            variant="ghost"
+                            className="mt-4 text-[#193153] hover:text-[#193153]/80 font-bold underline cursor-pointer text-xs"
+                            onClick={() => { setSearchTerm(''); setTypeFilter('all'); }}
+                        >
+                            Clear all filters
+                        </Button>
+                    </div>
+                )}
 
                 <div className="mt-12 text-center">
                     <p className="text-sm text-gray-400 mb-4 italic">No more activities to show</p>

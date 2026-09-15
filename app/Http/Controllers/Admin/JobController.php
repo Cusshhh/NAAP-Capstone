@@ -166,18 +166,29 @@ class JobController extends Controller
     {
         try {
             $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:departments,name',
+                'name' => 'required|string|max:255',
+                'parent_id' => 'nullable|exists:departments,id',
             ]);
 
             $name = trim($validated['name']);
+            $parentId = $validated['parent_id'] ?? null;
             $code = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $name), 0, 4));
+
+            $existing = Department::where('name', $name)
+                ->where('parent_id', $parentId)
+                ->first();
+
+            if ($existing) {
+                return back()->withErrors(['name' => 'A folder with this name already exists in this location.']);
+            }
 
             Department::create([
                 'name' => $name,
+                'parent_id' => $parentId,
                 'code' => $code,
             ]);
 
-            return back()->with('message', "Department folder '{$name}' created successfully.");
+            return back()->with('message', "Program folder '{$name}' created successfully.");
         } catch (\Illuminate\Validation\ValidationException $ve) {
             throw $ve;
         } catch (\Throwable $ex) {

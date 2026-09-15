@@ -169,7 +169,7 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <Input
-                                        placeholder="Search by job title, department, or keywords..."
+                                        placeholder="Search by job title, program, or keywords..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="pl-10"
@@ -178,10 +178,10 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                             </div>
                             <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="All Departments" />
+                                    <SelectValue placeholder="All Programs" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Departments</SelectItem>
+                                    <SelectItem value="all">All Programs</SelectItem>
                                     {departments.map(dept => (
                                         <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                                     ))}

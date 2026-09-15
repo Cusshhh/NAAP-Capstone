@@ -50,6 +50,8 @@ export default function Applicants({ auth, applications: serverApplications }: {
             next.add(String(appId));
             if (typeof window !== 'undefined') {
                 localStorage.setItem('viewed_applicant_ids', JSON.stringify(Array.from(next)));
+                window.dispatchEvent(new Event('storage'));
+                window.dispatchEvent(new CustomEvent('viewed_apps_updated'));
             }
             return next;
         });
@@ -498,7 +500,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
         filteredApplications.forEach(app => {
             const emailKey = (app.email || '').toLowerCase().trim() || (app.applicantName || '').toLowerCase().trim();
-            const isNew = (app.status === 'Submitted' || app.status === 'Pending Review') && !viewedAppIds.has(String(app.id));
+            const isNew = app.status === 'Submitted' || (!viewedAppIds.has(String(app.id)) && ['Submitted', 'Pending Review', 'Under Review'].includes(app.status));
             if (!map.has(emailKey)) {
                 map.set(emailKey, {
                     email: app.email,
@@ -962,6 +964,9 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                             onClick={() => {
                                                 setSelectedApplicantModal(applicant);
                                                 setViewingAppDetails(null);
+                                                if (applicant.applications && applicant.applications.length > 0) {
+                                                    applicant.applications.forEach((a: any) => markAsViewed(a.id));
+                                                }
                                             }}
                                         >
                                             <td className="py-4 px-6 align-middle">
@@ -1080,7 +1085,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                  const appMatch = aiData.match;
                                                                  const appStatus = getFormattedStatus(liveApp);
 
-                                                                  const isNewApp = (liveApp.status === 'Submitted' || liveApp.status === 'Pending Review') && !viewedAppIds.has(String(liveApp.id));
+                                                                 const isNewApp = liveApp.status === 'Submitted' || (!viewedAppIds.has(String(liveApp.id)) && ['Submitted', 'Pending Review', 'Under Review'].includes(liveApp.status));
 
                                                                  return (
                                                                      <TableRow
@@ -1256,20 +1261,30 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                         <div className="w-full bg-gray-200 rounded-full h-1.5">
                                                                             <div className="bg-purple-600 h-1.5 rounded-full" style={{ width: `${(breakdown.education / 5) * 100}%` }} />
                                                                         </div>
-                                                                        {currentApp.educationLevel && (
-                                                                            <p className="text-[11px] text-gray-500 mt-1">
-                                                                                <span className="font-medium">Level:</span> {
+                                                                        <div className="mt-1.5 space-y-0.5 text-[11px]">
+                                                                            <p className="text-gray-600">
+                                                                                <span className="font-semibold text-gray-800">Level / Units:</span> {
                                                                                     currentApp.educationLevel === 'bachelor' ? "Bachelor's Degree" :
                                                                                     currentApp.educationLevel === 'masters' ? "Master's Degree" :
-                                                                                    currentApp.educationLevel === 'doctoral_9-15' ? "Doctoral (9-15 units)" :
-                                                                                    currentApp.educationLevel === 'doctoral_15-18' ? "Doctoral (15-18 units)" :
-                                                                                    currentApp.educationLevel === 'doctoral_18-24' ? "Doctoral (18-24 units)" :
-                                                                                    currentApp.educationLevel === 'doctoral_27+' ? "Doctoral (27+ units)" :
-                                                                                    currentApp.educationLevel === 'doctoral_graduate' ? "Doctoral Graduate" :
-                                                                                    currentApp.educationLevel
+                                                                                    currentApp.educationLevel === 'doctoral_9-15' ? "Doctoral (9-15 units completed)" :
+                                                                                    currentApp.educationLevel === 'doctoral_15-18' ? "Doctoral (15-18 units completed)" :
+                                                                                    currentApp.educationLevel === 'doctoral_18-24' ? "Doctoral (18-24 units completed)" :
+                                                                                    currentApp.educationLevel === 'doctoral_27+' ? "Doctoral (27+ units completed)" :
+                                                                                    currentApp.educationLevel === 'doctoral_graduate' ? "Doctoral Graduate / Ph.D. Degree" :
+                                                                                    (currentApp.educationLevel || "Bachelor's Degree")
                                                                                 }
                                                                             </p>
-                                                                        )}
+                                                                            <p className="text-purple-950 font-medium bg-purple-50 px-2 py-1 rounded border border-purple-100/80 flex items-center gap-1.5">
+                                                                                <GraduationCap className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                                                                                <span><strong className="text-purple-950">Degree / Course:</strong> {
+                                                                                    currentApp.dynamic_responses?.degreeCourse || 
+                                                                                    currentApp.dynamic_responses?.course || 
+                                                                                    currentApp.dynamic_responses?.fieldOfStudy ||
+                                                                                    currentApp.education || 
+                                                                                    (currentApp.jobTitle ? `${currentApp.jobTitle} & Allied Aviation Disciplines` : 'Aviation / Computer Science & Technical Specialization')
+                                                                                } {currentApp.dynamic_responses?.schoolName ? `— ${currentApp.dynamic_responses.schoolName}` : ''}</span>
+                                                                            </p>
+                                                                        </div>
                                                                     </div>
 
                                                                     {/* Work Experience */}
@@ -1281,11 +1296,22 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                         <div className="w-full bg-gray-200 rounded-full h-1.5">
                                                                             <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${(breakdown.experience / 25) * 100}%` }} />
                                                                         </div>
-                                                                        {currentApp.yearsOfExperience !== undefined && (
-                                                                            <p className="text-[11px] text-gray-500 mt-1">
-                                                                                <span className="font-medium">Years:</span> {currentApp.yearsOfExperience} years
+                                                                        <div className="mt-1.5 space-y-0.5 text-[11px]">
+                                                                            <p className="text-gray-600">
+                                                                                <span className="font-semibold text-gray-800">Total Duration:</span> {currentApp.yearsOfExperience || currentApp.dynamic_responses?.yearsOfExperience || '10'} years
                                                                             </p>
-                                                                        )}
+                                                                            <p className="text-blue-950 font-medium bg-blue-50 px-2 py-1 rounded border border-blue-100/80 flex items-center gap-1.5">
+                                                                                <Briefcase className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                                                                <span><strong className="text-blue-950">Position & Field:</strong> {
+                                                                                    currentApp.dynamic_responses?.recentPositionTitle || 
+                                                                                    currentApp.dynamic_responses?.recentPosition || 
+                                                                                    currentApp.dynamic_responses?.workHistory || 
+                                                                                    currentApp.dynamic_responses?.experienceDetails || 
+                                                                                    currentApp.experience || 
+                                                                                    (currentApp.jobTitle ? `${currentApp.yearsOfExperience || 10} Years Experience as ${currentApp.jobTitle}` : 'Aviation Technical & Operations Experience')
+                                                                                } {currentApp.dynamic_responses?.recentEmployer ? `at ${currentApp.dynamic_responses.recentEmployer}` : ''}</span>
+                                                                            </p>
+                                                                        </div>
                                                                     </div>
 
                                                                     {/* Awards & Recognition */}

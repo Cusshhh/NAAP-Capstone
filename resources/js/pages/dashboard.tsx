@@ -946,13 +946,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             const eventsList: any[] = [];
             
             // 1. General Events
-            eventsList.push({
-                id: 'gen_1',
-                title: 'NAAP Career Fair Webinar',
-                date: 'Feb 20, 2026',
-                time: '2:00 PM',
-                type: 'Meeting'
-            });
+            // (Only real database/interview events loaded below)
 
 
 

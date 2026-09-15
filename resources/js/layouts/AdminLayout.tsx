@@ -31,7 +31,39 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
     const admin = auth?.user || { name: 'Admin', email: '' } as any;
     const { url, props } = usePage<any>();
     const unreadMessagesCount = (props as any)?.unread_messages_count || 0;
-    const pendingApplicantsCount = (props as any)?.pending_applicants_count || 0;
+    const serverPendingApplicantsCount = (props as any)?.pending_applicants_count || 0;
+
+    const [viewedCount, setViewedCount] = React.useState<number>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const saved = localStorage.getItem('viewed_applicant_ids');
+                const arr = saved ? JSON.parse(saved) : [];
+                return Array.isArray(arr) ? arr.length : 0;
+            } catch (e) {
+                return 0;
+            }
+        }
+        return 0;
+    });
+
+    React.useEffect(() => {
+        const updateViewed = () => {
+            try {
+                const saved = localStorage.getItem('viewed_applicant_ids');
+                const arr = saved ? JSON.parse(saved) : [];
+                setViewedCount(Array.isArray(arr) ? arr.length : 0);
+            } catch (e) {}
+        };
+
+        window.addEventListener('storage', updateViewed);
+        window.addEventListener('viewed_apps_updated', updateViewed);
+        return () => {
+            window.removeEventListener('storage', updateViewed);
+            window.removeEventListener('viewed_apps_updated', updateViewed);
+        };
+    }, []);
+
+    const pendingApplicantsCount = Math.max(0, serverPendingApplicantsCount - viewedCount);
 
     const [notificationsOpen, setNotificationsOpen] = React.useState(false);
     const storageKey = `read_admin_notifs_${admin.id || admin.email || 'admin'}`;
@@ -73,12 +105,21 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
                 const ints = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
                 if (Array.isArray(ints) && ints.length > 0) {
                     const latest = ints[ints.length - 1];
+                    let formattedDate = 'Soon';
+                    if (latest.date) {
+                        try {
+                            const d = new Date(latest.date);
+                            if (!isNaN(d.getTime())) {
+                                formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                            }
+                        } catch (err) {}
+                    }
                     list.push({
                         id: `interview_${latest.id || latest.date}`,
-                        text: `Upcoming interview scheduled for ${latest.candidateName || 'Applicant'} (${latest.position || 'Vacancy'}) on ${latest.date || 'Soon'}.`,
+                        text: `Upcoming interview scheduled for ${latest.candidateName || 'Applicant'} (${latest.position || 'Vacancy'}) on ${formattedDate}.`,
                         time: latest.time || 'Scheduled',
                         isRead: readNotifIds.includes(`interview_${latest.id || latest.date}`),
-                        href: '/admin/dashboard',
+                        href: '/admin/calendar',
                         type: 'interview'
                     });
                 }

@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ApplicationSubmittedMail;
 use App\Models\ActivityLog;
 use App\Models\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 
 class ApplicantController extends Controller
@@ -29,6 +31,18 @@ class ApplicantController extends Controller
             ]);
 
             Log::info('Application validation passed', $validated);
+
+            // Check if applicant already has an active application for this job vacancy
+            $existingApp = Application::where('job_id', $validated['job_id'])
+                ->where('email', $validated['email'])
+                ->whereNotIn('status', ['Withdrawn', 'Rejected'])
+                ->first();
+
+            if ($existingApp) {
+                return redirect()->back()->withErrors([
+                    'error' => "You already have an active application for '{$validated['job_title']}'. Only 1 active application per position is permitted."
+                ])->withInput();
+            }
 
             $customFileResponses = [];
             if ($request->has('custom_files')) {
@@ -65,6 +79,13 @@ class ApplicantController extends Controller
             ]);
 
             Log::info("Application created successfully with ID: {$application->id}");
+
+            // Send email confirmation to applicant
+            try {
+                Mail::to($application->email)->send(new ApplicationSubmittedMail($application));
+            } catch (\Throwable $mailEx) {
+                Log::error("Failed sending ApplicationSubmittedMail to {$application->email}: " . $mailEx->getMessage());
+            }
 
             try {
                 ActivityLog::write(

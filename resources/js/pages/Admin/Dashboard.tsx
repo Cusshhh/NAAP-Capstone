@@ -385,13 +385,18 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                     <CardTitle className="text-base text-gray-700">Applicants per Position</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <ResponsiveContainer width="100%" height={250}>
-                                        <BarChart data={currentData.applicantsPerPosition || []} layout="vertical">
+                                    <ResponsiveContainer width="100%" height={280}>
+                                        <BarChart data={currentData.applicantsPerPosition || []} layout="vertical" margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
                                             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                                            <XAxis type="number" hide />
-                                            <YAxis dataKey="position" type="category" width={120} tick={{ fontSize: 12 }} interval={0} />
-                                            <Tooltip cursor={{ fill: 'transparent' }} />
-                                            <Bar dataKey="applicants" fill="#193153" radius={[0, 4, 4, 0]} barSize={20} />
+                                            <XAxis type="number" allowDecimals={false} />
+                                            <YAxis dataKey="position" type="category" width={160} tick={{ fontSize: 11, fill: '#475569' }} interval={0} />
+                                            <Tooltip 
+                                                cursor={{ fill: 'rgba(0, 0, 0, 0.04)' }} 
+                                                formatter={(value: any, name: any, item: any) => [value, 'Applicants']}
+                                                labelFormatter={(label: any, items: any[]) => items[0]?.payload?.fullPosition || label}
+                                                contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                                            />
+                                            <Bar dataKey="applicants" fill="#193153" radius={[0, 4, 4, 0]} barSize={18} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </CardContent>
@@ -403,13 +408,24 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                     <CardTitle className="text-base text-gray-700">Time to Hire (Days)</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <ResponsiveContainer width="100%" height={250}>
-                                        <LineChart data={currentData.hiringTimeline || []}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <ResponsiveContainer width="100%" height={280}>
+                                        <LineChart data={currentData.hiringTimeline || []} margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                                             <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                                            <YAxis axisLine={false} tickLine={false} />
-                                            <Tooltip />
-                                            <Line type="monotone" dataKey="daysToHire" stroke="#eab308" strokeWidth={3} dot={false} />
+                                            <YAxis axisLine={false} tickLine={false} allowDecimals={false} />
+                                            <Tooltip 
+                                                formatter={(value: any) => [`${value} ${value === 1 ? 'Day' : 'Days'}`, 'Avg. Time to Hire']}
+                                                contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                                            />
+                                            <Line 
+                                                type="monotone" 
+                                                dataKey="daysToHire" 
+                                                stroke="#eab308" 
+                                                strokeWidth={3} 
+                                                dot={{ r: 4, fill: '#eab308', strokeWidth: 2, stroke: '#fff' }}
+                                                activeDot={{ r: 6 }}
+                                                name="Avg. Time to Hire" 
+                                            />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </CardContent>

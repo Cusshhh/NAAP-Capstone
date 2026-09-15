@@ -38,17 +38,7 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
         const eventsList: any[] = [];
         
         // 1. General Events (webinars, school events)
-        eventsList.push({
-            id: 'gen_1',
-            title: 'NAAP Career Fair Webinar',
-            date: 'Feb 20, 2026',
-            time: '2:00 PM',
-            venue: 'NAAP Main Auditorium & Online Zoom',
-            meetingLink: 'https://zoom.us/j/naap-career-fair-2026',
-            type: 'Meeting',
-            description: 'Annual NAAP Career Fair and Aviation Industry Orientation. Click the Join Meeting button below to enter the Zoom webinar room.',
-            panelMembers: 'NAAP HR Selection Board & Guest Panelists'
-        });
+        // (Only real database/interview events loaded below)
 
         // Load real Scheduled Interviews from admin
         const localSavedInterviews = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]') : [];

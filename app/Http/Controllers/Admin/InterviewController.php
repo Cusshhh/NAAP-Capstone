@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\InterviewScheduledMail;
 use App\Models\ActivityLog;
 use App\Models\Application;
 use App\Models\Interview;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class InterviewController extends Controller
 {
@@ -57,6 +59,15 @@ class InterviewController extends Controller
                 $application->update(['status' => 'Interview Scheduled']);
             }
 
+            // Send email notification to applicant if enabled
+            if ($interview->notify_applicant && !empty($interview->applicant_email)) {
+                try {
+                    Mail::to($interview->applicant_email)->send(new InterviewScheduledMail($interview));
+                } catch (\Throwable $mailEx) {
+                    Log::error("Failed sending interview notification to {$interview->applicant_email}: " . $mailEx->getMessage());
+                }
+            }
+
             // Also write activity log
             try {
                 ActivityLog::write(
@@ -96,6 +107,15 @@ class InterviewController extends Controller
             ]);
 
             $interview->update($validated);
+
+            // Send email notification if enabled
+            if ($interview->notify_applicant && !empty($interview->applicant_email)) {
+                try {
+                    Mail::to($interview->applicant_email)->send(new InterviewScheduledMail($interview));
+                } catch (\Throwable $mailEx) {
+                    Log::error("Failed sending interview update notification to {$interview->applicant_email}: " . $mailEx->getMessage());
+                }
+            }
 
             // Write activity log
             try {

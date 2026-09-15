@@ -9,549 +9,7 @@ export const SALARY_GRADE_MAP: Record<number, number> = {
     31: 273278, 32: 325307, 33: 411161
 };
 
-export const mockJobs = [
-    {
-        id: '1',
-        title: 'Chief Flight Instructor',
-        department: 'Flight Training',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Oversee all flight training operations and ensure compliance with CAAP regulations. Mentor senior instructors and manage the training syllabus.',
-        responsibilities: [
-            'Manage flight training department.',
-        ],
-        salaryGrade: 24,
-        postedDate: '2026-01-15',
-        deadline: '2026-03-01',
-        applicantCount: 8,
-        status: 'Open'
-    },
-    {
-        id: '2', // Fixed: changed duplicate ID from '1' to '2'
-        title: 'Senior Flight Instructor',
-        department: 'Flight Training',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Experienced instructor needed to handle advanced flight phases and instrument ratings for cadets.',
-        responsibilities: [
-            'Conduct instrument flight training.',
-            'Perform stage checks.',
-            'Mentor student pilots.',
-            'Assist Chief Flight Instructor.'
-        ],
-        requirements: [
-            'CPL with Instrument Rating.',
-            'Flight Instructor License.',
-            'Minimum 1,500 flight hours.',
-            'Class 1 Medical.'
-        ],
-        salaryGrade: 23,
-        postedDate: '2026-01-20',
-        deadline: '2026-03-01',
-        applicantCount: 15,
-        status: 'Open'
-    },
-    {
-        id: '3',
-        title: 'Flight Instructor (Basic)',
-        department: 'Flight Training',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Provide primary flight instruction to new student pilots in Cessna 172 aircraft.',
-        responsibilities: [
-            'Teach basic flight maneuvers.',
-            'Conduct pre-flight briefings.',
-            'Ensure safe flight operations.',
-            'Grade student performance.'
-        ],
-        requirements: [
-            'CPL holder.',
-            'Flight Instructor License.',
-            'Minimum 500 flight hours.',
-            'Passion for teaching.'
-        ],
-        salaryGrade: 21,
-        postedDate: '2026-02-01',
-        deadline: '2026-03-15',
-        applicantCount: 22,
-        status: 'Open'
-    },
-    {
-        id: '4',
-        title: 'Flight Instructor (Multi-Engine)',
-        department: 'Flight Training',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Specialized instructor for Multi-Engine training modules on the Piper Seneca simulator and aircraft.',
-        responsibilities: [
-            'Conduct multi-engine training.',
-            'Teach asymmetric flight procedures.',
-            'Verify student proficiency.',
-            'Safety management.'
-        ],
-        requirements: [
-            'CPL with Multi-Engine Rating.',
-            'Flight Instructor License.',
-            'Minimum 1,000 flight hours.',
-            'Multi-engine teaching experience.'
-        ],
-        salaryGrade: 24,
-        postedDate: '2026-02-02',
-        deadline: '2026-03-20',
-        applicantCount: 10,
-        status: 'Open'
-    },
-    {
-        id: '5',
-        title: 'Aircraft Mechanic (Airframe)',
-        department: 'Maintenance',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Perform scheduled structural repairs and inspections on academy aircraft.',
-        responsibilities: [
-            'Riveting and sheet metal repair.',
-            'Composite material repair.',
-            'Corrosion control.',
-            'Landing gear maintenance.'
-        ],
-        requirements: [
-            'AMT License (Airframe rating).',
-            '3 years aviation experience.',
-            'Ability to read blueprints.',
-            'Physical fitness.'
-        ],
-        salaryGrade: 15,
-        postedDate: '2026-01-25',
-        deadline: '2026-02-28',
-        applicantCount: 18,
-        status: 'Open'
-    },
-    {
-        id: '6',
-        title: 'Aircraft Mechanic (Powerplant)',
-        department: 'Maintenance',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Maintain and overhaul piston engines for training aircraft.',
-        responsibilities: [
-            'Engine inspection and tuning.',
-            'Propeller balancing.',
-            'Oil system analysis.',
-            'Troubleshooting engine issues.'
-        ],
-        requirements: [
-            'AMT License (Powerplant rating).',
-            'Experience with Lycoming engines.',
-            'Safety conscious.',
-            'Troubleshooting skills.'
-        ],
-        salaryGrade: 15,
-        postedDate: '2026-01-28',
-        deadline: '2026-03-05',
-        applicantCount: 12,
-        status: 'Open'
-    },
-    {
-        id: '7',
-        title: 'Avionics Technician',
-        department: 'Maintenance',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Install, troubleshoot, and repair aircraft communication and navigation systems.',
-        responsibilities: [
-            'Test radio and navigation equipment.',
-            'Repair wiring and electrical systems.',
-            'Calibrate flight instruments.',
-            'Software updates.'
-        ],
-        requirements: [
-            'AMS License (Avionics).',
-            'Electronics knowledge.',
-            'Experience with Garmin G1000 is a plus.',
-            'Detail oriented.'
-        ],
-        salaryGrade: 15,
-        postedDate: '2026-02-03',
-        deadline: '2026-03-10',
-        applicantCount: 9,
-        status: 'Open'
-    },
-    {
-        id: '8',
-        title: 'Maintenance Supervisor',
-        department: 'Maintenance',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Lead the maintenance team at the extension campus and ensure aircraft availability.',
-        responsibilities: [
-            'Schedule maintenance shifts.',
-            'Manage spare parts inventory.',
-            'Sign off maintenance releases.',
-            'Supervise mechanics.'
-        ],
-        requirements: [
-            'AMT License with Airframe & Powerplant.',
-            '5+ years experience.',
-            'Leadership skills.',
-            'Knowledge of CAAP airworthiness regs.'
-        ],
-        salary: '₱60,000 - ₱75,000 per month',
-        postedDate: '2026-01-30',
-        deadline: '2026-03-01',
-        applicantCount: 6,
-        status: 'Open'
-    },
-    {
-        id: '9',
-        title: 'Ground Instructor (Meteorology)',
-        department: 'Academics',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Part-time',
-        description: 'Teach aviation meteorology responsibilities to student pilots.',
-        responsibilities: [
-            'Lecture on performing weather analysis.',
-            'Teach METAR/TAF decoding.',
-            'Explain hazardous weather phenomena.',
-            'Prepare exams.'
-        ],
-        requirements: [
-            'Ground Instructor License.',
-            'Meteorology background preferred.',
-            'Teaching experience.',
-            'Good presentation skills.'
-        ],
-        salary: '₱700 - ₱1,000 per hour',
-        postedDate: '2026-02-04',
-        deadline: '2026-03-15',
-        applicantCount: 14,
-        status: 'Open'
-    },
-    {
-        id: '10',
-        title: 'Ground Instructor (Air Law)',
-        department: 'Academics',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Part-time',
-        description: 'Instruct students on Civil Aviation Regulations and international aviation laws.',
-        responsibilities: [
-            'Teach PCARs and ICAO annexes.',
-            'Discuss license privileges and limitations.',
-            'Explain air traffic rules.',
-            'Conduct assessments.'
-        ],
-        requirements: [
-            'Ground Instructor License.',
-            'Deep knowledge of aviation law.',
-            'Attention to detail.',
-            'Communication skills.'
-        ],
-        salary: '₱700 - ₱1,000 per hour',
-        postedDate: '2026-02-05',
-        deadline: '2026-03-20',
-        applicantCount: 11,
-        status: 'Open'
-    },
-    {
-        id: '11',
-        title: 'Flight Simulator Technician',
-        department: 'Maintenance',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Maintain and repair flight training devices and full flight simulators.',
-        responsibilities: [
-            'Perform daily simulator qualification tests.',
-            'Troubleshoot hardware and software issues.',
-            'Replace faulty components.',
-            'Assist instructors with sim setup.'
-        ],
-        requirements: [
-            'Electronics or Computer Engineering degree.',
-            'Experience with simulation systems.',
-            'Networking skills.',
-            'Shift work required.'
-        ],
-        salary: '₱45,000 - ₱60,000 per month',
-        postedDate: '2026-01-18',
-        deadline: '2026-02-28',
-        applicantCount: 7,
-        status: 'Open'
-    },
-    {
-        id: '12',
-        title: 'Aviation Safety Officer',
-        department: 'Safety',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Monitor safety metrics and conduct risk assessments for flight operations.',
-        responsibilities: [
-            'Maintain Safety Management System.',
-            'Investigate hazards and incidents.',
-            'Promote safety awareness.',
-            'Audit compliance.'
-        ],
-        requirements: [
-            'Aviation Safety certification.',
-            'Knowledge of SMS.',
-            'Analytical mindset.',
-            'Experience in flight ops.'
-        ],
-        salary: '₱50,000 - ₱70,000 per month',
-        postedDate: '2026-02-01',
-        deadline: '2026-03-10',
-        applicantCount: 9,
-        status: 'Open'
-    },
-    {
-        id: '13',
-        title: 'Flight Operations Officer',
-        department: 'Flight Operations',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Support flight planning and dispatch duties.',
-        responsibilities: [
-            'File flight plans with ATS.',
-            'Check NOTAMs and weather.',
-            'Coordinate aircraft refueling.',
-            'Track fleet movement.'
-        ],
-        requirements: [
-            'Flight Dispatcher License or training.',
-            'Radio Operator License.',
-            'Computer literate.',
-            'Ability to work under pressure.'
-        ],
-        salary: '₱25,000 - ₱35,000 per month',
-        postedDate: '2026-01-22',
-        deadline: '2026-02-25',
-        applicantCount: 25,
-        status: 'Open'
-    },
-    {
-        id: '14',
-        title: 'Admissions Officer',
-        department: 'Administration',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Process student applications and conduct campus tours for prospective cadets.',
-        responsibilities: [
-            'Review application documents.',
-            'Answer student inquiries.',
-            'Organize orientation events.',
-            'Maintain applicant database.'
-        ],
-        requirements: [
-            'Bachelor’s degree.',
-            'Customer service experience.',
-            'Organized and friendly.',
-            'Communication skills.'
-        ],
-        salary: '₱22,000 - ₱28,000 per month',
-        postedDate: '2026-02-03',
-        deadline: '2026-03-05',
-        applicantCount: 35,
-        status: 'Open'
-    },
-    {
-        id: '15',
-        title: 'School Registrar',
-        department: 'Administration',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Manage student records, grades, and licensing documentation for CAAP.',
-        responsibilities: [
-            'Maintain student 201 files.',
-            'Process transcript requests.',
-            'Liaise with CAAP Licensing department.',
-            'Ensure data privacy.'
-        ],
-        requirements: [
-            'Bachelor’s degree.',
-            'Experience in records management.',
-            'Strict attention to detail.',
-            'Integrity.'
-        ],
-        salary: '₱30,000 - ₱40,000 per month',
-        postedDate: '2026-01-15',
-        deadline: '2026-02-28',
-        applicantCount: 12,
-        status: 'Open'
-    },
-    {
-        id: '16',
-        title: 'School Nurse',
-        department: 'Medical',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Provide basic medical care and first aid to students and staff.',
-        responsibilities: [
-            'Manage campus clinic.',
-            'Provide first aid.',
-            'Monitor student health records.',
-            'Assist in annual medical exams.'
-        ],
-        requirements: [
-            'Registered Nurse (RN).',
-            'BLS/ACLS certified.',
-            'Experience in school setting preferred.',
-            'Caring attitude.'
-        ],
-        salary: '₱25,000 - ₱35,000 per month',
-        postedDate: '2026-02-01',
-        deadline: '2026-03-10',
-        applicantCount: 20,
-        status: 'Open'
-    },
-    {
-        id: '17',
-        title: 'Guidance Counselor',
-        department: 'Student Affairs',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Provide counseling and psychological support to student pilots.',
-        responsibilities: [
-            'Conduct individual counseling.',
-            'Assess student mental fitness.',
-            'Facilitate stress management workshops.',
-            'Support student retention.'
-        ],
-        requirements: [
-            'Registered Guidance Counselor (RGC).',
-            'Experience with students.',
-            'Empathy and confidentiality.',
-            'Understanding of aviation stress factors.'
-        ],
-        salary: '₱30,000 - ₱45,000 per month',
-        postedDate: '2026-01-30',
-        deadline: '2026-03-15',
-        applicantCount: 8,
-        status: 'Open'
-    },
-    {
-        id: '18',
-        title: 'Librarian',
-        department: 'Academics',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Manage the aviation library and technical publications.',
-        responsibilities: [
-            'Catalog books and manuals.',
-            'Assist students with research.',
-            'Update technical library subscriptions.',
-            'Maintain quiet study environment.'
-        ],
-        requirements: [
-            'Licensed Librarian.',
-            'Organizational skills.',
-            'Computer literate.',
-            'Interest in aviation.'
-        ],
-        salary: '₱22,000 - ₱28,000 per month',
-        postedDate: '2026-02-02',
-        deadline: '2026-03-05',
-        applicantCount: 10,
-        status: 'Open'
-    },
-    {
-        id: '19',
-        title: 'IT Support Specialist',
-        department: 'IT',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Provide technical support for campus computers, networks, and smart classrooms.',
-        responsibilities: [
-            'Troubleshoot PC and network issues.',
-            'Maintain classroom AV equipment.',
-            'Install software updates.',
-            'Assist users with technical problems.'
-        ],
-        requirements: [
-            'IT-related degree.',
-            'Networking knowledge.',
-            'Problem-solving skills.',
-            'Customer service oriented.'
-        ],
-        salary: '₱25,000 - ₱35,000 per month',
-        postedDate: '2026-01-20',
-        deadline: '2026-02-28',
-        applicantCount: 28,
-        status: 'Open'
-    },
-    {
-        id: '20',
-        title: 'Marketing Specialist',
-        department: 'Administration',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Develop marketing campaigns to attract new aspiring pilots.',
-        responsibilities: [
-            'Create social media content.',
-            'Design brochures and flyers.',
-            'Coordinate school visits.',
-            'Analyze marketing metrics.'
-        ],
-        requirements: [
-            'Marketing degree.',
-            'Graphic design skills (Canva/Adobe).',
-            'Social media savvy.',
-            'Creativity.'
-        ],
-        salary: '₱30,000 - ₱40,000 per month',
-        postedDate: '2026-02-05',
-        deadline: '2026-03-20',
-        applicantCount: 30,
-        status: 'Open'
-    },
-    {
-        id: '21',
-        title: 'Dormitory Manager',
-        department: 'Administration',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Oversee the operation and maintenance of the student cadet dormitory.',
-        responsibilities: [
-            'Enforce dorm rules and regulations.',
-            'Manage room assignments.',
-            'Coordinate cleaning and repairs.',
-            'Ensure resident safety.'
-        ],
-        requirements: [
-            'Experience in property or hospitality management.',
-            'Strong leadership.',
-            'Ability to handle discipline.',
-            'Live-in option available.'
-        ],
-        salary: '₱25,000 - ₱35,000 per month',
-        postedDate: '2026-01-12',
-        deadline: '2026-02-25',
-        applicantCount: 15,
-        status: 'Closed'
-    },
-    {
-        id: '22',
-        title: 'Utility Staff',
-        department: 'Maintenance',
-        location: 'NAAP - Villamor Campus',
-        employmentType: 'Full-time',
-        description: 'Ensure cleanliness and orderliness of the hangar and campus grounds.',
-        responsibilities: [
-            'Clean hangars and classrooms.',
-            'Assist in moving equipment.',
-            'Groundskeeping duties.',
-            'Dispose of waste properly.'
-        ],
-        requirements: [
-            'High school diploma.',
-            'Hardworking and reliable.',
-            'Physically fit.',
-            'Honest.'
-        ],
-        salary: '₱16,000 - ₱20,000 per month',
-        postedDate: '2026-02-01',
-        deadline: '2026-03-30',
-        applicantCount: 40,
-        status: 'Closed'
-    }
-];
+export const mockJobs: any[] = [];
 
 export interface RecentlyHiredApplicant {
     id: number;
@@ -1157,50 +615,101 @@ export const getAnalyticsData = (campus?: string, dbApps?: any[], dbJobs?: any[]
         rejectedThisMonth,
         unfilledPositions,
 
-        // Data for "Applicants per Position" Bar Chart (Now dynamic)
+        // Data for "Applicants per Position" Bar Chart (Dynamic & formatted)
         applicantsPerPosition: filteredJobs.map(job => {
             const safeJobId = parseInt(String(job.id)) || 0;
-            const count = filteredApplications.filter(app => app.jobTitle === job.title || app.jobId === safeJobId).length;
+            const count = filteredApplications.filter(app => {
+                const appJobId = parseInt(String(app.jobId || app.job_id)) || 0;
+                const appJobTitle = (app.jobTitle || app.job_title || '').trim().toLowerCase();
+                return (safeJobId > 0 && appJobId === safeJobId) || (appJobTitle && appJobTitle === job.title.trim().toLowerCase());
+            }).length;
+            
+            const shortTitle = job.title.length > 24 ? job.title.substring(0, 21) + '...' : job.title;
             return {
-                position: job.title,
+                position: shortTitle,
+                fullPosition: job.title,
                 applicants: isNaN(count) ? 0 : count
             };
         }).sort((a, b) => b.applicants - a.applicants).slice(0, 5),
 
-        // Data for "Hiring Timeline" Line Chart (Static)
-        hiringTimeline: [
-            { month: 'Jan', daysToHire: 45 },
-            { month: 'Feb', daysToHire: 42 },
-            { month: 'Mar', daysToHire: 38 },
-            { month: 'Apr', daysToHire: 35 },
-            { month: 'May', daysToHire: 30 },
-            { month: 'Jun', daysToHire: 28 },
-        ],
+        // Data for "Time to Hire (Days)" Line Chart (Dynamic last 6 months based on hired applicants)
+        hiringTimeline: (() => {
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const last6 = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                last6.push({ name: monthNames[d.getMonth()], mIdx: d.getMonth(), year: d.getFullYear() });
+            }
+            return last6.map(m => {
+                const hiredInMonth = filteredApplications.filter(app => {
+                    if (app.status !== 'Hired') return false;
+                    const rawDate = app.updatedAt || app.updated_at || app.submittedDate || app.created_at;
+                    if (!rawDate) return false;
+                    const date = new Date(rawDate);
+                    return date.getMonth() === m.mIdx && date.getFullYear() === m.year;
+                });
+
+                if (hiredInMonth.length === 0) {
+                    return { month: m.name, daysToHire: 0 };
+                }
+
+                const totalDays = hiredInMonth.reduce((sum, app) => {
+                    const start = new Date(app.submittedDate || app.created_at || Date.now());
+                    const end = new Date(app.updatedAt || app.updated_at || Date.now());
+                    const diffTime = Math.abs(end.getTime() - start.getTime());
+                    const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+                    return sum + diffDays;
+                }, 0);
+
+                const avgDays = Math.round(totalDays / hiredInMonth.length);
+                return { month: m.name, daysToHire: avgDays };
+            });
+        })(),
 
         // Data for "Application Status Distribution" Pie Chart
         applicationsByStatus,
 
-        // Data for "Monthly / Annual Hiring Summary" Line Chart (Dynamic from apps)
-        hiringSummary: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map((m, i) => {
-            const monthApps = filteredApplications.filter(app => {
-                const date = new Date(app.submittedDate);
-                return date.getMonth() === i;
+        // Data for "Monthly / Annual Hiring Summary" Line Chart (Dynamic last 6 months)
+        hiringSummary: (() => {
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const last6 = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                last6.push({ name: monthNames[d.getMonth()], mIdx: d.getMonth(), year: d.getFullYear() });
+            }
+            return last6.map(m => {
+                const monthApps = filteredApplications.filter(app => {
+                    const rawDate = app.submittedDate || app.created_at;
+                    if (!rawDate) return false;
+                    const date = new Date(rawDate);
+                    return date.getMonth() === m.mIdx && date.getFullYear() === m.year;
+                });
+                return {
+                    month: m.name,
+                    hired: monthApps.filter(a => a.status === 'Hired').length,
+                    rejected: monthApps.filter(a => a.status === 'Rejected').length
+                };
             });
-            return {
-                month: m,
-                hired: monthApps.filter(a => a.status === 'Hired').length,
-                rejected: monthApps.filter(a => a.status === 'Rejected').length
-            };
-        }),
+        })(),
 
-        // Data for "Monthly Application Trends" Line Chart (Dynamic from apps)
-        monthlyTrends: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'].map((m, i) => ({
-            month: m,
-            applications: filteredApplications.filter(app => {
-                const date = new Date(app.submittedDate);
-                return date.getMonth() === i;
-            }).length
-        })),
+        // Data for "Monthly Application Trends" Line Chart (Dynamic last 6 months)
+        monthlyTrends: (() => {
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const last6 = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                last6.push({ name: monthNames[d.getMonth()], mIdx: d.getMonth(), year: d.getFullYear() });
+            }
+            return last6.map(m => ({
+                month: m.name,
+                applications: filteredApplications.filter(app => {
+                    const rawDate = app.submittedDate || app.created_at;
+                    if (!rawDate) return false;
+                    const date = new Date(rawDate);
+                    return date.getMonth() === m.mIdx && date.getFullYear() === m.year;
+                }).length
+            }));
+        })(),
         jobs: filteredJobs
     };
 };

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ApplicantHiredMail;
+use App\Mail\ApplicationStatusUpdatedMail;
 use App\Models\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -49,12 +50,40 @@ class AdminApplicationController extends Controller
                 Log::warning('Failed writing ActivityLog: '.$ex->getMessage());
             }
 
-            // Trigger email if status changed to Hired
-            if ($validated['status'] === 'Hired' && $oldStatus !== 'Hired') {
-                try {
-                    Mail::to($application->email)->send(new ApplicantHiredMail($application));
-                } catch (\Throwable $mailEx) {
-                    Log::error("Failed sending Hired email to {$application->email}: ".$mailEx->getMessage());
+            // Trigger email notifications and auto-close vacancy on Hired status
+            if ($oldStatus !== $validated['status']) {
+                if ($validated['status'] === 'Hired') {
+                    // 1. Send Hired email
+                    try {
+                        Mail::to($application->email)->send(new ApplicantHiredMail($application));
+                    } catch (\Throwable $mailEx) {
+                        Log::error("Failed sending Hired email to {$application->email}: ".$mailEx->getMessage());
+                    }
+
+                    // 2. Automatically close the job vacancy since candidate is hired
+                    if ($application->job_id) {
+                        try {
+                            $vacancy = \App\Models\Vacancy::find($application->job_id);
+                            if ($vacancy && $vacancy->status !== 'Closed') {
+                                $vacancy->update(['status' => 'Closed']);
+                                \App\Models\ActivityLog::write(
+                                    'Vacancy Closed Automatically',
+                                    "Job vacancy '{$vacancy->title}' was automatically marked as Closed after hiring candidate {$application->applicant_name}.",
+                                    'Villamor Campus',
+                                    'Lock',
+                                    'text-amber-600 bg-amber-50'
+                                );
+                            }
+                        } catch (\Throwable $vacEx) {
+                            Log::warning("Failed auto-closing vacancy ID {$application->job_id}: ".$vacEx->getMessage());
+                        }
+                    }
+                } else {
+                    try {
+                        Mail::to($application->email)->send(new ApplicationStatusUpdatedMail($application));
+                    } catch (\Throwable $mailEx) {
+                        Log::error("Failed sending status update email to {$application->email}: ".$mailEx->getMessage());
+                    }
                 }
             }
 
