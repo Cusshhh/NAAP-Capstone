@@ -28,6 +28,17 @@ export default function Profile({ mustVerifyEmail, status }: any) {
     });
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
+    React.useEffect(() => {
+        if (typeof window !== 'undefined' && (window.location.hash === '#password' || window.location.href.includes('password'))) {
+            setTimeout(() => {
+                const el = document.getElementById('password');
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        }
+    }, []);
+
     const profileForm = useForm({
         name: user.name || '',
         email: user.email || '',
@@ -257,7 +268,7 @@ export default function Profile({ mustVerifyEmail, status }: any) {
             </Card>
 
             {/* Update Password Card */}
-            <Card className="border border-gray-200 shadow-xs rounded-xl bg-white">
+            <Card id="password" className="border border-gray-200 shadow-xs rounded-xl bg-white scroll-mt-6">
                 <CardHeader>
                     <CardTitle className="text-lg font-bold text-[#193153] flex items-center gap-2">
                         <Key className="w-5 h-5 text-purple-600" /> Update Password

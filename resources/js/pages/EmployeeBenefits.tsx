@@ -138,6 +138,7 @@ export default function EmployeeBenefits() {
               src="/images/NAAP_bg.jpg"
               alt="NAAP Campus Background"
               className="w-full h-full object-cover object-center"
+              onError={(e) => { e.currentTarget.src = '/images/Dorm1.jpg'; }}
             />
             {/* Gradient Overlay for Text Readability */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#193153] via-[#193153]/80 to-[#193153]/50" />

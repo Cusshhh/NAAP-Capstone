@@ -236,6 +236,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/departments/{department}', [\App\Http\Controllers\Admin\JobController::class, 'destroyDepartment'])->name('departments.destroy');
 
         Route::post('/applications/{application}/status', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'updateStatus'])->name('applications.status');
+        Route::post('/applications/{application}/decision', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'saveDecision'])->name('applications.decision');
         Route::delete('/applications/{application}', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'destroy'])->name('applications.destroy');
         Route::get('/reports/export', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'exportReport'])->name('reports.export');
 
@@ -638,6 +639,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ]);
         })->name('activity-log');
 
+        Route::get('/activity-logs', [\App\Http\Controllers\Admin\ActivityLogController::class, 'index'])->name('activity-logs');
+
         Route::get('/cms', function () {
             return Inertia::render('Admin/CMS');
         })->name('cms');
@@ -652,7 +655,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 abort(403, 'Unauthorized. Only Administrators can manage the landing page.');
             }
 
-            return Inertia::render('Admin/LandingPageManager');
+            return Inertia::render('Admin/LandingPageManager', [
+                'auth' => ['user' => $user],
+            ]);
         })->name('landing-page');
 
         // Interview routes

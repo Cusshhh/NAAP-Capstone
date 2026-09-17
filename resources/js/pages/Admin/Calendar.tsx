@@ -1,5 +1,5 @@
 import { Head, Link, usePage, router } from '@inertiajs/react';
-import { Calendar as CalendarIcon, ChevronLeft, Clock, MapPin, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, Clock, MapPin, MoreHorizontal, Plus, Trash2, Video } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,24 @@ export default function AdminCalendar() {
 
     const [dbCustomEvents, setDbCustomEvents] = useState<any[]>([]);
     const [dbInterviews, setDbInterviews] = useState<any[]>([]);
+
+    const formatTime = (timeStr?: string | null) => {
+        if (!timeStr) return 'TBA';
+        if (/am|pm/i.test(timeStr)) return timeStr;
+        const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+        if (!match) return timeStr;
+        let hours = parseInt(match[1], 10);
+        const minutes = match[2];
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        if (hours === 0) hours = 12;
+        return `${hours}:${minutes} ${ampm}`;
+    };
+
+    const isUrl = (str?: string | null) => {
+        if (!str) return false;
+        return /^https?:\/\//i.test(str.trim());
+    };
 
     // Helper to build dynamic and custom events
     const buildEvents = (customEventsList: any[] = [], interviewsList: any[] = []) => {
@@ -613,7 +631,7 @@ export default function AdminCalendar() {
                                                     <div className="flex flex-wrap gap-2 mt-2">
                                                         <span className="text-[10px] flex items-center gap-1 text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full">
                                                             <Clock className="w-3 h-3" />
-                                                            {event.time}
+                                                            {formatTime(event.time)}
                                                         </span>
                                                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter
                                                             ${event.type === 'Deadline' ? 'bg-red-100 text-red-700' :
@@ -622,10 +640,19 @@ export default function AdminCalendar() {
                                                             {event.type}
                                                         </span>
                                                     </div>
-                                                    {event.type === 'Interview' && (
+                                                    {event.venue && (
                                                         <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1 font-medium">
-                                                            <MapPin className="w-3 h-3" />
-                                                            NAAP - Villamor Campus
+                                                            {isUrl(event.venue) ? (
+                                                                <>
+                                                                    <Video className="w-3 h-3 text-blue-600" />
+                                                                    <span className="text-blue-700 font-bold">Online Meeting</span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <MapPin className="w-3 h-3" />
+                                                                    <span className="truncate">{event.venue}</span>
+                                                                </>
+                                                            )}
                                                         </p>
                                                     )}
                                                 </div>

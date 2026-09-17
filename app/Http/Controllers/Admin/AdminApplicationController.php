@@ -97,6 +97,80 @@ class AdminApplicationController extends Controller
         }
     }
 
+    public function saveDecision(Request $request, Application $application)
+    {
+        try {
+            $validated = $request->validate([
+                'final_decision' => 'required|string|in:Qualified,For Further Review,Not Qualified,Under Review',
+                'decision_notes' => 'nullable|string',
+                'overall_score' => 'nullable|numeric',
+                'analysis_summary' => 'nullable|string',
+                'itemized_results' => 'nullable|array',
+            ]);
+
+            $user = $request->user();
+            $decidedBy = $user ? $user->name : 'HR Admin';
+            $now = now();
+
+            // 1. Update dynamic_responses JSON on application
+            $dyn = $application->dynamic_responses ?? [];
+            $dyn['hr_decision'] = [
+                'final_decision' => $validated['final_decision'],
+                'decision_notes' => $validated['decision_notes'] ?? '',
+                'decided_by' => $decidedBy,
+                'decided_at' => $now->toDateTimeString(),
+            ];
+
+            if (isset($validated['overall_score'])) {
+                $dyn['qualification_analysis'] = [
+                    'overall_score' => $validated['overall_score'],
+                    'analysis_summary' => $validated['analysis_summary'] ?? '',
+                    'itemized_results' => $validated['itemized_results'] ?? [],
+                    'updated_at' => $now->toDateTimeString(),
+                ];
+            }
+
+            $application->update(['dynamic_responses' => $dyn]);
+
+            // 2. Persist to applicant_qualification_analyses DB table
+            \App\Models\ApplicantQualificationAnalysis::updateOrCreate(
+                ['application_id' => $application->id],
+                [
+                    'applicant_email' => $application->email,
+                    'job_id' => $application->job_id,
+                    'overall_score' => $validated['overall_score'] ?? 0.00,
+                    'analysis_summary' => $validated['analysis_summary'] ?? null,
+                    'analysis_version' => 'v2.0',
+                    'itemized_results' => $validated['itemized_results'] ?? null,
+                    'final_decision' => $validated['final_decision'],
+                    'decision_notes' => $validated['decision_notes'] ?? null,
+                    'decided_by' => $decidedBy,
+                    'decided_at' => $now,
+                ]
+            );
+
+            try {
+                \App\Models\ActivityLog::write(
+                    "HR Decision Saved: {$validated['final_decision']}",
+                    "HR marked {$application->applicant_name}'s qualification as {$validated['final_decision']} for {$application->job_title}",
+                    'Villamor Campus',
+                    'ShieldCheck',
+                    'text-emerald-600 bg-emerald-50'
+                );
+            } catch (\Exception $ex) {
+                Log::warning('Failed writing ActivityLog: '.$ex->getMessage());
+            }
+
+            return back()->with('message', 'HR Qualification decision saved successfully.');
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            throw $ve;
+        } catch (\Throwable $ex) {
+            Log::error("Error saving qualification decision for application ID {$application->id}: ".$ex->getMessage());
+
+            return back()->withErrors(['error' => 'Failed to save qualification decision: '.$ex->getMessage()]);
+        }
+    }
+
     public function exportReport(Request $request)
     {
         try {

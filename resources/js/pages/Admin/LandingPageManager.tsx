@@ -43,14 +43,27 @@ export default function LandingPageManager({ auth }: { auth: any }) {
                     axios.get('/cms-content/mock_hr_news'),
                     axios.get('/cms-content/mock_recently_hired')
                 ]);
-                setAnnouncements(annRes.data || getAnnouncements());
-                setNewsItems(newsRes.data || getHRNews());
-                setRecentlyHired(hiredRes.data || getRecentlyHired());
+
+                const dbAnn = Array.isArray(annRes.data) ? annRes.data : null;
+                const dbNews = Array.isArray(newsRes.data) ? newsRes.data : null;
+                const dbHired = Array.isArray(hiredRes.data) ? hiredRes.data : null;
+
+                const fallbackAnn = getAnnouncements();
+                const fallbackNews = getHRNews();
+                const fallbackHired = getRecentlyHired();
+
+                setAnnouncements(dbAnn || (Array.isArray(fallbackAnn) ? fallbackAnn : []));
+                setNewsItems(dbNews || (Array.isArray(fallbackNews) ? fallbackNews : []));
+                setRecentlyHired(dbHired || (Array.isArray(fallbackHired) ? fallbackHired : []));
             } catch (e) {
                 console.error("Failed to load CMS data from database", e);
-                setAnnouncements(getAnnouncements());
-                setNewsItems(getHRNews());
-                setRecentlyHired(getRecentlyHired());
+                const fallbackAnn = getAnnouncements();
+                const fallbackNews = getHRNews();
+                const fallbackHired = getRecentlyHired();
+
+                setAnnouncements(Array.isArray(fallbackAnn) ? fallbackAnn : []);
+                setNewsItems(Array.isArray(fallbackNews) ? fallbackNews : []);
+                setRecentlyHired(Array.isArray(fallbackHired) ? fallbackHired : []);
             }
         };
         loadDbData();
@@ -105,6 +118,8 @@ export default function LandingPageManager({ auth }: { auth: any }) {
     };
 
     // Newsroom Handlers
+    const newsImage = newsFormData.image || newsImageUrl;
+
     const handleEditNews = (newsItem: HRNewsItem) => {
         setEditingNewsId(newsItem.id);
         setNewsFormData({ ...newsItem });
@@ -153,8 +168,6 @@ export default function LandingPageManager({ auth }: { auth: any }) {
             newsImageInputRef.current.value = '';
         }
     };
-
-    const newsImage = newsFormData.image || newsImageUrl;
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'announcement' | 'news' | 'hired') => {
         const input = e.target;
@@ -281,7 +294,7 @@ export default function LandingPageManager({ auth }: { auth: any }) {
                     {/* Announcements Tab */}
                     <TabsContent value="announcements">
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {announcements.map((announcement) => (
+                            {(Array.isArray(announcements) ? announcements : []).map((announcement) => (
                                 <Card key={announcement.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                                     <div className="h-48 overflow-hidden bg-gray-200">
                                         <img
@@ -314,7 +327,7 @@ export default function LandingPageManager({ auth }: { auth: any }) {
                     {/* Newsroom Tab */}
                     <TabsContent value="newsroom">
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {newsItems.map((newsItem) => (
+                            {(Array.isArray(newsItems) ? newsItems : []).map((newsItem) => (
                                 <Card key={newsItem.id} className="hover:shadow-lg transition-shadow">
                                     <CardHeader>
                                         <div className="flex justify-between items-start mb-2">
@@ -345,7 +358,7 @@ export default function LandingPageManager({ auth }: { auth: any }) {
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                             {/* Add New Button Card */}
                             <Card
-                                className="overflow-hidden border-2 border-dashed border-gray-200 bg-gray-50/50 hover:bg-gray-50 hover:border-[#193153]/30 transition-all cursor-pointer flex flex-col items-center justify-center p-8 group min-h-87.5"
+                                className="overflow-hidden border-2 border-dashed border-gray-200 bg-gray-50/50 hover:bg-gray-50 hover:border-[#193153]/30 transition-all cursor-pointer flex flex-col items-center justify-center p-8 group min-h-[350px]"
                                 onClick={handleAddHired}
                             >
                                 <div className="w-16 h-16 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -360,7 +373,7 @@ export default function LandingPageManager({ auth }: { auth: any }) {
                                 <p className="text-sm text-gray-500 text-center mt-2">Display a newly hired professional on the landing page</p>
                             </Card>
 
-                            {recentlyHired.map((hired) => (
+                            {(Array.isArray(recentlyHired) ? recentlyHired : []).map((hired) => (
                                 <Card key={hired.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                                     <div className="h-48 flex items-center justify-center bg-gray-100 border-b border-gray-100">
                                         <div className="w-32 h-32 bg-white p-1 rounded-sm shadow-md border border-gray-200 overflow-hidden">

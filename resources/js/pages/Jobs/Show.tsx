@@ -61,12 +61,12 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
         middleName: '',
         extensionName: '',
         age: '',
-        sex: '',
-        civilStatus: '',
+        sex: 'male',
+        civilStatus: 'single',
         religion: '',
         isIP: 'No',
         isPWD: 'No',
-        source: '',
+        source: 'naap_website',
         contactNumber: '',
         alternateContact: '',
         address: '',
@@ -91,7 +91,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
         // Skills (PDS Sec VII)
         skills: [] as string[],
         // AI Scoring fields
-        educationLevel: 'bachelor' as 'bachelor' | 'masters' | 'doctoral_graduate' | 'doctoral_27+' | 'doctoral_18-24' | 'doctoral_15-18' | 'doctoral_9-15',
+        educationLevel: '' as any,
         yearsOfExperience: '0',
         awards: [] as ('national' | 'csc' | 'president' | 'ngo')[],
         trainingHours: '0'
@@ -111,6 +111,9 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
             const savedProfile = localStorage.getItem(`user_profile_data_${user?.id}`);
             if (savedProfile) {
                 const profile = JSON.parse(savedProfile);
+                const rawCivil = (profile.civilStatus || prev.civilStatus || 'single').toLowerCase();
+                const civilStatusVal = rawCivil === 'other' ? 'others' : rawCivil;
+
                 setFormData(prev => ({
                     ...prev,
                     lastName: profile.lastName || prev.lastName,
@@ -118,11 +121,12 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                     middleName: profile.middleName || prev.middleName || '',
                     extensionName: profile.extensionName || prev.extensionName || '',
                     age: profile.age || prev.age || '',
-                    sex: profile.sex ? profile.sex.toLowerCase() : prev.sex,
-                    civilStatus: profile.civilStatus ? profile.civilStatus.toLowerCase() : prev.civilStatus,
+                    sex: profile.sex ? profile.sex.toLowerCase() : (prev.sex || 'male'),
+                    civilStatus: civilStatusVal,
                     religion: profile.religion || prev.religion || '',
                     isIP: profile.ipGroup || prev.isIP || 'No',
                     isPWD: profile.pwd || prev.isPWD || 'No',
+                    source: profile.source || prev.source || 'naap_website',
                     contactNumber: profile.phone || prev.contactNumber || '',
                     alternateContact: profile.alternateContact || prev.alternateContact || '',
                     address: profile.address || prev.address || '',
@@ -134,7 +138,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                     pagibigNo: profile.pagibigNo || prev.pagibigNo || '',
                     philhealthNo: profile.philhealthNo || prev.philhealthNo || '',
                     // Education Details (PDS Sec II)
-                    educationLevel: profile.educationLevel || prev.educationLevel || 'bachelor',
+                    educationLevel: profile.educationLevel !== undefined ? profile.educationLevel : '',
                     schoolName: profile.schoolName || prev.schoolName || '',
                     degreeCourse: profile.degreeCourse || prev.degreeCourse || '',
                     yearGraduated: profile.yearGraduated || prev.yearGraduated || '',
@@ -149,7 +153,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                     recentTrainingTitle: profile.recentTrainingTitle || prev.recentTrainingTitle || '',
                     // Skills & Awards (PDS Sec VII)
                     skills: Array.isArray(profile.skills) && profile.skills.length > 0 ? profile.skills : prev.skills,
-                    awards: profile.awards || prev.awards || ['national']
+                    awards: Array.isArray(profile.awards) ? profile.awards : (prev.awards || [])
                 }));
 
                 if (profile.eligibilities && Array.isArray(profile.eligibilities) && profile.eligibilities.length > 0) {
@@ -247,6 +251,24 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
 
     const handleSubmitApplication = (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!formData.lastName.trim() || !formData.firstName.trim()) {
+            toast.error("Please fill in your complete name.");
+            return;
+        }
+        if (!formData.contactNumber.trim()) {
+            toast.error("Please enter your contact number.");
+            return;
+        }
+        if (!formData.address.trim()) {
+            toast.error("Please enter your residential address.");
+            return;
+        }
+        if (selectedEligibilities.includes("Other") && !otherEligibilityText.trim()) {
+            toast.error("Please specify your custom eligibility in the field provided.");
+            return;
+        }
+
         setIsSubmitting(true);
 
         const fullName = `${formData.firstName} ${formData.middleName ? formData.middleName + ' ' : ''}${formData.lastName}${formData.extensionName ? ' ' + formData.extensionName : ''}`.trim();
@@ -273,16 +295,17 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
             };
         }).filter(Boolean);
 
-        // Generate job-specific skills based on job title
-        const mockSkillsList = ['CPL', 'Instrument', 'Safety Management', 'AMT License', 'Troubleshooting', 'Logbook', 'MS Office', 'Organization', 'Communication', 'Customer Service', 'Public Speaking', 'Aviation Law', 'Project Management', 'Team Leadership'];
-        const seed = job.title.charCodeAt(0) + job.title.charCodeAt(job.title.length - 1);
-        const skills = [
-            mockSkillsList[seed % mockSkillsList.length],
-            mockSkillsList[(seed + 3) % mockSkillsList.length],
-            mockSkillsList[(seed + 7) % mockSkillsList.length]
-        ];
+        // Build realistic experience summary from exact applicant inputs
+        let experienceDescription = "";
+        if (formData.recentPositionTitle || formData.recentEmployer) {
+            experienceDescription = `Worked as ${formData.recentPositionTitle || 'Staff'} at ${formData.recentEmployer || 'Previous Agency'} for ${formData.yearsOfExperience || 0} years.`;
+        } else {
+            experienceDescription = `${formData.yearsOfExperience || 0} years of total work experience declared.`;
+        }
 
-        const experienceDescription = `${formData.yearsOfExperience} years of relevant experience in ${job.title} fields. Completed ${formData.trainingHours} hours of training and seminars.`;
+        if (formData.recentTrainingTitle || formData.trainingHours) {
+            experienceDescription += ` Completed ${formData.trainingHours || 0} hours of training (${formData.recentTrainingTitle || 'Seminars & Workshops'}).`;
+        }
 
         const getEducationLabel = (level: string) => {
             if (level === 'bachelor') return "Bachelor's Degree";
@@ -330,7 +353,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                 trainingHours: formData.trainingHours,
                 recentTrainingTitle: formData.recentTrainingTitle,
                 awards: formData.awards,
-                skills: formData.skills && formData.skills.length > 0 ? formData.skills : skills,
+                skills: formData.skills && formData.skills.length > 0 ? formData.skills : [],
                 experience: experienceDescription,
                 documents: uploadedDocs,
                 religion: formData.religion,
@@ -682,7 +705,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 </div>
                                 <div className="flex flex-col justify-end space-y-2">
                                     <Label htmlFor="sex">Sex</Label>
-                                    <Select value={formData.sex} onValueChange={(val) => setFormData({ ...formData, sex: val })} required>
+                                    <Select value={formData.sex || 'male'} onValueChange={(val) => setFormData({ ...formData, sex: val })}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select" />
                                         </SelectTrigger>
@@ -694,7 +717,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 </div>
                                 <div className="flex flex-col justify-end space-y-2">
                                     <Label htmlFor="civilStatus">Civil Status</Label>
-                                    <Select value={formData.civilStatus} onValueChange={(val) => setFormData({ ...formData, civilStatus: val })} required>
+                                    <Select value={formData.civilStatus === 'other' ? 'others' : (formData.civilStatus || 'single')} onValueChange={(val) => setFormData({ ...formData, civilStatus: val })}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select" />
                                         </SelectTrigger>
@@ -720,7 +743,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <Label>Are you a member of any Indigenous Group?</Label>
-                                    <Select value={formData.isIP} onValueChange={(val) => setFormData({ ...formData, isIP: val })} required>
+                                    <Select value={formData.isIP || 'No'} onValueChange={(val) => setFormData({ ...formData, isIP: val })}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select" />
                                         </SelectTrigger>
@@ -732,7 +755,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Are you a Person with Disability (PWD)?</Label>
-                                    <Select value={formData.isPWD} onValueChange={(val) => setFormData({ ...formData, isPWD: val })} required>
+                                    <Select value={formData.isPWD || 'No'} onValueChange={(val) => setFormData({ ...formData, isPWD: val })}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select" />
                                         </SelectTrigger>
@@ -744,32 +767,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 </div>
                             </div>
 
-                            {/* PDS Sec I Government Issued ID Numbers */}
-                            <div className="pt-2">
-                                <Label className="text-xs font-bold text-blue-900 uppercase tracking-wide block mb-2">Government Issued Identification Numbers (PDS Sec I)</Label>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                                    <div className="space-y-1">
-                                        <Label htmlFor="gsisNo" className="text-[11px] font-semibold text-gray-600">GSIS ID No.</Label>
-                                        <Input id="gsisNo" placeholder="N/A" value={formData.gsisNo} onChange={(e) => setFormData({ ...formData, gsisNo: e.target.value })} className="h-8 text-xs" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="sssNo" className="text-[11px] font-semibold text-gray-600">SSS No.</Label>
-                                        <Input id="sssNo" placeholder="N/A" value={formData.sssNo} onChange={(e) => setFormData({ ...formData, sssNo: e.target.value })} className="h-8 text-xs" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="tinNo" className="text-[11px] font-semibold text-gray-600">TIN No.</Label>
-                                        <Input id="tinNo" placeholder="N/A" value={formData.tinNo} onChange={(e) => setFormData({ ...formData, tinNo: e.target.value })} className="h-8 text-xs" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="pagibigNo" className="text-[11px] font-semibold text-gray-600">PAG-IBIG ID No.</Label>
-                                        <Input id="pagibigNo" placeholder="N/A" value={formData.pagibigNo} onChange={(e) => setFormData({ ...formData, pagibigNo: e.target.value })} className="h-8 text-xs" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="philhealthNo" className="text-[11px] font-semibold text-gray-600">PhilHealth No.</Label>
-                                        <Input id="philhealthNo" placeholder="N/A" value={formData.philhealthNo} onChange={(e) => setFormData({ ...formData, philhealthNo: e.target.value })} className="h-8 text-xs" />
-                                    </div>
-                                </div>
-                            </div>
+
                         </div>
 
                         {/* 3. Eligibilities */}
@@ -892,7 +890,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <Label>How did you find this position?</Label>
-                                    <Select onValueChange={(val) => setFormData({ ...formData, source: val })} required>
+                                    <Select value={formData.source || 'naap_website'} onValueChange={(val) => setFormData({ ...formData, source: val })}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select Source" />
                                         </SelectTrigger>
@@ -930,11 +928,12 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 {/* Education Level */}
                                 <div className="space-y-2">
                                     <Label htmlFor="educationLevel">Highest Educational Attainment *</Label>
-                                    <Select value={formData.educationLevel} onValueChange={(val) => setFormData({ ...formData, educationLevel: val as any })} required>
+                                    <Select value={formData.educationLevel || undefined} onValueChange={(val) => setFormData({ ...formData, educationLevel: (val === 'none' ? '' : val) as any })}>
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Select education level" />
+                                            <SelectValue placeholder="-- Select Highest Education Attained --" />
                                         </SelectTrigger>
                                         <SelectContent>
+                                            <SelectItem value="none">-- Select Highest Education Attained --</SelectItem>
                                             <SelectItem value="bachelor">Bachelor's Degree</SelectItem>
                                             <SelectItem value="masters">Master's Degree</SelectItem>
                                             <SelectItem value="doctoral_9-15">Doctoral Studies (9-15 units)</SelectItem>
@@ -1131,23 +1130,16 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {[
-                                    "Letter of Intent",
-                                    "Personal Data Sheet (PDS) with Work Experience",
-                                    "Work Experience Sheet (Separate)",
-                                    "Certificate of Eligibility",
-                                    "Transcript of Records (TOR)",
-                                    "Relevant Training Certificates",
-                                    "Performance Rating (IPCR/OPCR)"
-                                ].map((docLabel, i) => {
-                                    // Mapping document names to storage keys
-                                    let storageKey = docLabel;
-                                    if (docLabel.includes("PDS")) storageKey = "Personal Data Sheet (PDS)";
-                                    else if (docLabel.includes("Work Experience")) storageKey = "Work Experience Sheet";
-                                    else if (docLabel.includes("Training")) storageKey = "Training Certificates";
-                                    else if (docLabel.includes("Performance")) storageKey = "Performance Rating";
-                                    else if (docLabel.includes("Letter of Intent")) storageKey = "Letter of Intent";
-                                    else if (docLabel.includes("Certificate of Eligibility")) storageKey = "Certificate of Eligibility";
-                                    else if (docLabel.includes("Transcript of Records")) storageKey = "Transcript of Records (TOR)";
+                                    { label: "Letter of Intent", key: "Letter of Intent", naming: "LOI_SURNAME", cscLink: null },
+                                    { label: "Personal Data Sheet (CS Form 212, Rev. 2025)", key: "Personal Data Sheet (PDS)", naming: "PDS_SURNAME", cscLink: "https://www.csc.gov.ph/downloads/2025-oraohra" },
+                                    { label: "Work Experience Sheet (WES)", key: "Work Experience Sheet", naming: "WES_SURNAME", cscLink: "https://www.csc.gov.ph/downloads/2025-oraohra" },
+                                    { label: "Certificate of Eligibility", key: "Certificate of Eligibility", naming: "COE_SURNAME", cscLink: null },
+                                    { label: "Transcript of Records (TOR)", key: "Transcript of Records (TOR)", naming: "TOR_SURNAME", cscLink: null },
+                                    { label: "Relevant Training Certificates", key: "Training Certificates", naming: "TRNG_SURNAME", cscLink: null },
+                                    { label: "Performance Rating (IPCR/OPCR)", key: "Performance Rating", naming: "PR_SURNAME", cscLink: null }
+                                ].map((docItem, i) => {
+                                    const docLabel = docItem.label;
+                                    const storageKey = docItem.key;
 
                                     const isAttached = attachedDocs[storageKey];
 
@@ -1158,15 +1150,32 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     return (
                                         <div 
                                             key={i} 
-                                            className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between h-[145px] shrink-0 ${
+                                            className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between min-h-[160px] shrink-0 ${
                                                 isAttached ? 'bg-green-50/60 border-green-300 shadow-xs' : 'bg-gray-50/80 border-gray-200 hover:border-blue-200'
                                             }`}
                                         >
-                                            {/* Top Section: Document Title (Fixed 38px height so 1-line and 2-line titles match perfectly) */}
-                                            <div className="h-[38px] flex items-start border-b border-gray-200/50 pb-1">
-                                                <Label className="font-bold text-xs sm:text-sm text-[#193153] leading-snug line-clamp-2 block">
-                                                    {docLabel} <span className="text-red-500">*</span>
-                                                </Label>
+                                            {/* Top Section: Document Title & Preferred Naming */}
+                                            <div className="flex flex-col border-b border-gray-200/50 pb-1.5 gap-1">
+                                                <div className="flex items-center justify-between gap-1">
+                                                    <Label className="font-bold text-xs sm:text-sm text-[#193153] leading-snug line-clamp-1 block">
+                                                        {docLabel} <span className="text-red-500">*</span>
+                                                    </Label>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-1 flex-wrap">
+                                                    <span className="text-[10px] font-semibold text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                                                        📌 Preferred File Name: {docItem.naming}
+                                                    </span>
+                                                    {docItem.cscLink && (
+                                                        <a 
+                                                            href={docItem.cscLink} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="text-[10px] text-blue-600 hover:text-blue-800 font-medium underline flex items-center gap-0.5"
+                                                        >
+                                                            Download 2025 Form
+                                                        </a>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {/* Middle Section: Status Badge (Left) & To Follow Checkbox (Right) - Fixed 26px height */}
@@ -1447,10 +1456,10 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
 
                             {/* 3. Academic & Professional Summary */}
                             <div className="space-y-4">
-                                <h4 className="font-bold text-[#193153] text-sm border-b pb-1">Professional Credentials</h4>
-                                <div className="grid grid-cols-2 gap-4 text-xs">
+                                <h4 className="font-bold text-[#193153] text-sm border-b pb-1">Professional & Educational Credentials</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
-                                        <span className="text-gray-500 font-medium">Highest Education Attained</span>
+                                        <span className="text-gray-500 font-medium">Highest Education Level</span>
                                         <span className="font-bold text-gray-900 mt-1">
                                             {(() => {
                                                 const rawEd = application.dynamic_responses?.educationLevel || application.education || '';
@@ -1464,16 +1473,36 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                         </span>
                                     </div>
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
+                                        <span className="text-gray-500 font-medium">Degree / Course Title</span>
+                                        <span className="font-bold text-gray-900 mt-1">{application.dynamic_responses?.degreeCourse || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
+                                        <span className="text-gray-500 font-medium">School / University</span>
+                                        <span className="font-bold text-gray-900 mt-1">{application.dynamic_responses?.schoolName || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
                                         <span className="text-gray-500 font-medium">Years of Experience</span>
                                         <span className="font-bold text-gray-900 mt-1">
                                             {application.dynamic_responses?.yearsOfExperience || 0} years
                                         </span>
                                     </div>
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
+                                        <span className="text-gray-500 font-medium">Recent Position Title</span>
+                                        <span className="font-bold text-gray-900 mt-1">{application.dynamic_responses?.recentPositionTitle || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
+                                        <span className="text-gray-500 font-medium">Recent Employer / Agency</span>
+                                        <span className="font-bold text-gray-900 mt-1">{application.dynamic_responses?.recentEmployer || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
                                         <span className="text-gray-500 font-medium">Training Hours Completed</span>
                                         <span className="font-bold text-gray-900 mt-1">
                                             {application.dynamic_responses?.trainingHours || 0} hours
                                         </span>
+                                    </div>
+                                    <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
+                                        <span className="text-gray-500 font-medium">License / Registration No.</span>
+                                        <span className="font-bold text-gray-900 mt-1">{application.dynamic_responses?.licenseNo || 'N/A'}</span>
                                     </div>
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
                                         <span className="text-gray-500 font-medium">Open to other positions?</span>
@@ -1519,10 +1548,22 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                                 <span className="font-semibold text-gray-900 mt-0.5 capitalize">{application.dynamic_responses?.civilStatus || 'N/A'}</span>
                                             </div>
                                             <div className="flex flex-col">
+                                                <span className="text-gray-500">Religion</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.religion || 'N/A'}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-500">Indigenous Group Member (IP)?</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.isIP || 'No'}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-500">Person with Disability (PWD)?</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.isPWD || 'No'}</span>
+                                            </div>
+                                            <div className="flex flex-col">
                                                 <span className="text-gray-500">Contact Number</span>
                                                 <span className="font-semibold text-gray-900 mt-0.5">{parsedContact}</span>
                                             </div>
-                                            <div className="flex flex-col col-span-2 md:grid-span-3">
+                                            <div className="flex flex-col col-span-2 md:col-span-3">
                                                 <span className="text-gray-500">Residential Address</span>
                                                 <span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{application.dynamic_responses?.address || 'N/A'}</span>
                                             </div>
@@ -1531,17 +1572,88 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 );
                             })()}
 
-                            {/* 5. Civil Service Board Eligibilities */}
+                            {/* 5. Eligibilities */}
                             {application.dynamic_responses?.eligibilities && application.dynamic_responses.eligibilities.length > 0 && (
                                 <div className="space-y-3">
-                                    <h4 className="font-bold text-[#193153] text-sm border-b pb-1">Eligibilities</h4>
+                                    <h4 className="font-bold text-[#193153] text-sm border-b pb-1">Eligibilities & Licenses</h4>
                                     <ul className="list-disc list-inside space-y-1 text-xs text-gray-700 pl-1">
                                         {application.dynamic_responses.eligibilities.map((elig: string, index: number) => (
-                                            <li key={index}>{elig}</li>
+                                            <li key={index} className="font-medium text-gray-800">{elig}</li>
                                         ))}
                                     </ul>
                                 </div>
                             )}
+
+                            {/* 6. Submitted Application Documents */}
+                            <div className="space-y-3 pt-2">
+                                <h4 className="font-bold text-[#193153] text-sm border-b pb-1 flex items-center gap-1.5">
+                                    📁 Submitted Requirements & Attachments
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                    {(() => {
+                                        const defaultRequirements = [
+                                            { label: 'Letter of Intent', keyMatch: ['loi', 'letter of intent', 'letter'] },
+                                            { label: 'Personal Data Sheet (CS Form 212)', keyMatch: ['pds', 'personal data sheet'] },
+                                            { label: 'Work Experience Sheet (WES)', keyMatch: ['wes', 'work experience'] },
+                                            { label: 'Transcript of Records (TOR)', keyMatch: ['tor', 'transcript'] },
+                                            { label: 'Certificates of Employment / Training / License', keyMatch: ['coe', 'certificate', 'training', 'license', 'prc'] },
+                                        ];
+
+                                        const rawDocs = application.dynamic_responses?.documents || application.documents;
+                                        
+                                        let submittedMap: Record<string, string> = {};
+                                        if (rawDocs && typeof rawDocs === 'object') {
+                                            if (Array.isArray(rawDocs)) {
+                                                rawDocs.forEach((d: any) => {
+                                                    if (typeof d === 'string') {
+                                                        submittedMap[d] = d;
+                                                    } else if (d && d.name) {
+                                                        submittedMap[d.name] = d.name;
+                                                    }
+                                                });
+                                            } else {
+                                                submittedMap = rawDocs;
+                                            }
+                                        } else if (application.resume) {
+                                            submittedMap['Letter of Intent'] = application.resume;
+                                        }
+
+                                        const hasAnyDocs = Object.keys(submittedMap).length > 0;
+
+                                        return defaultRequirements.map((req, idx) => {
+                                            const matchKey = Object.keys(submittedMap).find(k => 
+                                                req.keyMatch.some(m => k.toLowerCase().includes(m))
+                                            );
+                                            const fileName = matchKey ? submittedMap[matchKey] : null;
+                                            // Only mark uploaded if matched in submittedMap, or if legacy single upload only index 0 is present
+                                            const isUploaded = !!matchKey || (hasAnyDocs && idx === 0 && Object.keys(submittedMap).length === 1 && !matchKey);
+
+                                            return (
+                                                <div key={idx} className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-md">
+                                                    <div className="flex items-center gap-2 overflow-hidden">
+                                                        <span className="text-blue-600 font-bold text-xs">📄</span>
+                                                        <div className="truncate">
+                                                            <p className="font-semibold text-gray-800 text-[11px] truncate">{req.label}</p>
+                                                            <p className="text-[10px] text-gray-400 truncate">
+                                                                {isUploaded ? (fileName && typeof fileName === 'string' ? fileName : 'Attached Document') : 'To follow'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    {isUploaded ? (
+                                                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] shrink-0 font-semibold">
+                                                            Uploaded & Received
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] shrink-0 font-semibold">
+                                                            To Follow
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            );
+                                        });
+                                    })()}
+                                </div>
+                            </div>
                         </div>
                     )}
 

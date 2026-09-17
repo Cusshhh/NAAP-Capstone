@@ -1,10 +1,10 @@
-// --- SALARY GRADE MAPPING (Updated SSL) ---
+// --- SALARY GRADE MAPPING (Official DBM SSL Schedule) ---
 export const SALARY_GRADE_MAP: Record<number, number> = {
-    1: 13000, 2: 13819, 3: 14678, 4: 15586, 5: 16543,
-    6: 17553, 7: 18620, 8: 19744, 9: 21211, 10: 23176,
+    1: 13530, 2: 14301, 3: 15116, 4: 15978, 5: 16888,
+    6: 17848, 7: 18860, 8: 19926, 9: 21344, 10: 23176,
     11: 27000, 12: 29165, 13: 31320, 14: 33843, 15: 36619,
     16: 39672, 17: 43030, 18: 46725, 19: 51357, 20: 57347,
-    21: 63997, 22: 71511, 23: 80003, 24: 90078, 25: 102690,
+    21: 63997, 22: 71511, 23: 91306, 24: 90078, 25: 102690,
     26: 116040, 27: 131124, 28: 148171, 29: 167432, 30: 189199,
     31: 273278, 32: 325307, 33: 411161
 };
@@ -29,7 +29,11 @@ export const getRecentlyHired = (): RecentlyHiredApplicant[] => {
     if (typeof window === 'undefined') return recentlyHiredApplicants;
     try {
         const localHired = localStorage.getItem('mock_recently_hired');
-        return localHired ? JSON.parse(localHired) : recentlyHiredApplicants;
+        if (localHired) {
+            const parsed = JSON.parse(localHired);
+            if (Array.isArray(parsed)) return parsed;
+        }
+        return recentlyHiredApplicants;
     } catch (e) {
         return recentlyHiredApplicants;
     }
@@ -199,11 +203,7 @@ const generateMockApplications = (count: number) => {
             education: educationList[Math.floor(Math.random() * educationList.length)],
             experience: `${Math.floor(Math.random() * 10)} years experience`,
 
-            skills: [
-                skillsList[Math.floor(Math.random() * skillsList.length)],
-                skillsList[Math.floor(Math.random() * skillsList.length)],
-                skillsList[Math.floor(Math.random() * skillsList.length)]
-            ],
+            skills: [],
             resumeUrl: '#',
             documents: docs
         });
@@ -425,16 +425,7 @@ export const getApplications = () => {
             }
 
             // 3. Awards
-            let awards = app.awards;
-            if (!awards || awards.length === 0) {
-                if (accomplishments > 0) {
-                    const possibleAwards = ['national', 'csc', 'president', 'ngo'];
-                    // Give them 'accomplishments' number of awards, up to length of possibleAwards
-                    awards = possibleAwards.slice(0, Math.min(accomplishments, 4));
-                } else {
-                    awards = [];
-                }
-            }
+            let awards = app.awards || [];
 
             // 4. Training Hours
             let trainingHours = app.trainingHours;
@@ -996,7 +987,11 @@ export const getHRNews = (): HRNewsItem[] => {
     if (typeof window === 'undefined') return defaultHRNews;
     try {
         const localNews = localStorage.getItem('mock_hr_news');
-        return localNews ? JSON.parse(localNews) : defaultHRNews;
+        if (localNews) {
+            const parsed = JSON.parse(localNews);
+            if (Array.isArray(parsed)) return parsed;
+        }
+        return defaultHRNews;
     } catch (e) {
         return defaultHRNews;
     }
@@ -1049,7 +1044,11 @@ export const getAnnouncements = (): Announcement[] => {
     if (typeof window === 'undefined') return defaultAnnouncements;
     try {
         const localAnnouncements = localStorage.getItem('mock_announcements');
-        return localAnnouncements ? JSON.parse(localAnnouncements) : defaultAnnouncements;
+        if (localAnnouncements) {
+            const parsed = JSON.parse(localAnnouncements);
+            if (Array.isArray(parsed)) return parsed;
+        }
+        return defaultAnnouncements;
     } catch (e) {
         return defaultAnnouncements;
     }

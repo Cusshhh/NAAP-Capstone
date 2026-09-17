@@ -27,6 +27,15 @@ class JobController extends Controller
 
         return Inertia::render('Admin/JobManagement', [
             'dbDepartments' => Department::orderBy('name')->get(),
+            'dbApplications' => \App\Models\Application::select('id', 'applicant_name', 'job_title', 'status', 'created_at')->latest()->get()->map(function ($app) {
+                return [
+                    'id' => $app->id,
+                    'applicantName' => $app->applicant_name,
+                    'jobTitle' => $app->job_title,
+                    'status' => $app->status,
+                    'submittedDate' => $app->created_at ? $app->created_at->toISOString() : null,
+                ];
+            }),
             'jobs' => $query->latest()->get()->map(function ($vacancy) {
                 return [
                     'id' => $vacancy->id,

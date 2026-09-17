@@ -19,11 +19,11 @@ class CmsContentController extends Controller
                 return response()->json(json_decode($content->value));
             }
 
-            return response()->json(['error' => 'CMS content not found'], 404);
+            return response()->json(null, 200);
         } catch (\Throwable $ex) {
             Log::error("Error fetching CMS content for key {$key}: ".$ex->getMessage());
 
-            return response()->json(['error' => 'Failed to fetch CMS content'], 500);
+            return response()->json(null, 200);
         }
     }
 

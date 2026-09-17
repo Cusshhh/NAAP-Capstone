@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronLeft, Calendar, Tag, Edit2, Save, X, Settings, LogOut } from 'lucide-react';
+import { ChevronLeft, Calendar, Tag, Edit2, Save, X, Settings, LogOut, Plus } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getHRNews, updateHRNews, type HRNewsItem } from '@/data/mockData';
@@ -10,7 +10,9 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
     const [editingItem, setEditingItem] = useState<HRNewsItem | null>(null);
     const [formData, setFormData] = useState<Partial<HRNewsItem>>({});
 
-    const isAdmin = auth?.user && ['admin@naap.edu.ph', 'admin@admin.com'].includes(auth.user.email);
+    const [isNewArticle, setIsNewArticle] = useState(false);
+
+    const isAdmin = auth?.user && (auth.user.is_admin || auth.user.is_super_admin || auth.user.role === 'admin' || ['admin@naap.edu.ph', 'admin@admin.com'].includes(auth.user.email));
 
     useEffect(() => {
         const loadNews = async () => {
@@ -18,18 +20,41 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
                 const response = await axios.get('/cms-content/mock_hr_news');
                 if (response.data) {
                     const articlesList = Array.isArray(response.data) ? response.data : Object.values(response.data || {});
-                    setHrNews(articlesList);
+                    const validArticles = articlesList.filter((a: any) => a && typeof a === 'object' && a.title);
+                    if (validArticles.length > 0) {
+                        setHrNews(validArticles);
+                    } else {
+                        setHrNews(getHRNews());
+                    }
+                } else {
+                    setHrNews(getHRNews());
                 }
             } catch (e) {
                 console.error("Failed to load news from database", e);
+                setHrNews(getHRNews());
             }
         };
         loadNews();
     }, []);
 
     const handleEdit = (item: HRNewsItem) => {
+        setIsNewArticle(false);
         setEditingItem(item);
         setFormData({ ...item });
+    };
+
+    const handleAddNew = () => {
+        const newItem: HRNewsItem = {
+            id: `news_${Date.now()}`,
+            title: '',
+            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            category: 'Announcement',
+            summary: '',
+            content: ''
+        };
+        setIsNewArticle(true);
+        setEditingItem(newItem);
+        setFormData(newItem);
     };
 
     const handleSave = async () => {
@@ -37,11 +62,16 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
             return;
         }
 
-        const updatedNews = hrNews.map(item =>
-            item.id === editingItem.id
-                ? { ...item, ...formData }
-                : item
-        );
+        let updatedNews: HRNewsItem[] = [];
+        if (isNewArticle) {
+            updatedNews = [{ ...editingItem, ...formData } as HRNewsItem, ...hrNews];
+        } else {
+            updatedNews = hrNews.map(item =>
+                item.id === editingItem.id
+                    ? { ...item, ...formData }
+                    : item
+            );
+        }
 
         try {
             await axios.post('/cms-content', {
@@ -52,6 +82,7 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
             setHrNews(updatedNews);
             setEditingItem(null);
             setFormData({});
+            setIsNewArticle(false);
         } catch (e) {
             console.error(e);
         }
@@ -60,6 +91,7 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
     const handleCancel = () => {
         setEditingItem(null);
         setFormData({});
+        setIsNewArticle(false);
     };
 
     return (
@@ -177,16 +209,27 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
                         </div>
                         <div className="flex gap-2">
                             {isAdmin && (
-                                <button
-                                    onClick={() => setEditMode(!editMode)}
-                                    className={`flex items-center text-sm font-medium px-4 py-2 rounded-lg transition-colors ${editMode
-                                        ? 'bg-[#ffdd59] text-[#193153]'
-                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm'
-                                        }`}
-                                >
-                                    <Edit2 className="w-4 h-4 mr-1" />
-                                    {editMode ? 'Exit Edit Mode' : 'Edit Mode'}
-                                </button>
+                                <>
+                                    {editMode && (
+                                        <button
+                                            onClick={handleAddNew}
+                                            className="flex items-center text-sm font-semibold px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm cursor-pointer"
+                                        >
+                                            <Plus className="w-4 h-4 mr-1.5" />
+                                            Add New Article
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setEditMode(!editMode)}
+                                        className={`flex items-center text-sm font-medium px-4 py-2 rounded-lg transition-colors ${editMode
+                                            ? 'bg-[#ffdd59] text-[#193153]'
+                                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm'
+                                            }`}
+                                    >
+                                        <Edit2 className="w-4 h-4 mr-1" />
+                                        {editMode ? 'Exit Edit Mode' : 'Edit Mode'}
+                                    </button>
+                                </>
                             )}
                             {!auth?.user && (
                                 <>
@@ -207,28 +250,33 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
 
             {/* Main Content */}
             < main className="container mx-auto px-6 py-12">
-                < div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                    {
+                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                    {(!hrNews || hrNews.length === 0) ? (
+                        <div className="col-span-full py-16 text-center bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+                            <h3 className="text-lg font-bold text-[#193153] mb-1">No HR News Available</h3>
+                            <p className="text-sm text-gray-500">There are currently no HR news or announcements posted.</p>
+                        </div>
+                    ) : (
                         hrNews.map((news) => (
                             <div key={news.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full">
-                                < div className="h-2 bg-[#ffdd59]"></div>
-                                < div className="p-6 flex-grow flex flex-col">
-                                    < div className="flex items-center justify-between mb-4">
-                                        < span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                                            < Tag className="w-3 h-3 mr-1" />
+                                <div className="h-2 bg-[#ffdd59]"></div>
+                                <div className="p-6 flex-grow flex flex-col">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                                            <Tag className="w-3 h-3 mr-1" />
                                             {news.category}
-                                        </span >
+                                        </span>
                                         <div className="flex items-center text-gray-400 text-xs">
-                                            < Calendar className="w-3 h-3 mr-1" />
+                                            <Calendar className="w-3 h-3 mr-1" />
                                             {news.date}
-                                        </div >
-                                    </div >
+                                        </div>
+                                    </div>
                                     <h2 className="text-xl font-bold text-[#193153] mb-3 leading-snug">
                                         {news.title}
-                                    </h2 >
+                                    </h2>
                                     <p className="text-gray-600 text-sm leading-relaxed mb-6 flex-grow">
                                         {news.summary}
-                                    </p >
+                                    </p>
                                     <div className="mt-auto pt-4 border-t border-gray-50 flex justify-between items-center">
                                         <Link href={`/hr-news/${news.id}`} className="text-sm font-bold text-[#193153] hover:text-[#ffdd59] transition-colors flex items-center">
                                             Read More
@@ -242,11 +290,12 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
                                                 Edit
                                             </button>
                                         )}
-                                    </div >
-                                </div >
-                            </div >
-                        ))}
-                </div >
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
             </main >
 
             {/* Edit Modal */}
@@ -255,7 +304,9 @@ export default function HRNewsDashboard({ auth }: { auth: any }) {
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                         < div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                             < div className="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white">
-                                < h3 className="text-2xl font-bold text-[#193153]">Edit News Item</h3>
+                                <h3 className="text-2xl font-bold text-[#193153]">
+                                    {isNewArticle ? 'Add New Article' : 'Edit News Item'}
+                                </h3>
                                 < button
                                     onClick={handleCancel}
                                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

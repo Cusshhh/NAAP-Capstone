@@ -9,7 +9,9 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { getStaffingData } from '@/data/mockData';
 import AdminLayout from '@/layouts/AdminLayout';
 
@@ -18,6 +20,45 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
     const [staffingData, setStaffingData] = useState(serverStaffing || []);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    // Add New Plantilla Position Modal State
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [newOffice, setNewOffice] = useState('');
+    const [newPosition, setNewPosition] = useState('');
+    const [newSg, setNewSg] = useState('11');
+    const [newStatus, setNewStatus] = useState('Unfilled');
+
+    const handleAddPositionSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newOffice.trim() || !newPosition.trim()) {
+            toast.error('Please fill in both Office/Department and Position Title.');
+            return;
+        }
+
+        const newStaffingItem = {
+            id: Date.now(),
+            office: newOffice.trim(),
+            position: newPosition.trim(),
+            sg: parseInt(newSg) || 11,
+            status: newStatus,
+            campus: 'Villamor Air Base, Pasay City'
+        };
+
+        const updatedList = [newStaffingItem, ...staffingData];
+        setStaffingData(updatedList);
+
+        try {
+            const currentCache = JSON.parse(localStorage.getItem('mock_staffing_custom') || '[]');
+            localStorage.setItem('mock_staffing_custom', JSON.stringify([newStaffingItem, ...currentCache]));
+        } catch (err) {}
+
+        toast.success(`New Position "${newPosition}" added!`);
+        setIsAddModalOpen(false);
+
+        setNewOffice('');
+        setNewPosition('');
+        setNewSg('11');
+        setNewStatus('Unfilled');
+    };
 
     const filteredData = staffingData.filter(item => {
         const matchesSearch = item.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -59,13 +100,13 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                         <p className="text-gray-500">Track and manage staffing requirements for NAAP.</p>
                     </div>
                     <div className="flex gap-2">
-                        <Link
-                            href="/admin/jobs?create=true"
-                            className="bg-[#193153] hover:bg-[#193153]/90 cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 text-white shadow-xs h-9 px-4 py-2 has-[>svg]:px-3"
+                        <Button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="bg-[#193153] hover:bg-[#193153]/90 text-white font-medium gap-2 shadow-sm"
                         >
-                            <Plus className="w-4 h-4 mr-1" />
+                            <Plus className="w-4 h-4" />
                             Add New Position
-                        </Link>
+                        </Button>
                     </div>
                 </div>
 
@@ -215,6 +256,98 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Add New Position Modal */}
+            <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-gray-900">Add New Position</DialogTitle>
+                        <DialogDescription>
+                            Enter position details to add to the NAAP Main Campus staffing inventory.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form onSubmit={handleAddPositionSubmit} className="space-y-4 py-2">
+                        <div>
+                            <Label htmlFor="office" className="text-xs font-semibold uppercase tracking-wider text-gray-600">
+                                Office / Department <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                id="office"
+                                placeholder="e.g. Institute of Computer Studies"
+                                value={newOffice}
+                                onChange={(e) => setNewOffice(e.target.value)}
+                                className="mt-1"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="position" className="text-xs font-semibold uppercase tracking-wider text-gray-600">
+                                Position Title <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                id="position"
+                                placeholder="e.g. Associate Professor I"
+                                value={newPosition}
+                                onChange={(e) => setNewPosition(e.target.value)}
+                                className="mt-1"
+                                required
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="sg" className="text-xs font-semibold uppercase tracking-wider text-gray-600">
+                                    Salary Grade (SG)
+                                </Label>
+                                <select
+                                    id="sg"
+                                    className="w-full mt-1 border-gray-300 rounded-md text-sm p-2 bg-white border"
+                                    value={newSg}
+                                    onChange={(e) => setNewSg(e.target.value)}
+                                >
+                                    {Array.from({ length: 30 }, (_, i) => i + 1).map((num) => (
+                                        <option key={num} value={num}>SG {num}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <Label htmlFor="status" className="text-xs font-semibold uppercase tracking-wider text-gray-600">
+                                    Initial Status
+                                </Label>
+                                <select
+                                    id="status"
+                                    className="w-full mt-1 border-gray-300 rounded-md text-sm p-2 bg-white border"
+                                    value={newStatus}
+                                    onChange={(e) => setNewStatus(e.target.value)}
+                                >
+                                    <option value="Unfilled">Unfilled</option>
+                                    <option value="Filled">Filled</option>
+                                    <option value="On-process">On-process</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="pt-4 border-t mt-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsAddModalOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                className="bg-[#193153] hover:bg-[#193153]/90 text-white"
+                            >
+                                Save Position
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </AdminLayout>
     );
 }

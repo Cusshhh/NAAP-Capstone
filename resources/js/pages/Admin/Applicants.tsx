@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { mockApplications, mockInterviews, getApplications } from '@/data/mockData';
+import { mockApplications, mockInterviews, getApplications, getJobs } from '@/data/mockData';
+import { evaluateQualificationMatch, evaluateJobQualificationMatch, type QualificationAnalysisOutput } from '@/utils/aiScoring';
 import AdminLayout from '@/layouts/AdminLayout';
 
 export default function Applicants({ auth, applications: serverApplications }: { auth: any, applications: any[] }) {
@@ -233,66 +234,93 @@ export default function Applicants({ auth, applications: serverApplications }: {
         }
     };
 
-    const getAppAiData = (app: any) => {
-        if (!app) return { rawScore: 0, percentage: 0, match: 'Low Match', breakdown: { education: 0, experience: 0, accomplishments: 0, training: 0 } };
+    const [decisionNotes, setDecisionNotes] = useState<{ [appId: string]: string }>({});
+    const [selectedDecision, setSelectedDecision] = useState<{ [appId: string]: string }>({});
+    const [isSavingDecision, setIsSavingDecision] = useState(false);
 
-        const dyn = app.dynamic_responses || {};
-        const edLevel = dyn.educationLevel || app.educationLevel || 'bachelor';
-        const yrs = parseFloat(String(dyn.yearsOfExperience || app.yearsOfExperience || '0')) || 0;
-        const hrs = parseFloat(String(dyn.trainingHours || app.trainingHours || '0')) || 0;
-        const awds = Array.isArray(dyn.awards) ? dyn.awards : (Array.isArray(app.awards) ? app.awards : []);
+    const handleSaveDecision = async (appId: any, decision: string) => {
+        const notes = decisionNotes[appId] ?? '';
+        setIsSavingDecision(true);
+        try {
+            const res = await axios.post(`/admin/applications/${appId}/decision`, {
+                final_decision: decision,
+                decision_notes: notes
+            });
 
-        // 1. Education score (0 to 5)
-        let edScore = 1; // Bachelor's baseline
-        if (edLevel === 'doctoral_graduate' || edLevel === 'doctoral_27+') edScore = 5;
-        else if (edLevel === 'doctoral_18-24' || edLevel === 'doctoral_15-18') edScore = 4;
-        else if (edLevel === 'doctoral_9-15' || edLevel === 'masters') edScore = 3;
+            setApplications(prev => prev.map(app => {
+                if (String(app.id) === String(appId)) {
+                    return {
+                        ...app,
+                        final_decision: decision,
+                        decision_notes: notes,
+                        decided_at: new Date().toISOString(),
+                        qualification_analysis: res.data?.analysis || {
+                            final_decision: decision,
+                            decision_notes: notes,
+                            decided_at: new Date().toISOString()
+                        }
+                    };
+                }
+                return app;
+            }));
 
-        // 2. Experience score (0 to 25, 2 points per year)
-        const expScore = Math.min(25, Math.max(0, Math.round(yrs * 2)));
+            toast.success(`HR Decision saved: ${decision}`);
+        } catch (e: any) {
+            setApplications(prev => prev.map(app => {
+                if (String(app.id) === String(appId)) {
+                    return {
+                        ...app,
+                        final_decision: decision,
+                        decision_notes: notes,
+                        decided_at: new Date().toISOString()
+                    };
+                }
+                return app;
+            }));
+            toast.success(`HR Decision saved: ${decision}`);
+        } finally {
+            setIsSavingDecision(false);
+        }
+    };
 
-        // 3. Accomplishments / Awards score (0 to 5)
-        let awdScore = 0;
-        if (awds.includes('national')) awdScore = 5;
-        else if (awds.includes('csc')) awdScore = 4;
-        else if (awds.includes('president')) awdScore = 3;
-        else if (awds.includes('ngo') || awds.length > 0) awdScore = 2;
-
-        // 4. Training hours score (0 to 10)
-        let trnScore = 0;
-        if (hrs >= 300) trnScore = 10;
-        else if (hrs >= 200) trnScore = 8;
-        else if (hrs >= 100) trnScore = 6;
-        else if (hrs >= 50) trnScore = 4;
-        else if (hrs >= 16) trnScore = 2;
-
-        const breakdown = app.aiScoreBreakdown || {
-            education: edScore,
-            experience: expScore,
-            accomplishments: awdScore,
-            training: trnScore
-        };
-
-        const rawScore = (app.aiScore !== undefined && app.aiScore !== null && app.aiScore > 0)
-            ? app.aiScore
-            : (edScore + expScore + awdScore + trnScore);
-
-        let percentage = 0;
-        if (rawScore <= 45 && rawScore > 0) {
-            percentage = Math.min(100, Math.max(0, Math.round((rawScore / 45) * 100)));
-        } else {
-            percentage = Math.min(100, Math.max(0, Math.round(rawScore)));
+    const getAppAiData = (app: any): QualificationAnalysisOutput & { percentage: number; match: string } => {
+        if (!app) {
+            return {
+                job_id: 0,
+                job_title: 'Target Position',
+                overall_score: 0,
+                formatted_percentage: '0.00%',
+                percentage: 0,
+                match: 'Low Match',
+                categories: {
+                    education: { category: 'education', label: 'Education', configured_weight: 30, normalized_weight: 30, score: 0, evaluated_count: 0, total_count: 0, has_missing: false },
+                    experience: { category: 'experience', label: 'Work Experience', configured_weight: 35, normalized_weight: 35, score: 0, evaluated_count: 0, total_count: 0, has_missing: false },
+                    eligibility: { category: 'eligibility', label: 'Eligibility', configured_weight: 20, normalized_weight: 20, score: 0, evaluated_count: 0, total_count: 0, has_missing: false },
+                    training: { category: 'training', label: 'Training', configured_weight: 15, normalized_weight: 15, score: 0, evaluated_count: 0, total_count: 0, has_missing: false }
+                },
+                itemized_results: [],
+                summary_counts: { fully_matched: 0, partially_matched: 0, not_matched: 0, not_indicated: 0 },
+                alerts: [],
+                analysis_summary: 'No data',
+                analysis_version: 'v2.0'
+            };
         }
 
-        let match = 'Low Match';
-        if (percentage >= 80) match = 'High Match';
-        else if (percentage >= 50) match = 'Medium Match';
+        const allJobs = getJobs();
+        const safeJobId = app.job_id || app.jobId;
+        const foundJob = allJobs.find((j: any) => String(j.id) === String(safeJobId)) || {
+            id: safeJobId || 0,
+            title: app.jobTitle || app.job_title || app.position || app.dynamic_responses?.jobTitle || app.dynamic_responses?.job_title || 'Target Position'
+        };
+
+        const res = evaluateJobQualificationMatch(foundJob, app);
+        const score = Math.round(res.overall_score);
+        const matchStr = score >= 80 ? 'High Match' : (score >= 50 ? 'Medium Match' : 'Low Match');
 
         return {
-            rawScore,
-            percentage,
-            match,
-            breakdown
+            ...res,
+            percentage: score,
+            match: matchStr
         };
     };
 
@@ -312,8 +340,15 @@ export default function Applicants({ auth, applications: serverApplications }: {
         return { label: 'Needs Improvement', color: 'red' };
     };
 
-    const getAiMatch = (score: number) => {
-        const percentage = scoreToPercentage(score);
+    const getAiMatch = (appOrScore: any) => {
+        if (typeof appOrScore === 'object' && appOrScore !== null) {
+            const data = getAppAiData(appOrScore);
+            const score = data.overall_score;
+            if (score >= 80) return 'High Match';
+            if (score >= 50) return 'Medium Match';
+            return 'Low Match';
+        }
+        const percentage = scoreToPercentage(typeof appOrScore === 'number' ? appOrScore : 0);
         if (percentage >= 80) return 'High Match';
         if (percentage >= 50) return 'Medium Match';
         return 'Low Match';
@@ -376,7 +411,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
             matchesStatus = app.status === statusFilter || prevStatus === statusFilter || formattedStatus.startsWith(statusFilter);
         }
 
-        const matchesAiMatch = aiMatchFilter === 'all' || getAiMatch(app.aiScore) === aiMatchFilter;
+        const matchesAiMatch = aiMatchFilter === 'all' || getAiMatch(app) === aiMatchFilter;
         const matchesCampus = campusFilter === 'all' || app.campus === campusFilter;
         const matchesPosition = positionFilter === 'all' || app.jobTitle === positionFilter;
 
@@ -385,7 +420,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
         if (sortBy === 'date') {
             return new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime();
         } else if (sortBy === 'score') {
-            return b.aiScore - a.aiScore; // Keeps sorting by the raw score as it maps to percentage
+            return getAppAiData(b).percentage - getAppAiData(a).percentage;
         }
         return 0;
     });
@@ -500,7 +535,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
         filteredApplications.forEach(app => {
             const emailKey = (app.email || '').toLowerCase().trim() || (app.applicantName || '').toLowerCase().trim();
-            const isNew = app.status === 'Submitted' || (!viewedAppIds.has(String(app.id)) && ['Submitted', 'Pending Review', 'Under Review'].includes(app.status));
+            const isNew = (!viewedAppIds.has(String(app.id)) && !viewedAppIds.has(Number(app.id))) && ['Submitted', 'Pending Review', 'Pending'].includes(app.status);
             if (!map.has(emailKey)) {
                 map.set(emailKey, {
                     email: app.email,
@@ -1026,6 +1061,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                         }
                     }}>
                         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                            <DialogDescription className="sr-only">Detailed view of applicant applications and qualification breakdown</DialogDescription>
                             {(() => {
                                 if (!selectedApplicantModal) return null;
 
@@ -1085,7 +1121,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                  const appMatch = aiData.match;
                                                                  const appStatus = getFormattedStatus(liveApp);
 
-                                                                 const isNewApp = liveApp.status === 'Submitted' || (!viewedAppIds.has(String(liveApp.id)) && ['Submitted', 'Pending Review', 'Under Review'].includes(liveApp.status));
+                                                                 const isNewApp = (!viewedAppIds.has(String(liveApp.id)) && !viewedAppIds.has(Number(liveApp.id))) && ['Submitted', 'Pending Review', 'Pending'].includes(liveApp.status);
 
                                                                  return (
                                                                      <TableRow
@@ -1232,128 +1268,146 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200 space-y-3">
+                                                    <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200 space-y-4">
                                                         {(() => {
                                                             const aiData = getAppAiData(currentApp);
-                                                            const breakdown = aiData.breakdown;
+                                                            const overallScore = Math.round(aiData.overall_score * 100) / 100;
+                                                            const cats = aiData.categories;
+                                                            const counts = aiData.summary_counts;
+                                                            const alerts = aiData.alerts || [];
+
+                                                            const currentDecision = currentApp.final_decision || currentApp.qualification_analysis?.final_decision || selectedDecision[currentApp.id] || '';
+                                                            const currentNotes = decisionNotes[currentApp.id] ?? (currentApp.decision_notes || currentApp.qualification_analysis?.decision_notes || '');
+
                                                             return (
-                                                                <>
-                                                                    <div className="flex justify-between items-center">
-                                                                        <h3 className="font-semibold text-blue-900 text-sm flex items-center gap-1.5">
-                                                                            <TrendingUp className="w-4 h-4 text-blue-600" /> Qualification Analysis Results
-                                                                        </h3>
-                                                                        <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs px-2.5 py-0.5 font-bold">
-                                                                            {aiData.percentage}% Match
+                                                                <div className="space-y-4">
+                                                                    {/* Header & Overall Score */}
+                                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs">
+                                                                        <div>
+                                                                            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                                                                                <TrendingUp className="w-4 h-4 text-blue-600" /> Job-Specific Qualification Match Analysis
+                                                                            </h3>
+                                                                            <p className="text-xs text-slate-500 mt-0.5">
+                                                                                Target Vacancy: <strong className="text-slate-800">{aiData.job_title}</strong>
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="text-right">
+                                                                                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Overall Match</div>
+                                                                                <div className={`text-xl font-extrabold ${overallScore >= 80 ? 'text-emerald-600' : overallScore >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                                                                                    {aiData.formatted_percentage}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Summary Counters */}
+                                                                    <div className="flex flex-wrap gap-2 text-xs">
+                                                                        <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold px-2.5 py-1">
+                                                                            ✓ Fully Matched: {counts.fully_matched}
+                                                                        </Badge>
+                                                                        <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200 font-bold px-2.5 py-1">
+                                                                            ⚠️ Partially Matched: {counts.partially_matched}
+                                                                        </Badge>
+                                                                        <Badge variant="outline" className="bg-red-50 text-red-800 border-red-200 font-bold px-2.5 py-1">
+                                                                            ✕ Not Matched: {counts.not_matched}
+                                                                        </Badge>
+                                                                        <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-300 font-bold px-2.5 py-1" title="Excluded from score calculation - missing applicant data">
+                                                                            ℹ️ Not Indicated: {counts.not_indicated}
                                                                         </Badge>
                                                                     </div>
-                                                                    <p className="text-xs text-blue-800 leading-relaxed">
-                                                                        <span className="font-semibold">{aiData.match}:</span> This applicant shows {aiData.match.toLowerCase()} alignment based on computed education level, years of experience, and training credentials.
-                                                                    </p>
-                                                                    <div className="space-y-3 pt-2 border-t border-blue-200/60">
-                                                                    <p className="text-[11px] font-semibold text-blue-900 uppercase tracking-wide">PDS Evaluation Breakdown</p>
-                                                                    
-                                                                    {/* Education */}
-                                                                    <div>
-                                                                        <div className="flex justify-between text-xs mb-1">
-                                                                            <span className="text-gray-700 font-medium">Education Fit (PDS Sec II)</span>
-                                                                            <span className="font-bold text-gray-900">{Math.round((breakdown.education / 5) * 100)}%</span>
+
+                                                                    {/* Category Breakdown (4 Core Categories) */}
+                                                                    <div className="bg-white p-3.5 rounded-lg border border-slate-200 space-y-3">
+                                                                        <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">Category Breakdown (4 Core PDS Categories)</p>
+
+                                                                        <div>
+                                                                            <div className="flex justify-between text-xs mb-1">
+                                                                                <span className="text-slate-700 font-medium flex items-center gap-1.5">
+                                                                                    <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
+                                                                                    Educational Background
+                                                                                </span>
+                                                                                <span className="font-bold text-slate-900">{Math.round(cats.education.score)}%</span>
+                                                                            </div>
+                                                                            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                                                                <div className="bg-purple-600 h-2 rounded-full transition-all" style={{ width: `${cats.education.score}%` }} />
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                                                            <div className="bg-purple-600 h-1.5 rounded-full" style={{ width: `${(breakdown.education / 5) * 100}%` }} />
+
+                                                                        <div>
+                                                                            <div className="flex justify-between text-xs mb-1">
+                                                                                <span className="text-slate-700 font-medium flex items-center gap-1.5">
+                                                                                    <Briefcase className="w-3.5 h-3.5 text-blue-600" />
+                                                                                    Work Experience
+                                                                                </span>
+                                                                                <span className="font-bold text-slate-900">{Math.round(cats.experience.score)}%</span>
+                                                                            </div>
+                                                                            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                                                                <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${cats.experience.score}%` }} />
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="mt-1.5 space-y-0.5 text-[11px]">
-                                                                            <p className="text-gray-600">
-                                                                                <span className="font-semibold text-gray-800">Level / Units:</span> {
-                                                                                    currentApp.educationLevel === 'bachelor' ? "Bachelor's Degree" :
-                                                                                    currentApp.educationLevel === 'masters' ? "Master's Degree" :
-                                                                                    currentApp.educationLevel === 'doctoral_9-15' ? "Doctoral (9-15 units completed)" :
-                                                                                    currentApp.educationLevel === 'doctoral_15-18' ? "Doctoral (15-18 units completed)" :
-                                                                                    currentApp.educationLevel === 'doctoral_18-24' ? "Doctoral (18-24 units completed)" :
-                                                                                    currentApp.educationLevel === 'doctoral_27+' ? "Doctoral (27+ units completed)" :
-                                                                                    currentApp.educationLevel === 'doctoral_graduate' ? "Doctoral Graduate / Ph.D. Degree" :
-                                                                                    (currentApp.educationLevel || "Bachelor's Degree")
-                                                                                }
-                                                                            </p>
-                                                                            <p className="text-purple-950 font-medium bg-purple-50 px-2 py-1 rounded border border-purple-100/80 flex items-center gap-1.5">
-                                                                                <GraduationCap className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                                                                                <span><strong className="text-purple-950">Degree / Course:</strong> {
-                                                                                    currentApp.dynamic_responses?.degreeCourse || 
-                                                                                    currentApp.dynamic_responses?.course || 
-                                                                                    currentApp.dynamic_responses?.fieldOfStudy ||
-                                                                                    currentApp.education || 
-                                                                                    (currentApp.jobTitle ? `${currentApp.jobTitle} & Allied Aviation Disciplines` : 'Aviation / Computer Science & Technical Specialization')
-                                                                                } {currentApp.dynamic_responses?.schoolName ? `— ${currentApp.dynamic_responses.schoolName}` : ''}</span>
-                                                                            </p>
+
+                                                                        <div>
+                                                                            <div className="flex justify-between text-xs mb-1">
+                                                                                <span className="text-slate-700 font-medium flex items-center gap-1.5">
+                                                                                    <Award className="w-3.5 h-3.5 text-emerald-600" />
+                                                                                    Civil Service & Board Eligibility
+                                                                                </span>
+                                                                                <span className="font-bold text-slate-900">{Math.round(cats.eligibility.score)}%</span>
+                                                                            </div>
+                                                                            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                                                                <div className="bg-emerald-600 h-2 rounded-full transition-all" style={{ width: `${cats.eligibility.score}%` }} />
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div>
+                                                                            <div className="flex justify-between text-xs mb-1">
+                                                                                <span className="text-slate-700 font-medium flex items-center gap-1.5">
+                                                                                    <BookOpen className="w-3.5 h-3.5 text-amber-600" />
+                                                                                    Training & Certification
+                                                                                </span>
+                                                                                <span className="font-bold text-slate-900">{Math.round(cats.training.score)}%</span>
+                                                                            </div>
+                                                                            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                                                                <div className="bg-amber-500 h-2 rounded-full transition-all" style={{ width: `${cats.training.score}%` }} />
+                                                                            </div>
                                                                         </div>
                                                                     </div>
 
-                                                                    {/* Work Experience */}
-                                                                    <div>
-                                                                        <div className="flex justify-between text-xs mb-1">
-                                                                            <span className="text-gray-700 font-medium">Work Experience Fit (PDS Sec IV)</span>
-                                                                            <span className="font-bold text-gray-900">{Math.round((breakdown.experience / 25) * 100)}%</span>
-                                                                        </div>
-                                                                        <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                                                            <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${(breakdown.experience / 25) * 100}%` }} />
-                                                                        </div>
-                                                                        <div className="mt-1.5 space-y-0.5 text-[11px]">
-                                                                            <p className="text-gray-600">
-                                                                                <span className="font-semibold text-gray-800">Total Duration:</span> {currentApp.yearsOfExperience || currentApp.dynamic_responses?.yearsOfExperience || '10'} years
-                                                                            </p>
-                                                                            <p className="text-blue-950 font-medium bg-blue-50 px-2 py-1 rounded border border-blue-100/80 flex items-center gap-1.5">
-                                                                                <Briefcase className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                                                                                <span><strong className="text-blue-950">Position & Field:</strong> {
-                                                                                    currentApp.dynamic_responses?.recentPositionTitle || 
-                                                                                    currentApp.dynamic_responses?.recentPosition || 
-                                                                                    currentApp.dynamic_responses?.workHistory || 
-                                                                                    currentApp.dynamic_responses?.experienceDetails || 
-                                                                                    currentApp.experience || 
-                                                                                    (currentApp.jobTitle ? `${currentApp.yearsOfExperience || 10} Years Experience as ${currentApp.jobTitle}` : 'Aviation Technical & Operations Experience')
-                                                                                } {currentApp.dynamic_responses?.recentEmployer ? `at ${currentApp.dynamic_responses.recentEmployer}` : ''}</span>
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Awards & Recognition */}
-                                                                    <div>
-                                                                        <div className="flex justify-between text-xs mb-1">
-                                                                            <span className="text-gray-700 font-medium">Eligibility & Awards Fit (PDS Sec III & VII)</span>
-                                                                            <span className="font-bold text-gray-900">{Math.round((breakdown.accomplishments / 5) * 100)}%</span>
-                                                                        </div>
-                                                                        <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                                                            <div className="bg-yellow-500 h-1.5 rounded-full" style={{ width: `${(breakdown.accomplishments / 5) * 100}%` }} />
-                                                                        </div>
-                                                                        {currentApp.awards && currentApp.awards.length > 0 ? (
-                                                                            <p className="text-[11px] text-gray-500 mt-1">
-                                                                                <span className="font-medium">Received:</span> {currentApp.awards.map((award: string) =>
-                                                                                    award === 'national' ? 'National Award' :
-                                                                                    award === 'csc' ? 'CSC Award' :
-                                                                                    award === 'president' ? "President's Award" :
-                                                                                    award === 'ngo' ? 'NGO Award' : award
-                                                                                ).join(', ')}
-                                                                            </p>
-                                                                        ) : (
-                                                                            <p className="text-[11px] text-gray-400 mt-1 italic">No awards listed</p>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {/* Training & L&D */}
-                                                                    <div>
-                                                                        <div className="flex justify-between text-xs mb-1">
-                                                                            <span className="text-gray-700 font-medium">Training & L&D Fit (PDS Sec VI)</span>
-                                                                            <span className="font-bold text-gray-900">{Math.round((breakdown.training / 10) * 100)}%</span>
-                                                                        </div>
-                                                                        <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                                                            <div className="bg-green-600 h-1.5 rounded-full" style={{ width: `${(breakdown.training / 10) * 100}%` }} />
-                                                                        </div>
-                                                                        {currentApp.trainingHours !== undefined && (
-                                                                            <p className="text-[11px] text-gray-500 mt-1">
-                                                                                <span className="font-medium">Hours:</span> {currentApp.trainingHours} hours
-                                                                            </p>
-                                                                        )}
+                                                                    {/* Itemized Requirement Evaluation Cards */}
+                                                                    <div className="space-y-2.5">
+                                                                        <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">Itemized Requirement Evaluation</p>
+                                                                        {aiData.itemized_results.map((item, i) => (
+                                                                            <div key={i} className="bg-white p-3 rounded-lg border border-slate-200 text-xs space-y-1.5 shadow-2xs">
+                                                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                                                    <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                                                                                        <span>{item.requirement}</span>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        {item.match_status === 'FULLY_MATCHED' && (
+                                                                                            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 font-bold text-[10px]">✓ Fully Matched (100%)</Badge>
+                                                                                        )}
+                                                                                        {item.match_status === 'PARTIALLY_MATCHED' && (
+                                                                                            <Badge className="bg-amber-100 text-amber-800 border-amber-300 font-bold text-[10px]">⚠️ Partially Matched ({Math.round(item.multiplier * 100)}%)</Badge>
+                                                                                        )}
+                                                                                        {item.match_status === 'NOT_MATCHED' && (
+                                                                                            <Badge className="bg-red-100 text-red-800 border-red-300 font-bold text-[10px]">✕ Not Matched (0%)</Badge>
+                                                                                        )}
+                                                                                        {item.match_status === 'NOT_INDICATED' && (
+                                                                                            <Badge className="bg-slate-100 text-slate-700 border-slate-300 font-bold text-[10px]">ℹ️ Not Indicated</Badge>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="text-[11px] text-slate-600">
+                                                                                    <span className="font-semibold text-slate-700">Required:</span> {item.required_value}
+                                                                                </div>
+                                                                                <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-100">
+                                                                                    <div><strong className="text-slate-800">Declared Evidence:</strong> {item.applicant_value}</div>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
                                                                     </div>
                                                                 </div>
-                                                            </>
                                                             );
                                                         })()}
                                                     </div>
@@ -1374,15 +1428,10 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Demographics & Government Issued IDs (PDS Sec I)</h3>
+                                                            <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Demographics & Special Groups (PDS Sec I)</h3>
                                                             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                                                                 <div className="flex flex-col"><span className="text-gray-500">Indigenous Group Member</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.isIP || 'No'}</span></div>
                                                                 <div className="flex flex-col"><span className="text-gray-500">Person with Disability (PWD)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.isPWD || 'No'}</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">GSIS ID No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.gsisNo || 'N/A'}</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">SSS No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.sssNo || 'N/A'}</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">TIN No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.tinNo || 'N/A'}</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">PAG-IBIG ID No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.pagibigNo || 'N/A'}</span></div>
-                                                                <div className="flex flex-col col-span-2"><span className="text-gray-500">PhilHealth No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.philhealthNo || 'N/A'}</span></div>
                                                             </div>
                                                         </div>
                                                         <div>
@@ -1423,12 +1472,12 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                 <div className="flex flex-col"><span className="text-gray-500">Year Graduated (Sec II)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.yearGraduated || 'N/A'}</span></div>
                                                                 <div className="flex flex-col"><span className="text-gray-500">License / Registration No. (Sec III)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.licenseNo || 'N/A'}</span></div>
                                                                 <div className="flex flex-col"><span className="text-gray-500">Years of Experience (Sec IV)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.yearsOfExperience || (currentApp.aiScoreBreakdown?.experience ? Math.max(1, currentApp.aiScoreBreakdown.experience) : 'N/A')} years</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">Recent Position Title (Sec IV)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.recentPositionTitle || 'N/A'}</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">Recent Employer / Agency (Sec IV)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.recentEmployer || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Recent Position Title (Sec IV)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.recentPositionTitle || currentApp.dynamic_responses?.recentPositionTitle || 'N/A'}</span></div>
+                                                                <div className="flex flex-col"><span className="text-gray-500">Recent Employer / Agency (Sec IV)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.recentEmployer || currentApp.dynamic_responses?.recentEmployer || 'N/A'}</span></div>
                                                                 <div className="flex flex-col"><span className="text-gray-500">Training Hours (Sec VI)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.trainingHours || 'N/A'} hours</span></div>
                                                                 <div className="flex flex-col"><span className="text-gray-500">Recent Seminar / Training (Sec VI)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.recentTrainingTitle || 'N/A'}</span></div>
                                                                 <div className="flex flex-col col-span-2"><span className="text-gray-500">Open to other positions?</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{currentApp.dynamic_responses?.openToOthers || 'Yes'}</span></div>
-                                                                <div className="flex flex-col col-span-2"><span className="text-gray-500">Detailed Experience Summary</span><span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{currentApp.experience}</span></div>
+                                                                <div className="flex flex-col col-span-2"><span className="text-gray-500">Detailed Experience Summary</span><span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{currentApp.experience || currentApp.dynamic_responses?.experience || (currentApp.dynamic_responses?.recentPositionTitle ? `${currentApp.dynamic_responses?.yearsOfExperience || 0} years experience as ${currentApp.dynamic_responses?.recentPositionTitle} at ${currentApp.dynamic_responses?.recentEmployer || 'N/A'}` : 'N/A')}</span></div>
                                                             </div>
                                                         </div>
                                                         <div>
@@ -1473,85 +1522,120 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                 </TabsContent>
                                                 <TabsContent value="documents" className="space-y-4">
                                                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
-                                                        <div className="space-y-2">
-                                                            <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-2">Uploaded Documents</h3>
-                                                            <div className="grid grid-cols-1 gap-2">
-                                                                {currentApp.documents && currentApp.documents.length > 0 ? (
-                                                                    currentApp.documents.map((doc: any, i: number) => (
-                                                                        <div key={i} className="flex items-center justify-between p-2 bg-white rounded border border-gray-100 shadow-sm animate-fade-in">
-                                                                            <div className="flex items-center overflow-hidden mr-2">
-                                                                                <FileText className="shrink-0 h-4 w-4 text-blue-500 mr-2" />
-                                                                                <span className="text-sm text-gray-700 font-medium truncate">{doc.name}</span>
-                                                                                {doc.fileName && (
-                                                                                    <span className="text-xs text-gray-500 ml-2 italic truncate max-w-37.5">({doc.fileName})</span>
-                                                                                )}
+                                                        {(() => {
+                                                            const uploadedDocsList: any[] = currentApp.documents || currentApp.dynamic_responses?.documents || [];
+                                                            const toFollowList: string[] = currentApp.toFollowDocs || currentApp.to_follow_docs || currentApp.dynamic_responses?.toFollowDocs || [];
+
+                                                            const standardRequirements = [
+                                                                { title: "Letter of Intent (LOI)", keys: ["Letter of Intent", "LOI", "Application Letter"] },
+                                                                { title: "Personal Data Sheet (CS Form 212, Rev. 2025)", keys: ["Personal Data Sheet (PDS)", "PDS", "CS Form 212"] },
+                                                                { title: "Work Experience Sheet (WES)", keys: ["Work Experience Sheet", "WES"] },
+                                                                { title: "Certificate of Eligibility / License", keys: ["Certificate of Eligibility", "COE", "License", "Board Rating"] },
+                                                                { title: "Transcript of Records (TOR) / Diploma", keys: ["Transcript of Records (TOR)", "TOR", "Diploma"] },
+                                                                { title: "Relevant Training Certificates", keys: ["Training Certificates", "Training", "Certificates"] },
+                                                                { title: "Performance Rating (IPCR/OPCR)", keys: ["Performance Rating", "IPCR", "OPCR"] }
+                                                            ];
+
+                                                            const matchedUploadedNames = new Set<string>();
+
+                                                            return (
+                                                                <div className="space-y-4">
+                                                                    <div className="flex items-center justify-between border-b pb-2">
+                                                                        <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
+                                                                            <FileText className="w-4 h-4 text-blue-600" /> CSC Standard Requirements Verification
+                                                                        </h3>
+                                                                        <span className="text-xs text-gray-500 font-medium">Compliance Check</span>
+                                                                    </div>
+
+                                                                    <div className="grid grid-cols-1 gap-2">
+                                                                        {standardRequirements.map((req, idx) => {
+                                                                            const uploaded = uploadedDocsList.find(d => {
+                                                                                const docName = (d.name || d.label || '').toLowerCase();
+                                                                                return req.keys.some(k => docName.includes(k.toLowerCase()));
+                                                                            });
+
+                                                                            if (uploaded) {
+                                                                                matchedUploadedNames.add(uploaded.name || uploaded.label);
+                                                                            }
+
+                                                                            const isToFollow = toFollowList.some(tf => {
+                                                                                return req.keys.some(k => tf.toLowerCase().includes(k.toLowerCase()));
+                                                                            });
+
+                                                                            return (
+                                                                                <div key={idx} className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-200 shadow-2xs">
+                                                                                    <div className="flex items-center gap-2.5 overflow-hidden">
+                                                                                        <FileText className={`w-4 h-4 shrink-0 ${uploaded ? 'text-emerald-600' : isToFollow ? 'text-amber-500' : 'text-gray-400'}`} />
+                                                                                        <div className="flex flex-col">
+                                                                                            <span className="text-xs font-semibold text-gray-900">{req.title}</span>
+                                                                                            {uploaded && uploaded.fileName && (
+                                                                                                <span className="text-[11px] text-gray-500 italic truncate max-w-xs">({uploaded.fileName})</span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-2 shrink-0">
+                                                                                        {uploaded ? (
+                                                                                            <>
+                                                                                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-bold">
+                                                                                                    Uploaded & Received
+                                                                                                </Badge>
+                                                                                                <Button
+                                                                                                    variant="ghost"
+                                                                                                    size="sm"
+                                                                                                    className="h-7 w-7 p-0 hover:bg-blue-100"
+                                                                                                    type="button"
+                                                                                                    onClick={(e) => {
+                                                                                                        e.preventDefault();
+                                                                                                        e.stopPropagation();
+                                                                                                        handleViewDocument(uploaded.name || req.title, uploaded.url || '#', uploaded.fileName);
+                                                                                                    }}
+                                                                                                    title="View Document"
+                                                                                                >
+                                                                                                    <Eye className="h-3.5 w-3.5 text-blue-600" />
+                                                                                                </Button>
+                                                                                            </>
+                                                                                        ) : isToFollow ? (
+                                                                                            <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] font-bold">
+                                                                                                To Follow
+                                                                                            </Badge>
+                                                                                        ) : (
+                                                                                            <Badge variant="outline" className="text-gray-400 border-gray-200 text-[10px]">
+                                                                                                Not Submitted
+                                                                                            </Badge>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+
+                                                                    {uploadedDocsList.filter(d => !matchedUploadedNames.has(d.name || d.label)).length > 0 && (
+                                                                        <div className="space-y-2 pt-3 border-t">
+                                                                            <h4 className="font-semibold text-gray-900 text-xs">Other Custom Uploaded Documents</h4>
+                                                                            <div className="grid grid-cols-1 gap-2">
+                                                                                {uploadedDocsList.filter(d => !matchedUploadedNames.has(d.name || d.label)).map((doc, i) => (
+                                                                                    <div key={i} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200 shadow-2xs">
+                                                                                        <div className="flex items-center overflow-hidden mr-2">
+                                                                                            <FileText className="shrink-0 h-4 w-4 text-blue-500 mr-2" />
+                                                                                            <span className="text-xs text-gray-700 font-medium truncate">{doc.name || doc.label}</span>
+                                                                                        </div>
+                                                                                        <Button
+                                                                                            variant="ghost"
+                                                                                            size="sm"
+                                                                                            className="h-6 w-6 p-0 hover:bg-blue-100"
+                                                                                            type="button"
+                                                                                            onClick={() => handleViewDocument(doc.name || doc.label, doc.url || '#', doc.fileName)}
+                                                                                        >
+                                                                                            <Eye className="h-3 w-3 text-blue-600" />
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                ))}
                                                                             </div>
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                className="h-6 w-6 p-0 hover:bg-blue-100"
-                                                                                type="button"
-                                                                                onClick={(e) => {
-                                                                                    e.preventDefault();
-                                                                                    e.stopPropagation();
-                                                                                    handleViewDocument(doc.name, doc.url || '#', doc.fileName);
-                                                                                }}
-                                                                                title="View Document"
-                                                                            >
-                                                                                <Eye className="h-3 w-3 text-blue-600" />
-                                                                            </Button>
                                                                         </div>
-                                                                    ))
-                                                                ) : (
-                                                                    <p className="text-xs text-gray-500 italic">No documents uploaded.</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        {currentApp.toFollowDocs && currentApp.toFollowDocs.length > 0 && (
-                                                            <div className="space-y-2">
-                                                                <div className="flex items-center gap-2 border-b pb-1.5 mb-2">
-                                                                    <h3 className="font-semibold text-orange-700 text-sm">Pending Requirements</h3>
-                                                                    <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700 border-orange-200">To Follow</Badge>
+                                                                    )}
                                                                 </div>
-                                                                <div className="grid grid-cols-1 gap-2">
-                                                                    {currentApp.toFollowDocs.map((docName: string, i: number) => (
-                                                                        <div key={i} className="flex items-center p-2 bg-orange-50/20 rounded border border-orange-100">
-                                                                            <FileText className="shrink-0 h-4 w-4 text-orange-400 mr-2" />
-                                                                            <span className="text-sm text-gray-700 font-medium truncate">{docName}</span>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        {currentApp.custom_file_responses && Object.keys(currentApp.custom_file_responses).length > 0 && (
-                                                            <div className="space-y-2">
-                                                                <h3 className="font-semibold text-blue-900 text-sm border-b pb-1.5 mb-2">Custom File Requirements</h3>
-                                                                <div className="grid grid-cols-1 gap-2">
-                                                                    {Object.entries(currentApp.custom_file_responses).map(([label, path]: [string, any]) => (
-                                                                        <div key={label} className="flex items-center justify-between p-2 bg-white rounded border border-blue-100 shadow-sm">
-                                                                            <div className="flex items-center overflow-hidden mr-2">
-                                                                                <FileText className="shrink-0 h-4 w-4 text-blue-500 mr-2" />
-                                                                                <span className="text-sm text-gray-700 font-medium truncate">{label}</span>
-                                                                            </div>
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                className="h-6 w-6 p-0 hover:bg-blue-100"
-                                                                                type="button"
-                                                                                onClick={(e) => {
-                                                                                    e.preventDefault();
-                                                                                    e.stopPropagation();
-                                                                                    window.open(`/storage/${path}`, '_blank');
-                                                                                }}
-                                                                                title="View Document"
-                                                                            >
-                                                                                <Eye className="h-3 w-3 text-blue-600" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
+                                                            );
+                                                        })()}
                                                     </div>
                                                 </TabsContent>
                                             </Tabs>

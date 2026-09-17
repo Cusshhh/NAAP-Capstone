@@ -85,8 +85,8 @@ export default function EmployeeBenefitsSection() {
             {/* HERO-LIKE INTRO WITHIN SECTION */}
             <div className="container mx-auto px-6 mb-20">
                 <div className="relative rounded-3xl overflow-hidden bg-[#193153] text-white p-10 md:p-16 text-center shadow-2xl">
-                    {/* Background Pattern/Image Overlay */}
-                    <div className="absolute inset-0 opacity-10 bg-[url('/images/NAAP_bg.jpg')] bg-cover bg-center mix-blend-overlay"></div>
+                    {/* Background Pattern Overlay */}
+                    <div className="absolute inset-0 bg-[radial-gradient(#ffffff33_1px,transparent_1px)] [background-size:16px_16px] opacity-30"></div>
 
                     <div className="relative z-10 max-w-3xl mx-auto">
                         <div className="inline-flex items-center gap-2 bg-[#ffdd59] text-[#193153] px-4 py-1.5 rounded-full text-sm font-bold mb-6">

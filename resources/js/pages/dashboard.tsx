@@ -31,7 +31,8 @@ import {
     Eye,
     Trash2,
     Newspaper,
-    Plus
+    Plus,
+    FileX
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -69,24 +70,37 @@ interface TooltipProps {
     children: React.ReactNode;
     content: string;
     side?: 'top' | 'bottom';
+    align?: 'center' | 'left' | 'right';
 }
 
-const CustomTooltip = ({ children, content, side = 'top' }: TooltipProps) => {
+const CustomTooltip = ({ children, content, side = 'top', align = 'center' }: TooltipProps) => {
     const isTop = side === 'top';
+    const posClass = align === 'right' 
+        ? 'right-0 items-end' 
+        : align === 'left' 
+        ? 'left-0 items-start' 
+        : 'left-1/2 -translate-x-1/2 items-center';
+
+    const arrowClass = align === 'right' 
+        ? 'mr-3' 
+        : align === 'left' 
+        ? 'ml-3' 
+        : '';
+
     return (
         <div className="relative group/tooltip inline-block">
             {children}
-            <div className={`absolute left-1/2 -translate-x-1/2 hidden group-hover/tooltip:flex flex-col items-center z-50 pointer-events-none ${
+            <div className={`absolute hidden group-hover/tooltip:flex flex-col z-[100] pointer-events-none ${posClass} ${
                 isTop ? 'bottom-full mb-2.5' : 'top-full mt-2.5'
             }`}>
                 {!isTop && (
-                    <div className="w-2 h-2 bg-[#193153] rotate-45 -mb-1 border-t border-l border-blue-900/30 pointer-events-none"></div>
+                    <div className={`w-2 h-2 bg-[#193153] rotate-45 -mb-1 border-t border-l border-blue-900/30 pointer-events-none ${arrowClass}`}></div>
                 )}
-                <div className="bg-[#193153] text-[#ffdd59] text-[10px] font-bold py-1.5 px-3 rounded shadow-xl whitespace-nowrap border border-blue-900/30 pointer-events-none">
+                <div className="bg-[#193153] text-[#ffdd59] text-[10px] font-bold py-1.5 px-3 rounded shadow-xl whitespace-nowrap border border-blue-900/30 pointer-events-none z-[100]">
                     {content}
                 </div>
                 {isTop && (
-                    <div className="w-2 h-2 bg-[#193153] rotate-45 -mt-1 border-r border-b border-blue-900/30 pointer-events-none"></div>
+                    <div className={`w-2 h-2 bg-[#193153] rotate-45 -mt-1 border-r border-b border-blue-900/30 pointer-events-none ${arrowClass}`}></div>
                 )}
             </div>
         </div>
@@ -433,7 +447,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 tinNo: '',
                 pagibigNo: '',
                 philhealthNo: '',
-                educationLevel: 'bachelor',
+                educationLevel: '',
                 schoolName: '',
                 degreeCourse: '',
                 yearGraduated: '',
@@ -445,7 +459,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 trainingHours: '16',
                 recentTrainingTitle: '',
                 skills: ['Aviation Operations', 'Communication', 'Technical Support'],
-                awards: ['national']
+                awards: []
             };
         }
 
@@ -499,6 +513,72 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setProfileData((prev: any) => ({ ...prev, [name]: value }));
+    };
+
+    const [customEligText, setCustomEligText] = useState('');
+
+    const toggleEligibility = (eligibility: string) => {
+        setProfileData((prev: any) => {
+            const current: string[] = Array.isArray(prev.eligibilities) ? prev.eligibilities : [];
+            const isMatched = (e: string) => 
+                e === eligibility ||
+                (eligibility.includes('Professional') && !eligibility.includes('Sub') && (e.includes('CS Prof') || e.includes('CS Professional'))) ||
+                (eligibility.includes('Sub Professional') && (e.includes('CS Subprof') || e.includes('CS Sub Professional')));
+            
+            const exists = current.some(isMatched);
+            const updated = exists 
+                ? current.filter(item => !isMatched(item))
+                : [...current, eligibility];
+            return { ...prev, eligibilities: updated };
+        });
+    };
+
+    const addCustomEligibility = () => {
+        if (!customEligText.trim()) return;
+        const newElig = customEligText.trim();
+        setProfileData((prev: any) => {
+            const current: string[] = Array.isArray(prev.eligibilities) ? prev.eligibilities : [];
+            if (!current.includes(newElig)) {
+                return { ...prev, eligibilities: [...current, newElig] };
+            }
+            return prev;
+        });
+        setCustomEligText('');
+        toast.success(`Added eligibility: ${newElig}`);
+    };
+
+    const [customSkillText, setCustomSkillText] = useState('');
+
+    const addSkill = () => {
+        if (!customSkillText.trim()) return;
+        const newSkill = customSkillText.trim();
+        setProfileData((prev: any) => {
+            const current: string[] = Array.isArray(prev.skills) ? prev.skills : [];
+            if (!current.includes(newSkill)) {
+                return { ...prev, skills: [...current, newSkill] };
+            }
+            return prev;
+        });
+        setCustomSkillText('');
+        toast.success(`Added skill: ${newSkill}`);
+    };
+
+    const removeSkill = (skillToRemove: string) => {
+        setProfileData((prev: any) => {
+            const current: string[] = Array.isArray(prev.skills) ? prev.skills : [];
+            return { ...prev, skills: current.filter(s => s !== skillToRemove) };
+        });
+    };
+
+    const toggleAward = (awardKey: string) => {
+        setProfileData((prev: any) => {
+            const current: string[] = Array.isArray(prev.awards) ? prev.awards : [];
+            const exists = current.includes(awardKey);
+            const updated = exists
+                ? current.filter(a => a !== awardKey)
+                : [...current, awardKey];
+            return { ...prev, awards: updated };
+        });
     };
 
     const saveProfile = () => {
@@ -742,9 +822,9 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
     const getGreeting = () => {
         const hour = new Date().getHours();
-        if (hour >= 6 && hour < 12) {
+        if (hour < 12) {
             return 'Good Morning';
-        } else if (hour >= 12 && hour < 18) {
+        } else if (hour < 18) {
             return 'Good Afternoon';
         } else {
             return 'Good Evening';
@@ -1638,7 +1718,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                                 )}
                                                                             </div>
                                                                             {['Withdrawn', 'Rejected'].includes(app.status) ? (
-                                                                                <CustomTooltip content="Delete" side="top">
+                                                                                <CustomTooltip content="Delete" side="top" align="right">
                                                                                     <Button
                                                                                         variant="ghost"
                                                                                         size="sm"
@@ -1649,14 +1729,14 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                                     </Button>
                                                                                 </CustomTooltip>
                                                                             ) : app.status === 'Hired' ? null : (
-                                                                                <CustomTooltip content="Withdraw Application" side="top">
+                                                                                <CustomTooltip content="Withdraw Application" side="top" align="right">
                                                                                     <Button
                                                                                         variant="ghost"
                                                                                         size="sm"
                                                                                         className="text-red-500 hover:text-red-700 hover:bg-red-50 h-9 w-9 p-0"
                                                                                         onClick={() => requestWithdraw(app.id, app.jobTitle)}
                                                                                     >
-                                                                                        <LogOut className="w-5 h-5" />
+                                                                                        <FileX className="w-5 h-5" />
                                                                                     </Button>
                                                                                 </CustomTooltip>
                                                                             )}
@@ -1946,7 +2026,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                         <Button
                                                             size="sm"
                                                             variant="ghost"
-                                                            onClick={() => router.get('/settings/password')}
+                                                            onClick={() => window.location.href = '/settings/profile#password'}
                                                         >
                                                             Change Password
                                                         </Button>
@@ -1957,12 +2037,12 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                     </div>
                                 </div>
 
-                                <div className="grid md:grid-cols-2 gap-8">
-                                    {/* CS Form No. 212 (Revised 2026 PDS) Section I: Personal Information & Gov't IDs */}
+                                 <div className="grid md:grid-cols-2 gap-8">
+                                    {/* CS Form No. 212 (Revised 2026 PDS) Section I: Personal Information */}
                                     <Card className="md:col-span-2">
                                         <CardHeader className="border-b border-gray-100 pb-3">
                                             <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                <User className="w-5 h-5 text-blue-600" /> CS Form 212 - Sec I: Personal Information & Government IDs
+                                                <User className="w-5 h-5 text-blue-600" /> CS Form 212 - Sec I: Personal Information
                                             </h3>
                                         </CardHeader>
                                         <CardContent className="space-y-4 pt-4">
@@ -2037,6 +2117,12 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                         <input type="tel" name="phone" value={profileData.phone || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
                                                     ) : <p className="font-medium text-gray-900">{profileData.phone || '-'}</p>}
                                                 </div>
+                                                <div>
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Alternate Contact No.</label>
+                                                    {isEditingProfile ? (
+                                                        <input type="tel" name="alternateContact" placeholder="e.g. 09181234567" value={profileData.alternateContact || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                    ) : <p className="font-medium text-gray-900">{profileData.alternateContact || '-'}</p>}
+                                                </div>
 
                                                 {/* Address */}
                                                 <div className="md:col-span-3">
@@ -2068,37 +2154,6 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                     </div>
                                                 </div>
 
-                                                {/* Government Identification Numbers */}
-                                                <div className="md:col-span-3 pt-3 border-t">
-                                                    <p className="text-xs font-bold text-blue-900 uppercase tracking-wide mb-3">Government Issued Identification Numbers (PDS Sec I)</p>
-                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                        <div>
-                                                            <label className="text-[11px] font-semibold text-gray-500">GSIS ID No.</label>
-                                                            {isEditingProfile ? (
-                                                                <input type="text" name="gsisNo" value={profileData.gsisNo || ''} onChange={handleProfileChange} placeholder="N/A" className="w-full mt-1 p-1.5 border border-gray-300 rounded text-xs" />
-                                                            ) : <p className="text-xs font-semibold text-gray-800">{profileData.gsisNo || 'N/A'}</p>}
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-[11px] font-semibold text-gray-500">SSS No.</label>
-                                                            {isEditingProfile ? (
-                                                                <input type="text" name="sssNo" value={profileData.sssNo || ''} onChange={handleProfileChange} placeholder="N/A" className="w-full mt-1 p-1.5 border border-gray-300 rounded text-xs" />
-                                                            ) : <p className="text-xs font-semibold text-gray-800">{profileData.sssNo || 'N/A'}</p>}
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-[11px] font-semibold text-gray-500">TIN No.</label>
-                                                            {isEditingProfile ? (
-                                                                <input type="text" name="tinNo" value={profileData.tinNo || ''} onChange={handleProfileChange} placeholder="N/A" className="w-full mt-1 p-1.5 border border-gray-300 rounded text-xs" />
-                                                            ) : <p className="text-xs font-semibold text-gray-800">{profileData.tinNo || 'N/A'}</p>}
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-[11px] font-semibold text-gray-500">PAG-IBIG ID No.</label>
-                                                            {isEditingProfile ? (
-                                                                <input type="text" name="pagibigNo" value={profileData.pagibigNo || ''} onChange={handleProfileChange} placeholder="N/A" className="w-full mt-1 p-1.5 border border-gray-300 rounded text-xs" />
-                                                            ) : <p className="text-xs font-semibold text-gray-800">{profileData.pagibigNo || 'N/A'}</p>}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -2111,11 +2166,12 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                             </h3>
                                         </CardHeader>
                                         <CardContent className="space-y-4 pt-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                                 <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Highest Education Attained</label>
                                                     {isEditingProfile ? (
-                                                        <select name="educationLevel" value={profileData.educationLevel || 'bachelor'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                                                        <select name="educationLevel" value={profileData.educationLevel || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                                                            <option value="">-- Select Highest Education Attained --</option>
                                                             <option value="bachelor">Bachelor's Degree</option>
                                                             <option value="masters">Master's Degree</option>
                                                             <option value="doctoral_9-15">Doctoral (9-15 units)</option>
@@ -2127,6 +2183,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                     ) : (
                                                         <p className="font-semibold text-purple-900 bg-purple-50 px-2.5 py-1 rounded inline-block text-xs mt-1 border border-purple-100">
                                                             {
+                                                                !profileData.educationLevel ? "-- Not Selected --" :
                                                                 profileData.educationLevel === 'bachelor' ? "Bachelor's Degree" :
                                                                 profileData.educationLevel === 'masters' ? "Master's Degree" :
                                                                 profileData.educationLevel === 'doctoral_9-15' ? "Doctoral (9-15 units)" :
@@ -2134,7 +2191,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                 profileData.educationLevel === 'doctoral_18-24' ? "Doctoral (18-24 units)" :
                                                                 profileData.educationLevel === 'doctoral_27+' ? "Doctoral (27+ units)" :
                                                                 profileData.educationLevel === 'doctoral_graduate' ? "Doctoral Graduate" :
-                                                                profileData.educationLevel || "Bachelor's Degree"
+                                                                profileData.educationLevel
                                                             }
                                                         </p>
                                                     )}
@@ -2144,26 +2201,138 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                     <label className="text-xs font-bold text-gray-400 uppercase">School / College / University</label>
                                                     {isEditingProfile ? (
                                                         <input type="text" name="schoolName" placeholder="e.g. NAAP Pasay Campus / PUP" value={profileData.schoolName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.schoolName || 'Aviation State College'}</p>}
+                                                    ) : <p className="font-medium text-gray-900">{profileData.schoolName || '-'}</p>}
                                                 </div>
 
                                                 <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Degree / Course Title</label>
                                                     {isEditingProfile ? (
                                                         <input type="text" name="degreeCourse" placeholder="e.g. BS Aeronautical Engineering" value={profileData.degreeCourse || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.degreeCourse || 'BS Aviation / Public Admin'}</p>}
+                                                    ) : <p className="font-medium text-gray-900">{profileData.degreeCourse || '-'}</p>}
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Year Graduated (PDS Sec II)</label>
+                                                    {isEditingProfile ? (
+                                                        <input type="text" name="yearGraduated" placeholder="e.g. 2020" value={profileData.yearGraduated || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                    ) : <p className="font-medium text-gray-900">{profileData.yearGraduated || '-'}</p>}
+                                                </div>
+
+                                                {/* License / Registration No. */}
+                                                <div className="md:col-span-2 lg:col-span-4 border-t pt-3">
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">License / Registration No. (PRC / CAAP / CSC)</label>
+                                                    {isEditingProfile ? (
+                                                        <input type="text" name="licenseNo" placeholder="e.g. PRC License No. 0123456" value={profileData.licenseNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                    ) : <p className="font-medium text-gray-900">{profileData.licenseNo || '-'}</p>}
                                                 </div>
 
                                                 {/* Eligibilities */}
                                                 <div className="md:col-span-3 border-t pt-3">
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Civil Service & Professional Eligibilities (PDS Sec III)</label>
-                                                    <div className="flex flex-wrap gap-2 mt-2">
-                                                        {(profileData.eligibilities || ['Civil Service Professional (CS Prof)']).map((elig: string, idx: number) => (
-                                                            <span key={idx} className="text-xs font-bold bg-green-50 text-green-800 px-3 py-1 rounded-full border border-green-200 flex items-center gap-1">
-                                                                <CheckCircle className="w-3.5 h-3.5 text-green-600" /> {elig}
-                                                            </span>
-                                                        ))}
-                                                    </div>
+                                                    {isEditingProfile ? (
+                                                        <div className="mt-2 space-y-3">
+                                                            <p className="text-xs text-gray-500 font-medium">Select all Civil Service & Professional Eligibilities that apply to you:</p>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1.5 border border-gray-200 rounded-md bg-gray-50/50">
+                                                                {[
+                                                                    "Career Service (CS) Professional",
+                                                                    "Career Service (CS) Sub Professional",
+                                                                    "Bar/Board Eligibility (RA1080)",
+                                                                    "PRC Board Rating / Professional License",
+                                                                    "CAAP CPL / FI Pilot Rating License",
+                                                                    "CAAP AMT / Aircraft Maintenance License",
+                                                                    "Honor Graduate Eligibility (PD 907)",
+                                                                    "Barangay Official Eligibility (RA 7160)",
+                                                                    "Barangay Health Worker (RA 7883)",
+                                                                    "Barangay Nutrition Scholar Eligibility (PD 1569)",
+                                                                    "Electronic Data Processing Specialist Eligibility (CSC Res. 90-083)",
+                                                                    "Foreign School Honor Graduate Eligibility (CSC Res. 90-083)",
+                                                                    "Sanggunian Member Eligibility (RA 10156)",
+                                                                    "Scientific and Technological Specialist Eligibility (PD 997)",
+                                                                    "Skills Eligibility Category II (CSC MC 11, s. 1996, as Amended)",
+                                                                    "Veteran Preference Rating (EO 132/790)"
+                                                                ].map((elig, idx) => {
+                                                                    const currentEligList = Array.isArray(profileData.eligibilities) ? profileData.eligibilities : [];
+                                                                    const isSelected = currentEligList.some((e: string) => 
+                                                                        e === elig ||
+                                                                        (elig.includes('Professional') && !elig.includes('Sub') && (e.includes('CS Prof') || e.includes('CS Professional'))) ||
+                                                                        (elig.includes('Sub Professional') && (e.includes('CS Subprof') || e.includes('CS Sub Professional')))
+                                                                    );
+                                                                    return (
+                                                                        <label key={idx} className={`flex items-start gap-2.5 p-2 rounded-md border text-xs cursor-pointer transition-all ${
+                                                                            isSelected 
+                                                                                ? 'bg-blue-50 border-blue-300 text-blue-900 font-bold shadow-sm ring-1 ring-blue-200' 
+                                                                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100'
+                                                                        }`}>
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={isSelected}
+                                                                                onChange={() => toggleEligibility(elig)}
+                                                                                className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                                                                            />
+                                                                            <span>{elig}</span>
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
+
+                                                            {/* Custom write-in eligibility */}
+                                                            <div className="pt-2 border-t border-gray-100">
+                                                                <label className="text-[11px] font-bold text-gray-500 block mb-1">Other / Custom Eligibility or License:</label>
+                                                                <div className="flex gap-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="e.g. Master Electrician, Certified Public Accountant (CPA)"
+                                                                        value={customEligText}
+                                                                        onChange={(e) => setCustomEligText(e.target.value)}
+                                                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomEligibility(); } }}
+                                                                        className="flex-1 p-2 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={addCustomEligibility}
+                                                                        className="px-3 py-1.5 bg-[#193153] hover:bg-blue-900 text-white text-xs font-bold rounded-md transition-colors"
+                                                                    >
+                                                                        + Add Eligibility
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Active Eligibilities List badges in Edit Mode */}
+                                                            {Array.isArray(profileData.eligibilities) && profileData.eligibilities.length > 0 && (
+                                                                <div className="pt-2 border-t border-gray-100">
+                                                                    <p className="text-[11px] font-bold text-gray-500 mb-1.5">Currently Selected Eligibilities ({profileData.eligibilities.length}):</p>
+                                                                    <div className="flex flex-wrap gap-1.5">
+                                                                        {profileData.eligibilities.map((elig: string, idx: number) => (
+                                                                            <span key={idx} className="text-xs font-semibold bg-green-50 text-green-800 border border-green-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                                                                                <CheckCircle className="w-3 h-3 text-green-600" />
+                                                                                {elig}
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => toggleEligibility(elig)}
+                                                                                    className="text-gray-400 hover:text-red-600 font-bold ml-1 text-sm leading-none"
+                                                                                    title="Remove eligibility"
+                                                                                >
+                                                                                    &times;
+                                                                                </button>
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-wrap gap-2 mt-2">
+                                                            {(!profileData.eligibilities || (Array.isArray(profileData.eligibilities) && profileData.eligibilities.length === 0)) ? (
+                                                                <span className="text-xs text-gray-400 italic">No eligibilities declared</span>
+                                                            ) : (
+                                                                (Array.isArray(profileData.eligibilities) ? profileData.eligibilities : [profileData.eligibilities]).map((elig: string, idx: number) => (
+                                                                    <span key={idx} className="text-xs font-bold bg-green-50 text-green-800 px-3 py-1 rounded-full border border-green-200 flex items-center gap-1 shadow-sm">
+                                                                        <CheckCircle className="w-3.5 h-3.5 text-green-600" /> {elig}
+                                                                    </span>
+                                                                ))
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </CardContent>
@@ -2173,10 +2342,11 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                     <Card className="md:col-span-2">
                                         <CardHeader className="border-b border-gray-100 pb-3">
                                             <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                <Briefcase className="w-5 h-5 text-orange-600" /> CS Form 212 - Sec IV, VI & VII: Experience, Training & Awards
+                                                <Briefcase className="w-5 h-5 text-orange-600" /> CS Form 212 - Sec IV, VI & VII: Experience, Training, Skills & Awards
                                             </h3>
                                         </CardHeader>
                                         <CardContent className="space-y-4 pt-4">
+                                            {/* Work Experience */}
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                 <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Years of Relevant Work Experience</label>
@@ -2186,24 +2356,142 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 </div>
 
                                                 <div>
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Most Recent Position / Job Title</label>
+                                                    {isEditingProfile ? (
+                                                        <input type="text" name="recentPositionTitle" placeholder="e.g. Administrative Assistant II" value={profileData.recentPositionTitle || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                    ) : <p className="font-medium text-gray-900">{profileData.recentPositionTitle || '-'}</p>}
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Most Recent Employer / Agency</label>
+                                                    {isEditingProfile ? (
+                                                        <input type="text" name="recentEmployer" placeholder="e.g. Civil Aviation Authority of the Phils" value={profileData.recentEmployer || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                    ) : <p className="font-medium text-gray-900">{profileData.recentEmployer || '-'}</p>}
+                                                </div>
+                                            </div>
+
+                                            {/* Training */}
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-3">
+                                                <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Total Training / Seminar Hours</label>
                                                     {isEditingProfile ? (
                                                         <input type="number" name="trainingHours" min="0" value={profileData.trainingHours || '0'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
                                                     ) : <p className="font-bold text-gray-900">{profileData.trainingHours || '0'} hours</p>}
                                                 </div>
 
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Non-Academic Distinctions / Awards</label>
-                                                    <div className="flex flex-wrap gap-1.5 mt-1">
-                                                        {(profileData.awards || ['national']).map((award: string, idx: number) => (
-                                                            <span key={idx} className="text-xs font-bold bg-amber-50 text-amber-800 px-2.5 py-0.5 rounded border border-amber-200 capitalize">
-                                                                {award === 'national' ? 'National Award' : award === 'csc' ? 'CSC Award' : award === 'president' ? "President's Award" : award}
-                                                            </span>
-                                                        ))}
-                                                    </div>
+                                                <div className="md:col-span-2">
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Most Recent Training / Seminar Title</label>
+                                                    {isEditingProfile ? (
+                                                        <input type="text" name="recentTrainingTitle" placeholder="e.g. Seminar on Public Records & Aviation Security" value={profileData.recentTrainingTitle || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                    ) : <p className="font-medium text-gray-900">{profileData.recentTrainingTitle || '-'}</p>}
                                                 </div>
                                             </div>
-                                        </CardContent>
+
+                                            {/* Skills & Competencies (PDS Sec VII) */}
+                                            <div className="border-t pt-3">
+                                                <label className="text-xs font-bold text-gray-400 uppercase">Skills & Special Competencies (PDS Sec VII)</label>
+                                                {isEditingProfile ? (
+                                                    <div className="mt-2 space-y-3">
+                                                        <p className="text-xs text-gray-500 font-medium">Add key technical, managerial, or specialized skills:</p>
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="text"
+                                                                placeholder="e.g. Data Analysis, Flight Operations, Customer Support"
+                                                                value={customSkillText}
+                                                                onChange={(e) => setCustomSkillText(e.target.value)}
+                                                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
+                                                                className="flex-1 p-2 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={addSkill}
+                                                                className="px-3 py-1.5 bg-[#193153] hover:bg-blue-900 text-white text-xs font-bold rounded-md transition-colors"
+                                                            >
+                                                                + Add Skill
+                                                            </button>
+                                                        </div>
+
+                                                        {Array.isArray(profileData.skills) && profileData.skills.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1.5 pt-1">
+                                                                {profileData.skills.map((skill: string, idx: number) => (
+                                                                    <span key={idx} className="text-xs font-semibold bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                                                                        {skill}
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => removeSkill(skill)}
+                                                                            className="text-gray-400 hover:text-red-600 font-bold ml-1 text-sm leading-none"
+                                                                            title="Remove skill"
+                                                                        >
+                                                                            &times;
+                                                                        </button>
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                                        {(!profileData.skills || (Array.isArray(profileData.skills) && profileData.skills.length === 0)) ? (
+                                                            <span className="text-xs text-gray-400 italic">No skills declared</span>
+                                                        ) : (
+                                                            (Array.isArray(profileData.skills) ? profileData.skills : [profileData.skills]).map((skill: string, idx: number) => (
+                                                                <span key={idx} className="text-xs font-bold bg-blue-50 text-blue-900 px-3 py-1 rounded-full border border-blue-200 flex items-center gap-1 shadow-sm">
+                                                                    {skill}
+                                                                </span>
+                                                            ))
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                                <div className="md:col-span-3 border-t pt-3">
+                                                    <label className="text-xs font-bold text-gray-400 uppercase">Non-Academic Distinctions / Awards (PDS Sec VII)</label>
+                                                    {isEditingProfile ? (
+                                                        <div className="mt-2 space-y-2">
+                                                            <p className="text-xs text-gray-500 font-medium">Select all non-academic distinctions or awards received (optional):</p>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1.5 border border-gray-200 rounded-md bg-gray-50/50">
+                                                                {[
+                                                                    { key: 'national', label: 'National Honor / Award' },
+                                                                    { key: 'csc', label: 'Civil Service Commission (CSC) Award' },
+                                                                    { key: 'president', label: "Presidential Award / Citation" },
+                                                                    { key: 'ngo', label: 'Non-Government / Institutional Award' }
+                                                                ].map((item) => {
+                                                                    const currentAwards = Array.isArray(profileData.awards) ? profileData.awards : [];
+                                                                    const isChecked = currentAwards.includes(item.key);
+                                                                    return (
+                                                                        <label key={item.key} className={`flex items-center gap-2.5 p-2 rounded-md border text-xs cursor-pointer transition-all ${
+                                                                            isChecked
+                                                                                ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold shadow-sm ring-1 ring-amber-200'
+                                                                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100'
+                                                                        }`}>
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={isChecked}
+                                                                                onChange={() => toggleAward(item.key)}
+                                                                                className="rounded text-amber-600 focus:ring-amber-500 w-3.5 h-3.5"
+                                                                            />
+                                                                            <span>{item.label}</span>
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                                            {(!profileData.awards || (Array.isArray(profileData.awards) && profileData.awards.length === 0)) ? (
+                                                                <span className="text-xs text-gray-400 italic">None declared</span>
+                                                            ) : (
+                                                                (Array.isArray(profileData.awards) ? profileData.awards : [profileData.awards]).map((award: string, idx: number) => (
+                                                                    <span key={idx} className="text-xs font-bold bg-amber-50 text-amber-800 px-3 py-1 rounded-full border border-amber-200 capitalize flex items-center gap-1 shadow-sm">
+                                                                        <Award className="w-3.5 h-3.5 text-amber-600" />
+                                                                        {award === 'national' ? 'National Award' : award === 'csc' ? 'CSC Award' : award === 'president' ? "President's Award" : award === 'ngo' ? 'NGO / Institutional Award' : award}
+                                                                    </span>
+                                                                ))
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </CardContent>
                                     </Card>
 
                                     <Card className="md:col-span-2">

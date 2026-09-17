@@ -131,7 +131,7 @@ const NewsDashboard = () => {
 
                         {/* Article Header Image/Banner */}
                         <div className="h-64 sm:h-80 bg-gradient-to-r from-[#193153] to-[#2a4a75] relative">
-                            <div className="absolute inset-0 bg-[url('/images/pattern.png')] opacity-10"></div>
+                            <div className="absolute inset-0 bg-[radial-gradient(#ffffff33_1px,transparent_1px)] [background-size:16px_16px] opacity-30"></div>
                             <div className="absolute bottom-0 left-0 right-0 p-8 sm:p-10 text-white bg-gradient-to-t from-black/60 to-transparent">
                                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ffdd59] text-[#193153] text-xs font-bold uppercase tracking-wide mb-4">
                                     <Award className="h-3 w-3" />

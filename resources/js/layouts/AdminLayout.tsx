@@ -1,5 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { Users, Briefcase, Shield, LogOut, Menu, Layout, Clock, FileText, Calendar, ChevronRight, Key, MessageSquare, ChevronDown, User, Settings, ShieldCheck, Bell, CheckCheck } from 'lucide-react';
+import { Users, Briefcase, Shield, LogOut, Menu, Layout, Clock, FileText, Calendar, ChevronRight, Key, MessageSquare, ChevronDown, User, Settings, ShieldCheck, Bell, CheckCheck, Building2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import React from 'react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+import { getApplications, getActivities } from '@/data/mockData';
+import axios from 'axios';
 
 interface AdminLayoutProps {
     children: ReactNode;
@@ -33,37 +36,97 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
     const unreadMessagesCount = (props as any)?.unread_messages_count || 0;
     const serverPendingApplicantsCount = (props as any)?.pending_applicants_count || 0;
 
-    const [viewedCount, setViewedCount] = React.useState<number>(() => {
+    const getAllActiveApps = () => {
+        const pageProps = props as any;
+        const inertiaApps = pageProps?.applications || pageProps?.dbApplications || pageProps?.db_applications || [];
+        
+        if (Array.isArray(inertiaApps) && inertiaApps.length > 0) {
+            try {
+                if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('cached_admin_db_apps', JSON.stringify(inertiaApps));
+                }
+            } catch (e) {}
+        }
+
+        let cachedDbApps: any[] = [];
         if (typeof window !== 'undefined') {
             try {
-                const saved = localStorage.getItem('viewed_applicant_ids');
-                const arr = saved ? JSON.parse(saved) : [];
-                return Array.isArray(arr) ? arr.length : 0;
-            } catch (e) {
-                return 0;
-            }
+                const saved = sessionStorage.getItem('cached_admin_db_apps');
+                if (saved) {
+                    cachedDbApps = JSON.parse(saved);
+                }
+            } catch (e) {}
         }
+
+        let localApps: any[] = [];
+        if (typeof window !== 'undefined') {
+            try {
+                localApps = getApplications();
+            } catch (e) {}
+        }
+
+        const combined = Array.isArray(localApps) ? [...localApps] : [];
+        const sourceApps = (Array.isArray(inertiaApps) && inertiaApps.length > 0) ? inertiaApps : cachedDbApps;
+
+        (Array.isArray(sourceApps) ? sourceApps : []).forEach((ia: any) => {
+            if (!combined.some((ca: any) => String(ca.id) === String(ia.id))) {
+                combined.push(ia);
+            }
+        });
+
+        return combined;
+    };
+
+    const getPendingReviewCount = () => {
+        try {
+            let viewedIdsSet = new Set<string>();
+            if (typeof window !== 'undefined') {
+                try {
+                    const saved = localStorage.getItem('viewed_applicant_ids');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (Array.isArray(parsed)) {
+                            parsed.forEach((id: any) => viewedIdsSet.add(String(id)));
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            const apps = getAllActiveApps();
+            if (Array.isArray(apps) && apps.length > 0) {
+                return apps.filter((a: any) => {
+                    const status = a.status || '';
+                    const isUnviewedStatus = ['Submitted', 'Pending Review', 'Pending'].includes(status);
+                    const isViewed = viewedIdsSet.has(String(a.id)) || (typeof a.id === 'number' && viewedIdsSet.has(String(a.id)));
+                    return isUnviewedStatus && !isViewed;
+                }).length;
+            }
+        } catch (e) {}
         return 0;
-    });
+    };
+
+    const [clientPendingCount, setClientPendingCount] = React.useState<number>(() => getPendingReviewCount());
 
     React.useEffect(() => {
-        const updateViewed = () => {
-            try {
-                const saved = localStorage.getItem('viewed_applicant_ids');
-                const arr = saved ? JSON.parse(saved) : [];
-                setViewedCount(Array.isArray(arr) ? arr.length : 0);
-            } catch (e) {}
+        const syncPendingCount = () => {
+            setClientPendingCount(getPendingReviewCount());
         };
 
-        window.addEventListener('storage', updateViewed);
-        window.addEventListener('viewed_apps_updated', updateViewed);
+        syncPendingCount();
+
+        window.addEventListener('storage', syncPendingCount);
+        window.addEventListener('application_submitted', syncPendingCount);
+        window.addEventListener('viewed_apps_updated', syncPendingCount);
+        window.addEventListener('mock_applications_updated', syncPendingCount);
         return () => {
-            window.removeEventListener('storage', updateViewed);
-            window.removeEventListener('viewed_apps_updated', updateViewed);
+            window.removeEventListener('storage', syncPendingCount);
+            window.removeEventListener('application_submitted', syncPendingCount);
+            window.removeEventListener('viewed_apps_updated', syncPendingCount);
+            window.removeEventListener('mock_applications_updated', syncPendingCount);
         };
-    }, []);
+    }, [props]);
 
-    const pendingApplicantsCount = Math.max(0, serverPendingApplicantsCount - viewedCount);
+    const pendingApplicantsCount = typeof window !== 'undefined' ? clientPendingCount : (serverPendingApplicantsCount || clientPendingCount);
 
     const [notificationsOpen, setNotificationsOpen] = React.useState(false);
     const storageKey = `read_admin_notifs_${admin.id || admin.email || 'admin'}`;
@@ -77,6 +140,40 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
         }
         return [];
     });
+
+    const [dbInterviews, setDbInterviews] = React.useState<any[]>([]);
+    const [dbActivityLogs, setDbActivityLogs] = React.useState<any[]>([]);
+
+    React.useEffect(() => {
+        axios.get('/admin/interviews')
+            .then(res => {
+                if (Array.isArray(res.data)) {
+                    setDbInterviews(res.data);
+                }
+            })
+            .catch(() => {});
+
+        axios.get('/admin/activity-logs')
+            .then(res => {
+                if (Array.isArray(res.data)) {
+                    setDbActivityLogs(res.data);
+                }
+            })
+            .catch(() => {});
+    }, []);
+
+    const formatTime = (timeStr?: string) => {
+        if (!timeStr || timeStr === '00:00' || timeStr === '00:00:00') return 'Scheduled';
+        const match24 = timeStr.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+        if (match24) {
+            let hours = parseInt(match24[1], 10);
+            const minutes = match24[2];
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${hours}:${minutes} ${ampm}`;
+        }
+        return timeStr;
+    };
 
     const buildAdminNotifs = () => {
         const list: any[] = [];
@@ -100,39 +197,111 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
                 type: 'message'
             });
         }
+
+        let allInterviews: any[] = [];
         if (typeof window !== 'undefined') {
             try {
-                const ints = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
-                if (Array.isArray(ints) && ints.length > 0) {
-                    const latest = ints[ints.length - 1];
-                    let formattedDate = 'Soon';
-                    if (latest.date) {
-                        try {
-                            const d = new Date(latest.date);
-                            if (!isNaN(d.getTime())) {
-                                formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                            }
-                        } catch (err) {}
-                    }
-                    list.push({
-                        id: `interview_${latest.id || latest.date}`,
-                        text: `Upcoming interview scheduled for ${latest.candidateName || 'Applicant'} (${latest.position || 'Vacancy'}) on ${formattedDate}.`,
-                        time: latest.time || 'Scheduled',
-                        isRead: readNotifIds.includes(`interview_${latest.id || latest.date}`),
-                        href: '/admin/calendar',
-                        type: 'interview'
-                    });
+                const localInts = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
+                if (Array.isArray(localInts)) {
+                    allInterviews.push(...localInts);
                 }
             } catch (e) {}
         }
-        list.push({
-            id: `activity_system_log`,
-            text: `System Activity Audit Logs are active & recording user events.`,
-            time: 'Active System',
-            isRead: readNotifIds.includes(`activity_system_log`),
-            href: '/admin/activity-log',
-            type: 'system'
-        });
+        if (Array.isArray(dbInterviews) && dbInterviews.length > 0) {
+            dbInterviews.forEach((dbi: any) => {
+                if (!allInterviews.some((i: any) => String(i.id) === String(dbi.id))) {
+                    allInterviews.push({
+                        id: dbi.id,
+                        candidateName: dbi.candidate_name || dbi.candidateName || 'Applicant',
+                        position: dbi.position || 'Vacancy',
+                        date: dbi.date,
+                        time: dbi.time,
+                        venue: dbi.venue,
+                    });
+                }
+            });
+        }
+
+        if (allInterviews.length > 0) {
+            const latest = allInterviews[allInterviews.length - 1];
+            let formattedDate = 'Soon';
+            if (latest.date) {
+                try {
+                    const d = new Date(latest.date);
+                    if (!isNaN(d.getTime())) {
+                        formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    }
+                } catch (err) {}
+            }
+            const formattedTime = formatTime(latest.time);
+            list.push({
+                id: `interview_${latest.id || latest.date}`,
+                text: `Upcoming interview scheduled for ${latest.candidateName || 'Applicant'} (${latest.position || 'Vacancy'}) on ${formattedDate}.`,
+                time: formattedTime,
+                isRead: readNotifIds.includes(`interview_${latest.id || latest.date}`),
+                href: '/admin/calendar',
+                type: 'interview'
+            });
+        }
+
+        // Connect System Activity Feed directly into System Alerts
+        try {
+            const activeApps = getAllActiveApps();
+            const dynamicActivities = getActivities(activeApps, []);
+            
+            // Format DB activity logs if any
+            const formattedDbLogs = (dbActivityLogs || []).map((log: any) => ({
+                id: `db_act_${log.id}`,
+                action: log.action || 'Activity Logged',
+                details: log.details || '',
+                time: log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+                href: '/admin/activity-log',
+                type: 'activity'
+            }));
+
+            const formattedDynActivities = (dynamicActivities || []).map((act: any) => {
+                let destHref = '/admin/activity-log';
+                if (act.action === 'New Application' || act.action === 'Candidate Hired') destHref = '/admin/applicants';
+                else if (act.action === 'Job Posted') destHref = '/admin/jobs';
+                else if (act.action === 'Interview Scheduled') destHref = '/admin/calendar';
+
+                return {
+                    id: act.id,
+                    text: `${act.action}: ${act.details}`,
+                    time: act.time || 'Recent',
+                    isRead: readNotifIds.includes(String(act.id)),
+                    href: destHref,
+                    type: 'activity'
+                };
+            });
+
+            const combinedActs = [...formattedDbLogs.map(l => ({
+                id: l.id,
+                text: `${l.action}: ${l.details}`,
+                time: l.time,
+                isRead: readNotifIds.includes(String(l.id)),
+                href: l.href,
+                type: 'activity'
+            })), ...formattedDynActivities];
+
+            // Add top 3 recent system activities to the notification dropdown
+            combinedActs.slice(0, 3).forEach((act) => {
+                if (!list.some(existing => existing.id === act.id)) {
+                    list.push(act);
+                }
+            });
+        } catch (e) {}
+
+        if (list.length === 0 || !list.some(n => n.type === 'system')) {
+            list.push({
+                id: `activity_system_log`,
+                text: `System Activity Audit Logs are active & recording user events.`,
+                time: 'Active System',
+                isRead: readNotifIds.includes(`activity_system_log`),
+                href: '/admin/activity-log',
+                type: 'system'
+            });
+        }
 
         return list;
     };
@@ -168,6 +337,7 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
         { name: 'Dashboard', href: '/admin/dashboard', icon: Shield },
         { name: 'Jobs', href: '/admin/jobs', icon: Briefcase },
         { name: 'Applicants', href: '/admin/applicants', icon: Users },
+        { name: 'Staffing', href: '/admin/staffing', icon: Building2 },
         { name: 'Messages', href: '/admin/messages', icon: MessageSquare },
     ];
 

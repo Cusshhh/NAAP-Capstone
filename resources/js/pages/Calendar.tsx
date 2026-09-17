@@ -33,6 +33,24 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
         return urlMatch ? urlMatch[0] : null;
     };
 
+    const formatTime = (timeStr?: string | null) => {
+        if (!timeStr) return 'TBA';
+        if (/am|pm/i.test(timeStr)) return timeStr;
+        const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+        if (!match) return timeStr;
+        let hours = parseInt(match[1], 10);
+        const minutes = match[2];
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        if (hours === 0) hours = 12;
+        return `${hours}:${minutes} ${ampm}`;
+    };
+
+    const isUrl = (str?: string | null) => {
+        if (!str) return false;
+        return /^https?:\/\//i.test(str.trim());
+    };
+
     // Helper to build dynamic and custom user events
     const buildEvents = (customEventsList: any[] = [], interviewsList: any[] = []) => {
         const eventsList: any[] = [];
@@ -84,10 +102,10 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                     candidateName: interview.candidateName || interview.candidate_name,
                     date: formattedDate,
                     time: interview.time,
-                    venue: interview.venue || 'NAAP Administrative Building - Room 101B',
+                    venue: interview.venue || null,
                     meetingLink: interview.meetingLink || interview.meeting_link || interview.link || null,
-                    panelMembers: interview.panelMembers || interview.panel_members || 'NAAP HR Committee & Department Chair',
-                    notes: interview.notes || interview.instructions || interview.description || 'Please arrive 15 minutes before your scheduled slot. Bring 2 valid photo IDs and original hardcopies of submitted documents.',
+                    panelMembers: interview.panelMembers || interview.panel_members || null,
+                    notes: interview.resultNotes || interview.result_notes || interview.notes || interview.instructions || interview.description || null,
                     type: 'Interview',
                     jobId: matchingApp ? matchingApp.jobId : null
                 });
@@ -440,7 +458,7 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                                     <div className="flex flex-wrap gap-2 mt-2">
                                                         <span className="text-[10px] flex items-center gap-1 text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full">
                                                             <Clock className="w-3 h-3" />
-                                                            {event.time}
+                                                            {formatTime(event.time)}
                                                         </span>
                                                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter
                                                             ${event.type === 'Deadline' ? 'bg-red-100 text-red-700' :
@@ -451,8 +469,17 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                                     </div>
                                                     {event.venue && (
                                                         <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1 font-medium">
-                                                            <MapPin className="w-3 h-3" />
-                                                            {event.venue}
+                                                            {isUrl(event.venue) ? (
+                                                                <>
+                                                                    <Video className="w-3 h-3 text-blue-600" />
+                                                                    <span className="text-blue-700 font-bold">Online Meeting</span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <MapPin className="w-3 h-3" />
+                                                                    <span className="truncate">{event.venue}</span>
+                                                                </>
+                                                            )}
                                                         </p>
                                                     )}
                                                 </div>
@@ -469,7 +496,7 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
             {/* Event Details Modal */}
             <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
                 {selectedEvent && (
-                    <DialogContent className="sm:max-w-[500px] rounded-3xl p-6 border-none shadow-2xl bg-white">
+                    <DialogContent className="sm:max-w-[480px] w-[92vw] rounded-3xl p-6 border-none shadow-2xl bg-white overflow-hidden">
                         <DialogHeader className="pb-4 border-b">
                             <div className="flex items-center gap-2 mb-1">
                                 <Badge variant="outline" className={`px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider rounded-full ${
@@ -485,25 +512,25 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                             </DialogTitle>
                         </DialogHeader>
 
-                        <div className="space-y-4 py-4 text-sm">
-                            <div className="grid grid-cols-2 gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2.5 bg-blue-100/60 rounded-xl text-blue-700">
+                        <div className="space-y-4 py-4 text-sm max-w-full overflow-hidden">
+                            <div className="grid grid-cols-2 gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100 w-full box-border">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-2.5 bg-blue-100/60 rounded-xl text-blue-700 shrink-0">
                                         <CalendarIcon className="w-5 h-5" />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0 flex-1">
                                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Date</p>
-                                        <p className="font-extrabold text-gray-900">{selectedEvent.date}</p>
+                                        <p className="font-extrabold text-gray-900 truncate">{selectedEvent.date}</p>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2.5 bg-blue-100/60 rounded-xl text-blue-700">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-2.5 bg-blue-100/60 rounded-xl text-blue-700 shrink-0">
                                         <Clock className="w-5 h-5" />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0 flex-1">
                                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Time</p>
-                                        <p className="font-extrabold text-gray-900">{selectedEvent.time || 'TBA'}</p>
+                                        <p className="font-extrabold text-gray-900 truncate">{formatTime(selectedEvent.time)}</p>
                                     </div>
                                 </div>
                             </div>
@@ -513,58 +540,60 @@ export default function Calendar({ applications = [], jobs = [] }: CalendarProps
                                     href={extractUrl(selectedEvent)!}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-2xl shadow-lg transition-all transform hover:-translate-y-0.5 group"
+                                    className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-2xl shadow-lg transition-all transform hover:-translate-y-0.5 group w-full box-border"
                                 >
-                                    <div className="flex items-center gap-3 min-w-0 pr-2">
-                                        <div className="p-2.5 bg-white/20 rounded-xl flex-shrink-0">
+                                    <div className="flex items-center gap-3 min-w-0 pr-2 flex-1">
+                                        <div className="p-2.5 bg-white/20 rounded-xl shrink-0">
                                             <Video className="w-5 h-5 text-white" />
                                         </div>
-                                        <div className="min-w-0">
+                                        <div className="min-w-0 flex-1">
                                             <p className="text-[11px] font-black text-blue-100 uppercase tracking-wider">Online Meeting / Webinar Link</p>
-                                            <p className="font-bold text-sm underline text-white truncate max-w-[260px] sm:max-w-[300px]">
+                                            <p className="font-bold text-sm underline text-white truncate max-w-[180px] sm:max-w-[220px]">
                                                 {extractUrl(selectedEvent)}
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-white/20 px-3 py-1.5 rounded-xl text-xs font-black flex-shrink-0 group-hover:bg-white group-hover:text-blue-700 transition-all">
+                                    <div className="flex items-center gap-1 bg-white/20 px-3 py-1.5 rounded-xl text-xs font-black shrink-0 group-hover:bg-white group-hover:text-blue-700 transition-all ml-2">
                                         <span>Join Meeting</span>
                                         <ExternalLink className="w-3.5 h-3.5" />
                                     </div>
                                 </a>
                             )}
 
-                            {selectedEvent.venue && (
-                                <div className="flex items-start gap-3 p-3.5 bg-white border border-gray-100 rounded-2xl shadow-sm">
-                                    <div className="p-2 bg-amber-50 rounded-xl text-amber-600 mt-0.5">
-                                        <MapPin className="w-4 h-4" />
+                            {selectedEvent.venue && typeof selectedEvent.venue === 'string' && selectedEvent.venue.trim() !== '' && (
+                                <div className="flex items-start gap-3 p-3.5 bg-white border border-gray-100 rounded-2xl shadow-sm w-full box-border">
+                                    <div className="p-2 bg-amber-50 rounded-xl text-amber-600 mt-0.5 shrink-0">
+                                        {isUrl(selectedEvent.venue) ? <Video className="w-4 h-4 text-blue-600" /> : <MapPin className="w-4 h-4" />}
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Venue / Location</p>
-                                        <p className="font-bold text-gray-800 text-sm mt-0.5">{selectedEvent.venue}</p>
+                                        <p className="font-bold text-gray-800 text-sm mt-0.5 break-words">
+                                            {isUrl(selectedEvent.venue) ? 'Online / Virtual Meeting (Google Meet)' : selectedEvent.venue}
+                                        </p>
                                     </div>
                                 </div>
                             )}
 
-                            {selectedEvent.panelMembers && (
-                                <div className="flex items-start gap-3 p-3.5 bg-white border border-gray-100 rounded-2xl shadow-sm">
-                                    <div className="p-2 bg-purple-50 rounded-xl text-purple-600 mt-0.5">
+                            {selectedEvent.panelMembers && typeof selectedEvent.panelMembers === 'string' && selectedEvent.panelMembers.trim() !== '' && (
+                                <div className="flex items-start gap-3 p-3.5 bg-white border border-gray-100 rounded-2xl shadow-sm w-full box-border">
+                                    <div className="p-2 bg-purple-50 rounded-xl text-purple-600 mt-0.5 shrink-0">
                                         <Users className="w-4 h-4" />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0 flex-1">
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Panel Members / Committee</p>
-                                        <p className="font-semibold text-gray-800 text-sm mt-0.5">{selectedEvent.panelMembers}</p>
+                                        <p className="font-semibold text-gray-800 text-sm mt-0.5 break-words">{selectedEvent.panelMembers}</p>
                                     </div>
                                 </div>
                             )}
 
-                            {(selectedEvent.notes || selectedEvent.description) && (
-                                <div className="flex items-start gap-3 p-3.5 bg-blue-50/50 border border-blue-100 rounded-2xl">
-                                    <div className="p-2 bg-blue-100 rounded-xl text-blue-700 mt-0.5">
+                            {(selectedEvent.notes || selectedEvent.description) && typeof (selectedEvent.notes || selectedEvent.description) === 'string' && (selectedEvent.notes || selectedEvent.description).trim() !== '' && (
+                                <div className="flex items-start gap-3 p-3.5 bg-blue-50/50 border border-blue-100 rounded-2xl w-full box-border">
+                                    <div className="p-2 bg-blue-100 rounded-xl text-blue-700 mt-0.5 shrink-0">
                                         <FileText className="w-4 h-4" />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0 flex-1">
                                         <p className="text-xs font-bold text-blue-900 uppercase tracking-wider">HR Notes & Instructions</p>
-                                        <p className="text-blue-950 font-medium text-xs leading-relaxed mt-1">
+                                        <p className="text-blue-950 font-medium text-xs leading-relaxed mt-1 break-words">
                                             {selectedEvent.notes || selectedEvent.description}
                                         </p>
                                     </div>
