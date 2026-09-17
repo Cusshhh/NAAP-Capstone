@@ -40,7 +40,7 @@ class ApplicantController extends Controller
 
             if ($existingApp) {
                 return redirect()->back()->withErrors([
-                    'error' => "You already have an active application for '{$validated['job_title']}'. Only 1 active application per position is permitted."
+                    'error' => "You already have an active application for '{$validated['job_title']}'. Only 1 active application per position is permitted.",
                 ])->withInput();
             }
 
@@ -84,7 +84,7 @@ class ApplicantController extends Controller
             try {
                 Mail::to($application->email)->send(new ApplicationSubmittedMail($application));
             } catch (\Throwable $mailEx) {
-                Log::error("Failed sending ApplicationSubmittedMail to {$application->email}: " . $mailEx->getMessage());
+                Log::error("Failed sending ApplicationSubmittedMail to {$application->email}: ".$mailEx->getMessage());
             }
 
             try {

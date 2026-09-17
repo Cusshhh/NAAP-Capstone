@@ -13,9 +13,9 @@ class PasswordController extends Controller
     /**
      * Show the user's password settings page.
      */
-    public function edit()
+    public function edit(): Response
     {
-        return redirect('/settings/profile#password');
+        return Inertia::render('settings/password');
     }
 
     /**

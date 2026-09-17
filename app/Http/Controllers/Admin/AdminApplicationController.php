@@ -237,7 +237,7 @@ class AdminApplicationController extends Controller
                 $rowNum = 1;
                 foreach ($applications as $app) {
                     $dyn = $app->dynamic_responses ?? [];
-                    
+
                     // Format Eligibilities
                     $eligibilities = isset($dyn['eligibilities']) && is_array($dyn['eligibilities'])
                         ? implode('; ', $dyn['eligibilities'])
@@ -255,17 +255,17 @@ class AdminApplicationController extends Controller
 
                     // Format Uploaded Standard Documents
                     $uploadedDocsList = isset($dyn['documents']) && is_array($dyn['documents'])
-                        ? implode(', ', array_map(fn($d) => is_array($d) ? ($d['name'] ?? 'Document') : $d, $dyn['documents']))
+                        ? implode(', ', array_map(fn ($d) => is_array($d) ? ($d['name'] ?? 'Document') : $d, $dyn['documents']))
                         : 'N/A';
 
                     // Format Custom File Uploads
                     $customFilesList = 'None';
-                    if (!empty($app->custom_file_responses) && is_array($app->custom_file_responses)) {
+                    if (! empty($app->custom_file_responses) && is_array($app->custom_file_responses)) {
                         $customFilesList = implode(', ', array_keys($app->custom_file_responses));
                     }
 
                     // Format Documents to Follow
-                    $toFollow = is_array($app->to_follow_docs) && !empty($app->to_follow_docs)
+                    $toFollow = is_array($app->to_follow_docs) && ! empty($app->to_follow_docs)
                         ? implode(', ', $app->to_follow_docs)
                         : 'None';
 
@@ -336,7 +336,7 @@ class AdminApplicationController extends Controller
 
             try {
                 \App\Models\ActivityLog::write(
-                    "Application Deleted",
+                    'Application Deleted',
                     "{$applicantName}'s application for {$jobTitle} was deleted",
                     'Villamor Campus',
                     'Trash2',
@@ -354,4 +354,3 @@ class AdminApplicationController extends Controller
         }
     }
 }
-

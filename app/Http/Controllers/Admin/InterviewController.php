@@ -60,11 +60,11 @@ class InterviewController extends Controller
             }
 
             // Send email notification to applicant if enabled
-            if ($interview->notify_applicant && !empty($interview->applicant_email)) {
+            if ($interview->notify_applicant && ! empty($interview->applicant_email)) {
                 try {
                     Mail::to($interview->applicant_email)->send(new InterviewScheduledMail($interview));
                 } catch (\Throwable $mailEx) {
-                    Log::error("Failed sending interview notification to {$interview->applicant_email}: " . $mailEx->getMessage());
+                    Log::error("Failed sending interview notification to {$interview->applicant_email}: ".$mailEx->getMessage());
                 }
             }
 
@@ -109,11 +109,11 @@ class InterviewController extends Controller
             $interview->update($validated);
 
             // Send email notification if enabled
-            if ($interview->notify_applicant && !empty($interview->applicant_email)) {
+            if ($interview->notify_applicant && ! empty($interview->applicant_email)) {
                 try {
                     Mail::to($interview->applicant_email)->send(new InterviewScheduledMail($interview));
                 } catch (\Throwable $mailEx) {
-                    Log::error("Failed sending interview update notification to {$interview->applicant_email}: " . $mailEx->getMessage());
+                    Log::error("Failed sending interview update notification to {$interview->applicant_email}: ".$mailEx->getMessage());
                 }
             }
 

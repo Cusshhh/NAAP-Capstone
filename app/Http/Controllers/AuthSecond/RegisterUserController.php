@@ -36,7 +36,7 @@ class RegisterUserController extends Controller
         try {
             event(new Registered($user));
         } catch (\Throwable $e) {
-            \Log::warning('Email verification event skipped: ' . $e->getMessage());
+            \Log::warning('Email verification event skipped: '.$e->getMessage());
         }
 
         Auth::login($user);
