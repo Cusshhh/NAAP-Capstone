@@ -1485,7 +1485,12 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                         >
                                             <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden ring-2 ring-white/50 group-hover:ring-[#ffdd59] transition-all shrink-0">
                                                 {profileImage ? (
-                                                    <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                                                    <img
+                                                        src={profileImage}
+                                                        alt=""
+                                                        className="w-full h-full object-cover"
+                                                        onError={() => setProfileImage(null)}
+                                                    />
                                                 ) : (
                                                     user.name.charAt(0).toUpperCase()
                                                 )}
@@ -1979,7 +1984,12 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                     <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                                         <div className="w-24 h-24 bg-[#193153] rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg ring-4 ring-gray-100 overflow-hidden">
                                             {profileImage ? (
-                                                <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                                                <img
+                                                    src={profileImage}
+                                                    alt=""
+                                                    className="w-full h-full object-cover"
+                                                    onError={() => setProfileImage(null)}
+                                                />
                                             ) : (
                                                 user.name.charAt(0).toUpperCase()
                                             )}

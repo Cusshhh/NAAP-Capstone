@@ -157,7 +157,12 @@ export default function Profile({ mustVerifyEmail, status }: any) {
                                     title={avatarPreview ? 'Click to view full profile picture' : user.name}
                                 >
                                     {avatarPreview ? (
-                                        <img src={avatarPreview} alt={user.name} className="w-full h-full object-cover" />
+                                        <img
+                                            src={avatarPreview}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                            onError={() => setAvatarPreview(null)}
+                                        />
                                     ) : (
                                         user.name ? user.name.charAt(0) : 'A'
                                     )}
