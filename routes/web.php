@@ -616,6 +616,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/activity-log', function () {
             return Inertia::render('Admin/ActivityLog', [
+                'dbActivityLogs' => \App\Models\ActivityLog::with('user')->latest()->get(),
                 'dbApplications' => \App\Models\Application::select('id', 'applicant_name', 'job_title', 'status', 'created_at')->latest()->get()->map(function ($app) {
                     return [
                         'id' => $app->id,

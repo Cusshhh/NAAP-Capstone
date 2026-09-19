@@ -23,7 +23,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getActivities } from '@/data/mockData';
 import AdminLayout from '@/layouts/AdminLayout';
 
-export default function ActivityLog({ auth, dbApplications = [], dbJobs = [] }: { auth: any, dbApplications?: any[], dbJobs?: any[] }) {
+const formatTimeAgo = (dateStr?: string) => {
+    if (!dateStr) return 'Recent';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'Recent';
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+export default function ActivityLog({ auth, dbActivityLogs = [], dbApplications = [], dbJobs = [] }: { auth: any, dbActivityLogs?: any[], dbApplications?: any[], dbJobs?: any[] }) {
     const admin = auth?.user || { name: 'Admin' };
     const [searchTerm, setSearchTerm] = useState('');
     const [typeFilter, setTypeFilter] = useState('all');
@@ -31,43 +46,55 @@ export default function ActivityLog({ auth, dbApplications = [], dbJobs = [] }: 
 
     React.useEffect(() => {
         const loadLogs = async () => {
+            let fetchedLogs = dbActivityLogs;
             try {
                 const response = await axios.get('/admin/activity-logs');
-                const dbLogs = (response.data || []).map((log: any) => ({
-                    id: log.id,
+                if (Array.isArray(response.data) && response.data.length > 0) {
+                    fetchedLogs = response.data;
+                }
+            } catch (e) {
+                console.warn("Using SSR dbActivityLogs fallback", e);
+            }
+
+            const dbLogs = (fetchedLogs || []).map((log: any) => {
+                const timestamp = log.created_at ? new Date(log.created_at).getTime() : Date.now();
+                return {
+                    id: `db_log_${log.id}`,
                     action: log.action || 'Activity Logged',
                     details: log.details || '',
-                    time: log.created_at ? getTimeAgo(log.created_at) : 'N/A',
+                    time: formatTimeAgo(log.created_at),
                     date: log.created_at,
                     icon: log.icon || 'Shield',
-                    color: log.color || 'text-blue-500 bg-blue-100',
+                    color: log.color || 'text-blue-600 bg-blue-50 border border-blue-200',
                     campus: 'Villamor Air Base, Pasay City',
-                    timestamp: new Date(log.created_at).getTime(),
-                }));
-                const generatedLogs = getActivities(dbApplications, dbJobs).map(item => ({
-                    ...item,
-                    campus: 'Villamor Air Base, Pasay City'
-                }));
-                // Combine and de-duplicate by action & details & date
-                const combined = [...dbLogs, ...generatedLogs].reduce((acc: any[], item: any) => {
-                    const duplicate = acc.some(x => 
-                        x.action === item.action && 
-                        x.details === item.details &&
-                        x.date === item.date
-                    );
-                    if (!duplicate) {
-                        acc.push(item);
-                    }
-                    return acc;
-                }, []);
-                setActivities(combined);
-            } catch (e) {
-                console.error("Failed to load DB activity logs", e);
-                setActivities(getActivities(dbApplications, dbJobs));
-            }
+                    timestamp: !isNaN(timestamp) ? timestamp : Date.now(),
+                };
+            });
+
+            const generatedLogs = getActivities(dbApplications, dbJobs).map(item => ({
+                ...item,
+                timestamp: item.date ? new Date(item.date).getTime() : 0,
+                campus: 'Villamor Air Base, Pasay City'
+            }));
+
+            const combined = [...dbLogs, ...generatedLogs].reduce((acc: any[], item: any) => {
+                const duplicate = acc.some(x => 
+                    x.action === item.action && 
+                    x.details === item.details
+                );
+                if (!duplicate) {
+                    acc.push(item);
+                }
+                return acc;
+            }, []);
+
+            // Sort strictly descending by timestamp so latest live database activity logs are AT THE TOP!
+            combined.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            setActivities(combined);
         };
         loadLogs();
-    }, [dbApplications, dbJobs]);
+    }, [dbActivityLogs, dbApplications, dbJobs]);
 
     const getIcon = (iconName: string) => {
         switch (iconName) {

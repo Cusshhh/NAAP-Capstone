@@ -80,25 +80,23 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
 
     const editId = params.get('edit');
     if (editId) {
-      const allJobs = getJobs();
-      const jobToEdit = allJobs.find((j: any) => String(j.id) === String(editId));
+      const activeJobsList = (serverJobs && serverJobs.length > 0) ? serverJobs : (jobs.length > 0 ? jobs : getJobs());
+      const jobToEdit = activeJobsList.find((j: any) => String(j.id) === String(editId));
       if (jobToEdit) {
-        // We need to wait a tick or call handleEdit directly, but handleEdit relies on state defined below?
-        // Actually, handleEdit is defined below this useEffect. We should move this logic or duplicated it.
-        // It is safer to duplicate the setting logic here to avoid hoisting issues dependent on definition order 
-        // or simply move the useEffect to after handleEdit definition.
-        // However, React function components hoist standard function definitions but consts are not hoisted.
-        // Let's just set the state directly here mirroring handleEdit.
         setNewJob({
-          staffing_id: null,
-          title: jobToEdit.title,
-          department: jobToEdit.department,
-          employmentType: jobToEdit.employmentType,
-          location: jobToEdit.location,
+          staffing_id: jobToEdit.staffing_id || null,
+          title: jobToEdit.title || '',
+          department: jobToEdit.department || '',
+          employmentType: jobToEdit.employmentType || jobToEdit.employment_type || 'Full-time',
+          location: jobToEdit.location || 'Villamor Air Base, Pasay City',
           description: jobToEdit.description || '',
-          requirements: Array.isArray(jobToEdit.requirements) ? jobToEdit.requirements.join('\n') : (jobToEdit.requirements || ''),
-          responsibilities: Array.isArray(jobToEdit.responsibilities) ? jobToEdit.responsibilities.join('\n') : (jobToEdit.responsibilities || ''),
-          salaryGrade: jobToEdit.salaryGrade || 1,
+          requirements: Array.isArray(jobToEdit.requirements)
+            ? jobToEdit.requirements.map((r: any) => (typeof r === 'string' ? r : (r.title || r.name || ''))).join('\n')
+            : (jobToEdit.requirements || ''),
+          responsibilities: Array.isArray(jobToEdit.responsibilities)
+            ? jobToEdit.responsibilities.join('\n')
+            : (jobToEdit.responsibilities || ''),
+          salaryGrade: jobToEdit.salaryGrade || jobToEdit.salary_grade || 1,
           deadline: jobToEdit.deadline || '',
           status: jobToEdit.status || 'Open',
           campus_id: jobToEdit.campus_id || '',
@@ -115,7 +113,7 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
-  }, []);
+  }, [serverJobs, jobs]);
   const [newJob, setNewJob] = useState({
     staffing_id: '' as string | null,
     title: '',
