@@ -25,7 +25,7 @@ COPY . .
 
 # Install dependencies (including dev dependencies for seeders/faker) and build assets
 RUN composer install --optimize-autoloader --no-interaction
-RUN npm ci && npm run build
+RUN npm ci --no-audit --no-fund && npm run build && npm cache clean --force
 
 # Set permissions
 RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache

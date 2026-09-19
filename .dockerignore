@@ -1,0 +1,12 @@
+.git
+.gitignore
+node_modules
+vendor
+public/storage
+public/build
+storage/*.key
+.env
+.env.*
+.phpunit.cache
+npm-debug.log
+yarn-error.log
