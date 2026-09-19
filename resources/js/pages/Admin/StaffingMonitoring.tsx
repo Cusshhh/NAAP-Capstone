@@ -2,7 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import {
     Users, Briefcase, FileText, Award, LogOut, Shield,
     Search, Filter, MapPin, Plus, ArrowRight, CheckCircle,
-    XCircle, AlertCircle, Building2, Layout
+    XCircle, AlertCircle, Building2, Layout, Trash2
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
@@ -12,7 +12,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getStaffingData } from '@/data/mockData';
 import AdminLayout from '@/layouts/AdminLayout';
 
 export default function StaffingMonitoring({ auth, staffingData: serverStaffing }: { auth: any, staffingData: any[] }) {
@@ -27,6 +26,12 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
     const [newSg, setNewSg] = useState('11');
     const [newStatus, setNewStatus] = useState('Unfilled');
 
+    React.useEffect(() => {
+        if (serverStaffing) {
+            setStaffingData(serverStaffing);
+        }
+    }, [serverStaffing]);
+
     const handleAddPositionSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!newOffice.trim() || !newPosition.trim()) {
@@ -34,30 +39,46 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
             return;
         }
 
-        const newStaffingItem = {
-            id: Date.now(),
+        router.post('/admin/staffing', {
             office: newOffice.trim(),
             position: newPosition.trim(),
             sg: parseInt(newSg) || 11,
             status: newStatus,
             campus: 'Villamor Air Base, Pasay City'
-        };
+        }, {
+            onSuccess: () => {
+                toast.success(`New Position "${newPosition}" added!`);
+                setIsAddModalOpen(false);
+                setNewOffice('');
+                setNewPosition('');
+                setNewSg('11');
+                setNewStatus('Unfilled');
+            },
+            onError: () => {
+                toast.error('Failed to add position.');
+            }
+        });
+    };
 
-        const updatedList = [newStaffingItem, ...staffingData];
-        setStaffingData(updatedList);
+    const handleClearAll = () => {
+        if (confirm('Are you sure you want to clear ALL staffing positions from the database?')) {
+            router.post('/admin/staffing/clear-all', {}, {
+                onSuccess: () => {
+                    setStaffingData([]);
+                    toast.success('All staffing positions cleared successfully!');
+                }
+            });
+        }
+    };
 
-        try {
-            const currentCache = JSON.parse(localStorage.getItem('mock_staffing_custom') || '[]');
-            localStorage.setItem('mock_staffing_custom', JSON.stringify([newStaffingItem, ...currentCache]));
-        } catch (err) {}
-
-        toast.success(`New Position "${newPosition}" added!`);
-        setIsAddModalOpen(false);
-
-        setNewOffice('');
-        setNewPosition('');
-        setNewSg('11');
-        setNewStatus('Unfilled');
+    const handleDeletePosition = (id: number) => {
+        if (confirm('Delete this staffing position?')) {
+            router.delete(`/admin/staffing/${id}`, {
+                onSuccess: () => {
+                    toast.success('Position deleted.');
+                }
+            });
+        }
     };
 
     const filteredData = staffingData.filter(item => {
@@ -68,8 +89,6 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
     });
 
     const handleCreateJob = (item: any) => {
-        // Redirect to Job Management with pre-filled state
-        // In a real Inertia app, you might pass state or use query params
         toast.info(`Preparing job posting for ${item.position}...`);
         setTimeout(() => {
             router.get('/admin/jobs', {
@@ -81,8 +100,6 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
             });
         }, 1000);
     };
-
-
 
     const stats = {
         total: staffingData.length,
@@ -100,6 +117,16 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                         <p className="text-gray-500">Track and manage staffing requirements for NAAP.</p>
                     </div>
                     <div className="flex gap-2">
+                        {staffingData.length > 0 && (
+                            <Button
+                                onClick={handleClearAll}
+                                variant="outline"
+                                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-medium gap-2"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Clear All Positions
+                            </Button>
+                        )}
                         <Button
                             onClick={() => setIsAddModalOpen(true)}
                             className="bg-[#193153] hover:bg-[#193153]/90 text-white font-medium gap-2 shadow-sm"
@@ -226,7 +253,7 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                                                         {item.status}
                                                     </Badge>
                                                 </td>
-                                                <td className="px-6 py-4 text-right">
+                                                <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
                                                     {item.status === 'Unfilled' && (
                                                         <Button
                                                             size="sm"
@@ -237,9 +264,15 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                                                             <Plus className="w-3 h-3 mr-1" /> Post Job
                                                         </Button>
                                                     )}
-                                                    {item.status === 'Filled' && (
-                                                        <span className="text-xs text-gray-400">---</span>
-                                                    )}
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5"
+                                                        onClick={() => handleDeletePosition(item.id)}
+                                                        title="Delete Position"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
                                                 </td>
                                             </tr>
                                         ))
