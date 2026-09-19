@@ -541,17 +541,17 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
                   <Building2 className="h-5 w-5 text-blue-600" />
-                  {editingId ? "Edit Job Posting (CSC Standard)" : "Create New Job Posting (CSC Standard)"}
+                  {editingId ? "Edit Job Posting" : "Create New Job Posting"}
                 </DialogTitle>
               </DialogHeader>
 
               <div className="space-y-5 py-2">
 
-                {/* Section 1: Position & Plantilla Information */}
+                {/* Section 1: Position Details */}
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-4">
                   <h4 className="text-xs uppercase font-bold text-[#193153] tracking-wider flex items-center gap-2">
                     <Briefcase className="h-4 w-4 text-blue-600" />
-                    1. Plantilla & Position Details
+                    1. Position Details
                   </h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -566,7 +566,7 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
                       />
                     </div>
                     <div>
-                      <Label htmlFor="plantilla_item" className="text-xs font-semibold text-gray-700">Plantilla Item No.</Label>
+                      <Label htmlFor="plantilla_item" className="text-xs font-semibold text-gray-700">Item No.</Label>
                       <Input
                         id="plantilla_item"
                         value={newJob.plantilla_item || ''}
@@ -653,16 +653,13 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
                   </div>
                 </div>
 
-                {/* Section 2: Civil Service Qualification Standards (4 Core Criteria for AI Scoring) */}
+                {/* Section 2: Qualification Standards */}
                 <div className="bg-blue-50/60 border border-blue-200 p-4 rounded-xl space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs uppercase font-bold text-blue-900 tracking-wider flex items-center gap-2">
                       <Shield className="h-4 w-4 text-blue-600" />
-                      2. CSC Qualification Standards (AI Candidate Scoring Criteria)
+                      2. Qualification Standards
                     </h4>
-                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 text-[10px] font-bold">
-                      CSC Standard
-                    </Badge>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
