@@ -124,7 +124,7 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
           title: jobToEdit.title || '',
           department: jobToEdit.department || '',
           plantilla_item: parsedQs.plantilla_item,
-          employmentType: jobToEdit.employmentType || jobToEdit.employment_type || 'Permanent (Plantilla)',
+          employmentType: jobToEdit.employmentType || jobToEdit.employment_type || 'Full-time',
           location: jobToEdit.location || 'Villamor Air Base, Pasay City',
           description: jobToEdit.description || '',
           qs_education: parsedQs.qs_education,
@@ -162,7 +162,7 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
     title: '',
     department: '',
     plantilla_item: '',
-    employmentType: 'Permanent (Plantilla)',
+    employmentType: 'Full-time',
     location: 'Villamor Air Base, Pasay City',
     description: '',
     qs_education: "Bachelor's Degree relevant to the job",
@@ -275,7 +275,7 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
       title: job.title || '',
       department: job.department || '',
       plantilla_item: parsedQs.plantilla_item,
-      employmentType: job.employmentType || job.employment_type || 'Permanent (Plantilla)',
+      employmentType: job.employmentType || job.employment_type || 'Full-time',
       location: job.location || 'Villamor Air Base, Pasay City',
       description: job.description || '',
       qs_education: parsedQs.qs_education,
@@ -636,7 +636,7 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Permanent (Plantilla)">Permanent (Plantilla)</SelectItem>
+                          <SelectItem value="Full-time">Full-time</SelectItem>
                           <SelectItem value="Contract of Service (COS)">Contract of Service (COS)</SelectItem>
                           <SelectItem value="Job Order (JO)">Job Order (JO)</SelectItem>
                           <SelectItem value="Part-time">Part-time</SelectItem>

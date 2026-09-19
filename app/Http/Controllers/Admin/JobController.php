@@ -67,7 +67,7 @@ class JobController extends Controller
                 'staffing_id' => 'nullable|exists:staffing_positions,id',
                 'title' => 'required|string|max:255',
                 'department' => 'required|string|max:255',
-                'employmentType' => 'required|string|in:Full-time,Part-time,Contract',
+                'employmentType' => 'required|string',
                 'description' => 'required|string',
                 'responsibilities' => 'nullable|array',
                 'requirements' => 'nullable|array',
@@ -113,7 +113,7 @@ class JobController extends Controller
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
                 'department' => 'required|string|max:255',
-                'employmentType' => 'required|string|in:Full-time,Part-time,Contract',
+                'employmentType' => 'required|string',
                 'description' => 'required|string',
                 'responsibilities' => 'nullable|array',
                 'requirements' => 'nullable|array',
