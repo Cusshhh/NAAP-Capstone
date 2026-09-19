@@ -19,6 +19,41 @@ import { Textarea } from '@/components/ui/textarea';
 import { mockJobs, getJobs, SALARY_GRADE_MAP } from '@/data/mockData';
 import AdminLayout from '@/layouts/AdminLayout';
 
+function extractQsFromJob(job: any) {
+  let edu = job.qs_education || '';
+  let exp = job.qs_experience || '';
+  let elig = job.qs_eligibility || '';
+  let trn = job.qs_training || '';
+
+  if (!edu || !exp || !elig || !trn) {
+    const reqs: string[] = Array.isArray(job.requirements)
+      ? job.requirements.map((r: any) => typeof r === 'string' ? r : (r.title || r.name || ''))
+      : (typeof job.requirements === 'string' ? job.requirements.split('\n') : []);
+
+    for (const r of reqs) {
+      const lower = r.toLowerCase();
+      if (!edu && (lower.includes('education:') || lower.includes('degree') || lower.includes('bachelor') || lower.includes('master') || lower.includes('doctor') || lower.includes('llb') || lower.includes('law'))) {
+        edu = r.replace(/^Education:\s*/i, '').trim();
+      } else if (!exp && (lower.includes('experience:') || lower.includes('year') || lower.includes('work') || lower.includes('experience'))) {
+        exp = r.replace(/^Experience:\s*/i, '').trim();
+      } else if (!elig && (lower.includes('eligibility:') || lower.includes('career service') || lower.includes('csc') || lower.includes('ra 1080') || lower.includes('prc') || lower.includes('caap') || lower.includes('bar'))) {
+        elig = r.replace(/^Eligibility:\s*/i, '').trim();
+      } else if (!trn && (lower.includes('training:') || lower.includes('hour') || lower.includes('seminar') || lower.includes('training'))) {
+        trn = r.replace(/^Training:\s*/i, '').trim();
+      }
+    }
+  }
+
+  return {
+    qs_education: edu || "Bachelor's Degree relevant to the job",
+    qs_experience: exp || "Two (2) years of Relevant Experience",
+    qs_eligibility: elig || "Career Service Professional/ Second level eligibility",
+    qs_training: trn || "Eight (8) Hours of Relevant Training",
+    plantilla_item: job.plantilla_item || job.plantilla_item_no || '',
+    competency: job.competency || '',
+  };
+}
+
 export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: serverDbDepartments, campuses }: { auth: any, jobs: any[], dbDepartments?: any[], campuses?: any[] }) {
   const admin = auth?.user || { name: 'Admin' };
   const [jobs, setJobs] = useState<any[]>(serverJobs || []);
@@ -83,20 +118,27 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
       const activeJobsList = (serverJobs && serverJobs.length > 0) ? serverJobs : (jobs.length > 0 ? jobs : getJobs());
       const jobToEdit = activeJobsList.find((j: any) => String(j.id) === String(editId));
       if (jobToEdit) {
+        const parsedQs = extractQsFromJob(jobToEdit);
         setNewJob({
           staffing_id: jobToEdit.staffing_id || null,
           title: jobToEdit.title || '',
           department: jobToEdit.department || '',
-          employmentType: jobToEdit.employmentType || jobToEdit.employment_type || 'Full-time',
+          plantilla_item: parsedQs.plantilla_item,
+          employmentType: jobToEdit.employmentType || jobToEdit.employment_type || 'Permanent (Plantilla)',
           location: jobToEdit.location || 'Villamor Air Base, Pasay City',
           description: jobToEdit.description || '',
+          qs_education: parsedQs.qs_education,
+          qs_experience: parsedQs.qs_experience,
+          qs_eligibility: parsedQs.qs_eligibility,
+          qs_training: parsedQs.qs_training,
+          competency: parsedQs.competency,
           requirements: Array.isArray(jobToEdit.requirements)
             ? jobToEdit.requirements.map((r: any) => (typeof r === 'string' ? r : (r.title || r.name || ''))).join('\n')
             : (jobToEdit.requirements || ''),
           responsibilities: Array.isArray(jobToEdit.responsibilities)
             ? jobToEdit.responsibilities.join('\n')
             : (jobToEdit.responsibilities || ''),
-          salaryGrade: jobToEdit.salaryGrade || jobToEdit.salary_grade || 1,
+          salaryGrade: jobToEdit.salaryGrade || jobToEdit.salary_grade || 19,
           deadline: jobToEdit.deadline || '',
           status: jobToEdit.status || 'Open',
           campus_id: jobToEdit.campus_id || '',
@@ -114,16 +156,23 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
       }
     }
   }, [serverJobs, jobs]);
+
   const [newJob, setNewJob] = useState({
     staffing_id: '' as string | null,
     title: '',
     department: '',
-    employmentType: 'Full-time',
+    plantilla_item: '',
+    employmentType: 'Permanent (Plantilla)',
     location: 'Villamor Air Base, Pasay City',
     description: '',
+    qs_education: "Bachelor's Degree relevant to the job",
+    qs_experience: "Two (2) years of Relevant Experience",
+    qs_eligibility: "Career Service Professional/ Second level eligibility",
+    qs_training: "Eight (8) Hours of Relevant Training",
+    competency: '',
     requirements: '',
     responsibilities: '',
-    salaryGrade: 1,
+    salaryGrade: 19,
     deadline: '',
     status: 'Open',
     campus_id: '' as string | number,
@@ -166,11 +215,29 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
       }
     }
 
+    const compiledRequirements = [
+      newJob.qs_education ? `Education: ${newJob.qs_education}` : null,
+      newJob.qs_experience ? `Experience: ${newJob.qs_experience}` : null,
+      newJob.qs_eligibility ? `Eligibility: ${newJob.qs_eligibility}` : null,
+      newJob.qs_training ? `Training: ${newJob.qs_training}` : null,
+      ...(typeof newJob.requirements === 'string' ? newJob.requirements.split('\n').filter(r => r.trim() !== '') : []),
+    ].filter(Boolean);
+
+    const dynamicRequirements = [
+      { id: 'qs_edu', category: 'education', requirement: 'Educational Degree Requirement', required_value: newJob.qs_education || "Bachelor's Degree relevant to the job", mandatory: true },
+      { id: 'qs_exp', category: 'experience', requirement: 'Work Experience Requirement', required_value: newJob.qs_experience || "Two (2) years of Relevant Experience", mandatory: true },
+      { id: 'qs_elig', category: 'eligibility', requirement: 'Civil Service / License Eligibility', required_value: newJob.qs_eligibility || "Career Service Professional/ Second level eligibility", mandatory: true },
+      { id: 'qs_trn', category: 'training', requirement: 'Training & L&D Requirement', required_value: newJob.qs_training || "Eight (8) Hours of Relevant Training", mandatory: false },
+    ];
+
     const payload = {
       ...newJob,
       campus_id: finalCampusId,
-      requirements: newJob.requirements.split('\n').filter(r => r.trim() !== ''),
-      responsibilities: newJob.responsibilities.split('\n').filter(r => r.trim() !== ''),
+      plantilla_item: newJob.plantilla_item || '',
+      competency: newJob.competency || '',
+      requirements: compiledRequirements,
+      dynamic_requirements: dynamicRequirements,
+      responsibilities: typeof newJob.responsibilities === 'string' ? newJob.responsibilities.split('\n').filter(r => r.trim() !== '') : newJob.responsibilities,
     };
 
     if (editingId) {
@@ -201,16 +268,23 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
   };
 
   const handleEdit = (job: any) => {
+    const parsedQs = extractQsFromJob(job);
     setNewJob({
       staffing_id: job.staffing_id || null,
-      title: job.title,
-      department: job.department,
-      employmentType: job.employmentType,
-      location: job.location,
+      title: job.title || '',
+      department: job.department || '',
+      plantilla_item: parsedQs.plantilla_item,
+      employmentType: job.employmentType || job.employment_type || 'Permanent (Plantilla)',
+      location: job.location || 'Villamor Air Base, Pasay City',
       description: job.description || '',
+      qs_education: parsedQs.qs_education,
+      qs_experience: parsedQs.qs_experience,
+      qs_eligibility: parsedQs.qs_eligibility,
+      qs_training: parsedQs.qs_training,
+      competency: parsedQs.competency,
       requirements: Array.isArray(job.requirements) ? job.requirements.join('\n') : (job.requirements || ''),
       responsibilities: Array.isArray(job.responsibilities) ? job.responsibilities.join('\n') : (job.responsibilities || ''),
-      salaryGrade: job.salaryGrade || 1,
+      salaryGrade: job.salaryGrade || job.salary_grade || 19,
       deadline: job.deadline || '',
       status: job.status || 'Open',
       campus_id: job.campus_id || '',
@@ -463,171 +537,231 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
                   Create New Job
                 </Button>
               </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{editingId ? "Edit Job Posting" : "Create New Job Posting"}</DialogTitle>
+                <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-blue-600" />
+                  {editingId ? "Edit Job Posting (CSC Standard)" : "Create New Job Posting (CSC Standard)"}
+                </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="title">Job Title *</Label>
-                    <Input
-                      id="title"
-                      value={newJob.title}
-                      onChange={(e) => setNewJob({ ...newJob, title: e.target.value })}
-                      placeholder="e.g., Flight Instructor"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="department">Program / Department *</Label>
-                    <Input
-                      id="department"
-                      value={newJob.department}
-                      onChange={(e) => setNewJob({ ...newJob, department: e.target.value })}
-                      placeholder="e.g., BS Aircraft Maintenance Technology (BSAMT)"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="salaryGrade">Salary Grade *</Label>
-                    <div className="flex items-center space-x-2">
-                      <Select
-                        value={String(newJob.salaryGrade)}
-                        onValueChange={(value) => setNewJob({ ...newJob, salaryGrade: Number(value) })}
-                      >
-                        <SelectTrigger id="salaryGrade">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.keys(SALARY_GRADE_MAP).map((grade) => (
-                            <SelectItem key={grade} value={grade}>
-                              SG {grade}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <div className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-2 rounded border border-blue-100 whitespace-nowrap">
-                        ₱{SALARY_GRADE_MAP[newJob.salaryGrade]?.toLocaleString()}
+              <div className="space-y-5 py-2">
+
+                {/* Section 1: Position & Plantilla Information */}
+                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-4">
+                  <h4 className="text-xs uppercase font-bold text-[#193153] tracking-wider flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 text-blue-600" />
+                    1. Plantilla & Position Details
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="title" className="text-xs font-semibold text-gray-700">Position Title *</Label>
+                      <Input
+                        id="title"
+                        value={newJob.title}
+                        onChange={(e) => setNewJob({ ...newJob, title: e.target.value })}
+                        placeholder="e.g. Information Technology Officer I"
+                        className="mt-1 text-sm bg-white"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="plantilla_item" className="text-xs font-semibold text-gray-700">Plantilla Item No.</Label>
+                      <Input
+                        id="plantilla_item"
+                        value={newJob.plantilla_item || ''}
+                        onChange={(e) => setNewJob({ ...newJob, plantilla_item: e.target.value })}
+                        placeholder="e.g. PSCAB-ITO1-36-2023"
+                        className="mt-1 text-sm bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="department" className="text-xs font-semibold text-gray-700">Place of Assignment / Department *</Label>
+                      <Input
+                        id="department"
+                        value={newJob.department}
+                        onChange={(e) => setNewJob({ ...newJob, department: e.target.value })}
+                        placeholder="e.g. ICT UNIT, VAB CAMPUS - PASAY CITY"
+                        className="mt-1 text-sm bg-white"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="salaryGrade" className="text-xs font-semibold text-gray-700">Salary / Job / Pay Grade *</Label>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Select
+                          value={String(newJob.salaryGrade)}
+                          onValueChange={(value) => setNewJob({ ...newJob, salaryGrade: Number(value) })}
+                        >
+                          <SelectTrigger id="salaryGrade" className="bg-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.keys(SALARY_GRADE_MAP).map((grade) => (
+                              <SelectItem key={grade} value={grade}>
+                                SG {grade}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-2 rounded-md border border-blue-200 whitespace-nowrap">
+                          ₱{SALARY_GRADE_MAP[newJob.salaryGrade]?.toLocaleString()}/mo
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div>
-                    <Label htmlFor="employmentType">Employment Type</Label>
 
-                    <Select value={newJob.employmentType} onValueChange={(value) => setNewJob({ ...newJob, employmentType: value })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Full-time">Full-time</SelectItem>
-                        <SelectItem value="Part-time">Part-time</SelectItem>
-                        <SelectItem value="Contract">Contract</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="location">Location</Label>
-                    <Input
-                      id="location"
-                      value={newJob.location}
-                      onChange={(e) => setNewJob({ ...newJob, location: e.target.value })}
-                      placeholder="e.g. Villamor Air Base, Pasay City"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="status">Job Status</Label>
-                    <Select value={newJob.status} onValueChange={(value) => setNewJob({ ...newJob, status: value })}>
-                      <SelectTrigger id="status">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Open">Open</SelectItem>
-                        <SelectItem value="Closed">Closed</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="employmentType" className="text-xs font-semibold text-gray-700">Employment Type</Label>
+                      <Select value={newJob.employmentType} onValueChange={(value) => setNewJob({ ...newJob, employmentType: value })}>
+                        <SelectTrigger className="mt-1 bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Permanent (Plantilla)">Permanent (Plantilla)</SelectItem>
+                          <SelectItem value="Contract of Service (COS)">Contract of Service (COS)</SelectItem>
+                          <SelectItem value="Job Order (JO)">Job Order (JO)</SelectItem>
+                          <SelectItem value="Part-time">Part-time</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="location" className="text-xs font-semibold text-gray-700">Location / Campus</Label>
+                      <Input
+                        id="location"
+                        value={newJob.location}
+                        onChange={(e) => setNewJob({ ...newJob, location: e.target.value })}
+                        placeholder="e.g. Villamor Air Base, Pasay City"
+                        className="mt-1 text-sm bg-white"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="status" className="text-xs font-semibold text-gray-700">Job Status</Label>
+                      <Select value={newJob.status} onValueChange={(value) => setNewJob({ ...newJob, status: value })}>
+                        <SelectTrigger id="status" className="mt-1 bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Open">Open</SelectItem>
+                          <SelectItem value="Closed">Closed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="description">Job Description *</Label>
-                  <Textarea
-                    id="description"
-                    rows={4}
-                    value={newJob.description}
-                    onChange={(e) => setNewJob({ ...newJob, description: e.target.value })}
-                    placeholder="Describe the position..."
-                  />
+                {/* Section 2: Civil Service Qualification Standards (4 Core Criteria for AI Scoring) */}
+                <div className="bg-blue-50/60 border border-blue-200 p-4 rounded-xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs uppercase font-bold text-blue-900 tracking-wider flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-blue-600" />
+                      2. CSC Qualification Standards (AI Candidate Scoring Criteria)
+                    </h4>
+                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 text-[10px] font-bold">
+                      CSC Standard
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="qs_education" className="text-xs font-semibold text-gray-800 flex items-center gap-1.5">
+                        🎓 Education Requirement *
+                      </Label>
+                      <Input
+                        id="qs_education"
+                        value={newJob.qs_education || ''}
+                        onChange={(e) => setNewJob({ ...newJob, qs_education: e.target.value })}
+                        placeholder="e.g. Bachelor's Degree relevant to the job"
+                        className="mt-1 text-sm bg-white border-blue-200 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="qs_experience" className="text-xs font-semibold text-gray-800 flex items-center gap-1.5">
+                        💼 Work Experience Requirement *
+                      </Label>
+                      <Input
+                        id="qs_experience"
+                        value={newJob.qs_experience || ''}
+                        onChange={(e) => setNewJob({ ...newJob, qs_experience: e.target.value })}
+                        placeholder="e.g. Two (2) years of Relevant Experience"
+                        className="mt-1 text-sm bg-white border-blue-200 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="qs_eligibility" className="text-xs font-semibold text-gray-800 flex items-center gap-1.5">
+                        📜 Eligibility / License Requirement *
+                      </Label>
+                      <Input
+                        id="qs_eligibility"
+                        value={newJob.qs_eligibility || ''}
+                        onChange={(e) => setNewJob({ ...newJob, qs_eligibility: e.target.value })}
+                        placeholder="e.g. Career Service Professional/ Second level eligibility"
+                        className="mt-1 text-sm bg-white border-blue-200 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="qs_training" className="text-xs font-semibold text-gray-800 flex items-center gap-1.5">
+                        🏋️ Training & L&D Requirement *
+                      </Label>
+                      <Input
+                        id="qs_training"
+                        value={newJob.qs_training || ''}
+                        onChange={(e) => setNewJob({ ...newJob, qs_training: e.target.value })}
+                        placeholder="e.g. Eight (8) Hours of Relevant Training"
+                        className="mt-1 text-sm bg-white border-blue-200 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="requirements">Requirements (one per line)</Label>
-                  <Textarea
-                    id="requirements"
-                    rows={4}
-                    value={newJob.requirements}
-                    onChange={(e) => setNewJob({ ...newJob, requirements: e.target.value })}
-                    placeholder="List any other requirements..."
-                  />
-                </div>
+                {/* Section 3: Job Description, Competencies & Responsibilities */}
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="description" className="text-xs font-semibold text-gray-700">Job Description *</Label>
+                    <Textarea
+                      id="description"
+                      rows={3}
+                      value={newJob.description}
+                      onChange={(e) => setNewJob({ ...newJob, description: e.target.value })}
+                      placeholder="Brief description of the position..."
+                      className="mt-1 text-sm"
+                    />
+                  </div>
 
+                  <div>
+                    <Label htmlFor="competency" className="text-xs font-semibold text-gray-700">Competencies / Core Skills</Label>
+                    <Textarea
+                      id="competency"
+                      rows={2}
+                      value={newJob.competency || ''}
+                      onChange={(e) => setNewJob({ ...newJob, competency: e.target.value })}
+                      placeholder="e.g. Accountability, Customer Service Excellence, Strategic Thinking, Leadership skills"
+                      className="mt-1 text-sm"
+                    />
+                  </div>
 
-                {/* Upload Boxes */}
-                <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <Label htmlFor="license">Upload License</Label>
-                    <Input
-                      type="file"
-                      id="license"
-                      onChange={(e) => handleFileChange(e, 'license')}
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    <Label htmlFor="responsibilities" className="text-xs font-semibold text-gray-700">Key Responsibilities (one per line) *</Label>
+                    <Textarea
+                      id="responsibilities"
+                      rows={3}
+                      value={newJob.responsibilities}
+                      onChange={(e) => setNewJob({ ...newJob, responsibilities: e.target.value })}
+                      placeholder="e.g., Manage campus network infrastructure&#10;Implement cybersecurity safeguards"
+                      className="mt-1 text-sm"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="certificates">Upload Certificates</Label>
-                    <Input
-                      type="file"
-                      id="certificates"
-                      onChange={(e) => handleFileChange(e, 'certificates')}
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="prc">Upload PRC License</Label>
-                    <Input
-                      type="file"
-                      id="prc"
-                      onChange={(e) => handleFileChange(e, 'prc')}
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="coe">Upload COE</Label>
-                    <Input
-                      type="file"
-                      id="coe"
-                      onChange={(e) => handleFileChange(e, 'coe')}
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="responsibilities">Responsibilities (one per line) *</Label>
-                  <Textarea
-                    id="responsibilities"
-                    rows={4}
-                    value={newJob.responsibilities}
-                    onChange={(e) => setNewJob({ ...newJob, responsibilities: e.target.value })}
-                    placeholder="e.g., Conduct training sessions"
-                  />
-                </div>
 
                   {/* Custom File Requirements */}
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <Label>Custom Document Attachments Required</Label>
+                      <Label className="text-xs font-semibold text-gray-700">Required Document Attachments</Label>
                       <Button
                         type="button"
                         variant="outline"
@@ -635,7 +769,7 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
                         onClick={addCustomFileRequirement}
                         className="text-xs"
                       >
-                        <Plus className="h-3 w-3 mr-1" /> Add Custom File
+                        <Plus className="h-3 w-3 mr-1" /> Add Custom Attachment Requirement
                       </Button>
                     </div>
 
@@ -662,40 +796,44 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-4 border border-dashed border-blue-200 rounded text-gray-400 text-xs">
-                        No custom file requirements added
+                      <div className="text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-slate-600">
+                        📋 Standard attachments (PDS Form 212, TOR, Eligibility Certificate, PRC/CAAP License) are automatically requested from applicants.
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <Label htmlFor="deadline">Application Deadline *</Label>
+                    <Label htmlFor="deadline" className="text-xs font-semibold text-gray-700">Application Closing Date / Deadline *</Label>
                     <Input
                       id="deadline"
                       type="date"
                       value={newJob.deadline}
                       onChange={(e) => setNewJob({ ...newJob, deadline: e.target.value })}
+                      className="mt-1 text-sm"
                     />
                   </div>
 
                   <div className="flex gap-2 pt-4">
                     <Button
-                      className="flex-1 bg-[#193153] hover:bg-[#12243e] text-white"
-                      onClick={handleCreateJob}
-                      disabled={!newJob.title || !newJob.department || !newJob.description}
-                    >
-                      {editingId ? "Update Job Posting" : "Create Job Posting"}
-                    </Button>
-                    <Button
+                      type="button"
                       variant="outline"
                       className="flex-1"
                       onClick={() => setIsCreating(false)}
                     >
                       Cancel
                     </Button>
+                    <Button
+                      type="button"
+                      className="flex-1 bg-[#193153] hover:bg-[#12243e] text-white font-semibold shadow-md"
+                      onClick={handleCreateJob}
+                      disabled={!newJob.title || !newJob.department || !newJob.description}
+                    >
+                      {editingId ? "Update Job Posting" : "Create Job Posting"}
+                    </Button>
                   </div>
                 </div>
-              </DialogContent>
+              </div>
+            </DialogContent>
             </Dialog>
           </div>
         </div>
