@@ -26,6 +26,10 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
     const [newSg, setNewSg] = useState('11');
     const [newStatus, setNewStatus] = useState('Unfilled');
 
+    // Custom Delete & Clear Dialog state
+    const [deleteItemTarget, setDeleteItemTarget] = useState<any | null>(null);
+    const [isClearAllDialogOpen, setIsClearAllDialogOpen] = useState(false);
+
     React.useEffect(() => {
         if (serverStaffing) {
             setStaffingData(serverStaffing);
@@ -60,25 +64,32 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
         });
     };
 
-    const handleClearAll = () => {
-        if (confirm('Are you sure you want to clear ALL staffing positions from the database?')) {
-            router.post('/admin/staffing/clear-all', {}, {
-                onSuccess: () => {
-                    setStaffingData([]);
-                    toast.success('All staffing positions cleared successfully!');
-                }
-            });
-        }
+    const confirmDeleteSingle = () => {
+        if (!deleteItemTarget) return;
+        router.delete(`/admin/staffing/${deleteItemTarget.id}`, {
+            onSuccess: () => {
+                toast.success(`Position "${deleteItemTarget.position}" deleted.`);
+                setDeleteItemTarget(null);
+            },
+            onError: () => {
+                toast.error('Failed to delete position.');
+                setDeleteItemTarget(null);
+            }
+        });
     };
 
-    const handleDeletePosition = (id: number) => {
-        if (confirm('Delete this staffing position?')) {
-            router.delete(`/admin/staffing/${id}`, {
-                onSuccess: () => {
-                    toast.success('Position deleted.');
-                }
-            });
-        }
+    const confirmClearAll = () => {
+        router.post('/admin/staffing/clear-all', {}, {
+            onSuccess: () => {
+                setStaffingData([]);
+                toast.success('All staffing positions cleared successfully!');
+                setIsClearAllDialogOpen(false);
+            },
+            onError: () => {
+                toast.error('Failed to clear positions.');
+                setIsClearAllDialogOpen(false);
+            }
+        });
     };
 
     const filteredData = staffingData.filter(item => {
@@ -119,9 +130,9 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                     <div className="flex gap-2">
                         {staffingData.length > 0 && (
                             <Button
-                                onClick={handleClearAll}
+                                onClick={() => setIsClearAllDialogOpen(true)}
                                 variant="outline"
-                                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-medium gap-2"
+                                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-medium gap-2 shadow-sm"
                             >
                                 <Trash2 className="w-4 h-4" />
                                 Clear All Positions
@@ -268,7 +279,7 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                                                         size="sm"
                                                         variant="ghost"
                                                         className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5"
-                                                        onClick={() => handleDeletePosition(item.id)}
+                                                        onClick={() => setDeleteItemTarget(item)}
                                                         title="Delete Position"
                                                     >
                                                         <Trash2 className="w-3.5 h-3.5" />
@@ -379,6 +390,70 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                             </Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Single Item Modal */}
+            <Dialog open={!!deleteItemTarget} onOpenChange={(open) => !open && setDeleteItemTarget(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-2">
+                            <AlertCircle className="h-6 w-6 text-red-600" />
+                        </div>
+                        <DialogTitle className="text-center text-lg font-bold text-gray-900">
+                            Delete Staffing Position?
+                        </DialogTitle>
+                        <DialogDescription className="text-center text-sm text-gray-500 mt-1">
+                            Are you sure you want to delete <span className="font-semibold text-gray-800">"{deleteItemTarget?.position}"</span> ({deleteItemTarget?.office})? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="sm:justify-center gap-2 pt-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setDeleteItemTarget(null)}
+                            className="w-28"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-red-600 hover:bg-red-700 text-white font-medium w-36 shadow-sm"
+                            onClick={confirmDeleteSingle}
+                        >
+                            Delete Position
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Clear All Items Modal */}
+            <Dialog open={isClearAllDialogOpen} onOpenChange={setIsClearAllDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-2">
+                            <AlertCircle className="h-6 w-6 text-red-600" />
+                        </div>
+                        <DialogTitle className="text-center text-lg font-bold text-gray-900">
+                            Clear All Staffing Positions?
+                        </DialogTitle>
+                        <DialogDescription className="text-center text-sm text-gray-500 mt-1">
+                            Are you sure you want to wipe <span className="font-semibold text-red-600">ALL {staffingData.length} positions</span> from the database? This action will reset your staffing table to zero.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="sm:justify-center gap-2 pt-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsClearAllDialogOpen(false)}
+                            className="w-28"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-red-600 hover:bg-red-700 text-white font-medium w-36 shadow-sm"
+                            onClick={confirmClearAll}
+                        >
+                            Yes, Clear All
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </AdminLayout>
