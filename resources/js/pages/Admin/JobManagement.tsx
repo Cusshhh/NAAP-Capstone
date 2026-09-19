@@ -173,6 +173,7 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
     requirements: '',
     responsibilities: '',
     salaryGrade: 19,
+    customSalary: '',
     deadline: '',
     status: 'Open',
     campus_id: '' as string | number,
@@ -593,9 +594,13 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
                       <div className="flex items-center space-x-2 mt-1">
                         <Select
                           value={String(newJob.salaryGrade)}
-                          onValueChange={(value) => setNewJob({ ...newJob, salaryGrade: Number(value) })}
+                          onValueChange={(value) => {
+                            const sg = Number(value);
+                            const defaultAmount = SALARY_GRADE_MAP[sg] ? SALARY_GRADE_MAP[sg].toLocaleString() : '';
+                            setNewJob({ ...newJob, salaryGrade: sg, customSalary: defaultAmount });
+                          }}
                         >
-                          <SelectTrigger id="salaryGrade" className="bg-white">
+                          <SelectTrigger id="salaryGrade" className="w-[120px] shrink-0 bg-white">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -606,8 +611,18 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
                             ))}
                           </SelectContent>
                         </Select>
-                        <div className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-2 rounded-md border border-blue-200 whitespace-nowrap">
-                          ₱{SALARY_GRADE_MAP[newJob.salaryGrade]?.toLocaleString()}/mo
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">₱</span>
+                          <Input
+                            type="text"
+                            className="pl-7 pr-12 text-xs font-bold text-blue-900 bg-white border-blue-200 focus:border-blue-500"
+                            value={newJob.customSalary !== undefined && newJob.customSalary !== '' 
+                              ? newJob.customSalary 
+                              : (SALARY_GRADE_MAP[newJob.salaryGrade] ? SALARY_GRADE_MAP[newJob.salaryGrade].toLocaleString() : '')}
+                            onChange={(e) => setNewJob({ ...newJob, customSalary: e.target.value })}
+                            placeholder="Monthly Salary"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-gray-400">/mo</span>
                         </div>
                       </div>
                     </div>
