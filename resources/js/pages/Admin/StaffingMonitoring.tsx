@@ -225,138 +225,130 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
 
                 {/* Stat Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card className="shadow-sm border-l-4 border-l-blue-600">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs uppercase font-semibold text-gray-500 tracking-wider">Total Positions</p>
-                                    <h3 className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</h3>
-                                </div>
-                                <div className="p-2.5 bg-blue-50 rounded-xl">
-                                    <Building2 className="w-5 h-5 text-blue-600" />
-                                </div>
+                    <Card className="bg-white border border-gray-200/80 shadow-2xs rounded-xl hover:shadow-xs transition-shadow">
+                        <CardContent className="p-4.5 flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Total Positions</p>
+                                <h3 className="text-2xl font-extrabold text-gray-900 mt-1">{stats.total}</h3>
+                            </div>
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                                <Building2 className="w-5 h-5" />
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="shadow-sm border-l-4 border-l-green-600">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs uppercase font-semibold text-gray-500 tracking-wider">Filled</p>
-                                    <h3 className="text-2xl font-bold text-green-700 mt-1">{stats.filled}</h3>
-                                </div>
-                                <div className="p-2.5 bg-green-50 rounded-xl">
-                                    <CheckCircle className="w-5 h-5 text-green-600" />
-                                </div>
+                    <Card className="bg-white border border-gray-200/80 shadow-2xs rounded-xl hover:shadow-xs transition-shadow">
+                        <CardContent className="p-4.5 flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Filled</p>
+                                <h3 className="text-2xl font-extrabold text-emerald-600 mt-1">{stats.filled}</h3>
+                            </div>
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                                <CheckCircle className="w-5 h-5" />
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="shadow-sm border-l-4 border-l-red-600">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs uppercase font-semibold text-gray-500 tracking-wider">Unfilled</p>
-                                    <h3 className="text-2xl font-bold text-red-700 mt-1">{stats.unfilled}</h3>
-                                </div>
-                                <div className="p-2.5 bg-red-50 rounded-xl">
-                                    <XCircle className="w-5 h-5 text-red-600" />
-                                </div>
+                    <Card className="bg-white border border-gray-200/80 shadow-2xs rounded-xl hover:shadow-xs transition-shadow">
+                        <CardContent className="p-4.5 flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Unfilled</p>
+                                <h3 className="text-2xl font-extrabold text-rose-600 mt-1">{stats.unfilled}</h3>
+                            </div>
+                            <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
+                                <XCircle className="w-5 h-5" />
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="shadow-sm border-l-4 border-l-yellow-600">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs uppercase font-semibold text-gray-500 tracking-wider">On-Process</p>
-                                    <h3 className="text-2xl font-bold text-yellow-700 mt-1">{stats.onProcess}</h3>
-                                </div>
-                                <div className="p-2.5 bg-yellow-50 rounded-xl">
-                                    <AlertCircle className="w-5 h-5 text-yellow-600" />
-                                </div>
+                    <Card className="bg-white border border-gray-200/80 shadow-2xs rounded-xl hover:shadow-xs transition-shadow">
+                        <CardContent className="p-4.5 flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">On-Process</p>
+                                <h3 className="text-2xl font-extrabold text-amber-600 mt-1">{stats.onProcess}</h3>
+                            </div>
+                            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                                <AlertCircle className="w-5 h-5" />
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* Filters and Table */}
-                <Card className="shadow-md border-0 overflow-hidden">
-                    <CardHeader className="bg-white border-b px-6 py-4">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="relative w-full md:w-96">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                <Input
-                                    placeholder="Search position or office..."
-                                    className="pl-10"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                    <Filter className="w-4 h-4 text-gray-500" />
-                                    <select
-                                        className="text-sm border-gray-200 rounded-md py-1.5 focus:ring-blue-500"
-                                        value={statusFilter}
-                                        onChange={(e) => setStatusFilter(e.target.value)}
-                                    >
-                                        <option value="All">All Status</option>
-                                        <option value="Filled">Filled</option>
-                                        <option value="Unfilled">Unfilled</option>
-                                        <option value="On-process">On-process</option>
-                                    </select>
-                                </div>
-                            </div>
+                {/* Filters and Table Container */}
+                <Card className="border border-gray-200/80 rounded-xl shadow-2xs overflow-hidden bg-white">
+                    <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="relative w-full sm:w-80">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <Input
+                                placeholder="Search position or office..."
+                                className="pl-9 bg-white text-xs text-gray-800 border-gray-200 focus:border-blue-500 h-9"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
-                    </CardHeader>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                                <Filter className="w-3.5 h-3.5" /> Filter Status:
+                            </span>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-36 h-9 text-xs bg-white border-gray-200 font-medium">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">All Status</SelectItem>
+                                    <SelectItem value="Filled">Filled</SelectItem>
+                                    <SelectItem value="Unfilled">Unfilled</SelectItem>
+                                    <SelectItem value="On-process">On-process</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
+                                <thead className="bg-slate-50/80 text-slate-500 text-[11px] uppercase tracking-wider border-b border-slate-200/80">
                                     <tr>
-                                        <th className="px-6 py-4 font-semibold border-b">Office</th>
-                                        <th className="px-6 py-4 font-semibold border-b">Position</th>
-                                        <th className="px-6 py-4 font-semibold border-b">SG</th>
-                                        <th className="px-6 py-4 font-semibold border-b">Status</th>
-                                        <th className="px-6 py-4 font-semibold border-b text-right">Action</th>
+                                        <th className="px-6 py-3 font-bold w-[35%]">Office / Department</th>
+                                        <th className="px-6 py-3 font-bold w-[35%]">Position Title</th>
+                                        <th className="px-6 py-3 font-bold w-[10%]">Salary Grade</th>
+                                        <th className="px-6 py-3 font-bold w-[10%]">Status</th>
+                                        <th className="px-6 py-3 font-bold text-right w-[10%]">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100 bg-white">
+                                <tbody className="divide-y divide-gray-100 bg-white text-xs">
                                     {filteredData.length > 0 ? (
                                         filteredData.map((item) => (
-                                            <tr key={item.id} className="hover:bg-gray-50 transition-colors group">
-                                                <td className="px-6 py-4 text-sm font-medium text-gray-700">{item.office}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-800 font-semibold">{item.position}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-600">SG {item.sg}</td>
-                                                <td className="px-6 py-4">
+                                            <tr key={item.id} className="hover:bg-blue-50/30 transition-colors group">
+                                                <td className="px-6 py-3.5 text-xs font-medium text-gray-700">{item.office}</td>
+                                                <td className="px-6 py-3.5 text-xs font-bold text-gray-900">{item.position}</td>
+                                                <td className="px-6 py-3.5 text-xs font-bold text-[#193153]">SG {item.sg}</td>
+                                                <td className="px-6 py-3.5">
                                                     <Badge
-                                                        className={`text-[10px] ${item.status === 'Filled' ? 'bg-green-100 text-green-700 hover:bg-green-100/80' :
-                                                            item.status === 'Unfilled' ? 'bg-red-100 text-red-700 hover:bg-red-100/80' :
-                                                                'bg-yellow-100 text-yellow-700 hover:bg-yellow-100/80'
+                                                        className={`text-[10px] font-bold px-2 py-0.5 ${item.status === 'Filled' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                            item.status === 'Unfilled' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                                                'bg-amber-50 text-amber-700 border-amber-200'
                                                             }`}
                                                         variant="outline"
                                                     >
                                                         {item.status}
                                                     </Badge>
                                                 </td>
-                                                <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                                <td className="px-6 py-3.5 text-right flex items-center justify-end gap-2">
                                                     {item.status === 'Unfilled' && (
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            className="text-xs border-blue-200 text-blue-600 hover:bg-blue-50 font-medium"
+                                                            className="h-8 text-xs border-blue-200 text-blue-700 hover:bg-blue-50 font-semibold shadow-2xs"
                                                             onClick={() => handleCreateJob(item)}
                                                         >
-                                                            <Plus className="w-3 h-3 mr-1" /> Post Job
+                                                            <Plus className="w-3.5 h-3.5 mr-1 text-blue-600" /> Post Job
                                                         </Button>
                                                     )}
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5"
+                                                        className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                                                         onClick={() => setDeleteItemTarget(item)}
                                                         title="Delete Position"
                                                     >
@@ -367,8 +359,27 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                                                No staffing items found matching your filters.
+                                            <td colSpan={5} className="px-6 py-16 text-center">
+                                                <div className="max-w-sm mx-auto space-y-3">
+                                                    <div className="w-14 h-14 mx-auto bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-center text-slate-400 shadow-2xs">
+                                                        <Building2 className="w-7 h-7 text-slate-400" />
+                                                    </div>
+                                                    <h4 className="text-sm font-bold text-gray-900">No Staffing Positions Found</h4>
+                                                    <p className="text-xs text-gray-500 leading-relaxed">
+                                                        {searchTerm || statusFilter !== 'All'
+                                                            ? "No staffing records match your active search or status filter."
+                                                            : "Your staffing inventory is currently empty. Click 'Add New Position' above to start building your plantilla."}
+                                                    </p>
+                                                    {!(searchTerm || statusFilter !== 'All') && (
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => setIsAddModalOpen(true)}
+                                                            className="bg-[#193153] hover:bg-[#193153]/90 text-white text-xs font-medium mt-2 shadow-2xs"
+                                                        >
+                                                            <Plus className="w-3.5 h-3.5 mr-1" /> Add First Position
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     )}
