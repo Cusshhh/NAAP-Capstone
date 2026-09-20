@@ -2,7 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import { 
   Shield, LogOut, Plus, Edit, Archive, Eye, Users, Briefcase, Layout, Search,
   Folder, FileText, ChevronRight, Grid, List, Home, DollarSign, Building2, CheckCircle2, Clock, Calendar, Table as TableIcon,
-  FolderPlus, Trash2
+  FolderPlus, Trash2, X
 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -311,6 +311,7 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
       onSuccess: () => {
         toast.success("Job deleted successfully.");
         setDeleteConfirmJob(null);
+        setSelectedJob(null);
       },
       onError: () => {
         toast.error("Failed to delete job.");
@@ -1476,6 +1477,13 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
               <div className="lg:col-span-4 bg-gray-50/80 border border-gray-200 rounded-xl p-5 shadow-2xs space-y-5 sticky top-24">
                 {/* Header Banner */}
                 <div className="bg-white border border-gray-200 p-4 rounded-xl text-center relative overflow-hidden shadow-2xs">
+                  <button
+                    onClick={() => setSelectedJob(null)}
+                    className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                    title="Close preview panel"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                   <div className="w-12 h-12 mx-auto bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center text-[#193153] mb-2 shadow-2xs">
                     <FileText className="h-6 w-6" />
                   </div>
