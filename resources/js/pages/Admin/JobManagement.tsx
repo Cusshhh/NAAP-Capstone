@@ -132,9 +132,18 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
           qs_eligibility: parsedQs.qs_eligibility,
           qs_training: parsedQs.qs_training,
           competency: parsedQs.competency,
-          requirements: Array.isArray(jobToEdit.requirements)
-            ? jobToEdit.requirements.map((r: any) => (typeof r === 'string' ? r : (r.title || r.name || ''))).join('\n')
-            : (jobToEdit.requirements || ''),
+          requirements: (() => {
+            const rawReqs = Array.isArray(jobToEdit.requirements)
+              ? jobToEdit.requirements.map((r: any) => (typeof r === 'string' ? r : (r.title || r.name || '')))
+              : (typeof jobToEdit.requirements === 'string' ? jobToEdit.requirements.split('\n') : []);
+            return rawReqs.filter((r: string) => {
+              const lower = r.trim().toLowerCase();
+              return !lower.startsWith('education:') &&
+                     !lower.startsWith('experience:') &&
+                     !lower.startsWith('eligibility:') &&
+                     !lower.startsWith('training:');
+            }).join('\n');
+          })(),
           responsibilities: Array.isArray(jobToEdit.responsibilities)
             ? jobToEdit.responsibilities.join('\n')
             : (jobToEdit.responsibilities || ''),
@@ -216,13 +225,24 @@ export default function JobManagement({ auth, jobs: serverJobs, dbDepartments: s
       }
     }
 
-    const compiledRequirements = [
-      newJob.qs_education ? `Education: ${newJob.qs_education}` : null,
-      newJob.qs_experience ? `Experience: ${newJob.qs_experience}` : null,
-      newJob.qs_eligibility ? `Eligibility: ${newJob.qs_eligibility}` : null,
-      newJob.qs_training ? `Training: ${newJob.qs_training}` : null,
-      ...(typeof newJob.requirements === 'string' ? newJob.requirements.split('\n').filter(r => r.trim() !== '') : []),
-    ].filter(Boolean);
+    const customReqLines = (typeof newJob.requirements === 'string'
+      ? newJob.requirements.split('\n')
+      : (Array.isArray(newJob.requirements) ? newJob.requirements : [])
+    ).map((r: any) => (typeof r === 'string' ? r.trim() : '')).filter(Boolean).filter(r => {
+      const lower = r.toLowerCase();
+      return !lower.startsWith('education:') &&
+             !lower.startsWith('experience:') &&
+             !lower.startsWith('eligibility:') &&
+             !lower.startsWith('training:');
+    });
+
+    const compiledRequirements = Array.from(new Set([
+      newJob.qs_education ? `Education: ${newJob.qs_education.replace(/^Education:\s*/i, '').trim()}` : null,
+      newJob.qs_experience ? `Experience: ${newJob.qs_experience.replace(/^Experience:\s*/i, '').trim()}` : null,
+      newJob.qs_eligibility ? `Eligibility: ${newJob.qs_eligibility.replace(/^Eligibility:\s*/i, '').trim()}` : null,
+      newJob.qs_training ? `Training: ${newJob.qs_training.replace(/^Training:\s*/i, '').trim()}` : null,
+      ...customReqLines
+    ].filter(Boolean)));
 
     const dynamicRequirements = [
       { id: 'qs_edu', category: 'education', requirement: 'Educational Degree Requirement', required_value: newJob.qs_education || "Bachelor's Degree relevant to the job", mandatory: true },

@@ -6,6 +6,8 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from 'sonner';
 
+import ErrorBoundary from '@/components/ErrorBoundary';
+
 const appName = import.meta.env.VITE_APP_NAME || 'NAAP Careers';
 
 createInertiaApp({
@@ -15,10 +17,10 @@ createInertiaApp({
         const root = createRoot(el);
 
         root.render(
-            <>
+            <ErrorBoundary>
                 <App {...props} />
                 <Toaster position="top-right" richColors />
-            </>
+            </ErrorBoundary>
         );
     },
     progress: {

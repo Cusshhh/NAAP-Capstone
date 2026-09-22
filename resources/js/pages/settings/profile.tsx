@@ -8,10 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AdminLayout from '@/layouts/AdminLayout';
+import { formatApplicantFullName } from '@/lib/utils';
 
 export default function Profile({ mustVerifyEmail, status }: any) {
     const { auth } = usePage<any>().props;
     const user = auth?.user || {};
+
+    const formattedInitialName = formatApplicantFullName(user.profile_data) || formatApplicantFullName(user.name) || user.name || '';
 
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
@@ -40,9 +43,9 @@ export default function Profile({ mustVerifyEmail, status }: any) {
     }, []);
 
     const profileForm = useForm({
-        name: user.name || '',
+        name: formattedInitialName,
         email: user.email || '',
-        phone_number: user.profile_data?.phone_number || user.profile_data?.contact_number || '0917-889-2026',
+        phone_number: user.profile_data?.phone_number || user.profile_data?.phone || user.profile_data?.contact_number || user.phone_number || '',
         avatar_data: '',
         remove_avatar: false,
     });
@@ -97,7 +100,7 @@ export default function Profile({ mustVerifyEmail, status }: any) {
         e.preventDefault();
         profileForm.patch('/settings/profile', {
             preserveScroll: true,
-            onSuccess: () => toast.success('Profile and photo updated successfully!'),
+            onSuccess: () => toast.success('Information Updated Successfully'),
             onError: () => toast.error('Failed to update profile. Please check the form.'),
         });
     };
@@ -173,7 +176,7 @@ export default function Profile({ mustVerifyEmail, status }: any) {
                                 </label>
                             </div>
                             <div className="space-y-1">
-                                <h4 className="text-sm font-bold text-[#193153]">{user.name || 'Admin Profile Photo'}</h4>
+                                <h4 className="text-sm font-bold text-[#193153]">{formattedInitialName || user.name || 'Profile Photo'}</h4>
                                 <p className="text-xs text-gray-500 leading-relaxed">Upload an official portrait photo (JPG, PNG, WEBP up to 5MB).</p>
                                 <div className="flex items-center gap-2 pt-1">
                                     <label htmlFor="avatar-upload-btn" className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1">
@@ -197,7 +200,7 @@ export default function Profile({ mustVerifyEmail, status }: any) {
                             <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 flex flex-col items-center text-center">
                                 <DialogHeader className="w-full text-center pb-2">
                                     <DialogTitle className="text-lg font-bold text-[#193153]">
-                                        {user.name || 'Admin Profile Photo'}
+                                        {formattedInitialName || user.name || 'Profile Photo'}
                                     </DialogTitle>
                                     <DialogDescription className="text-xs text-gray-500">
                                         Official HR Admin Profile Picture
@@ -403,7 +406,7 @@ export default function Profile({ mustVerifyEmail, status }: any) {
                                         )}
                                     </div>
                                     <span className="text-sm font-bold hidden sm:block text-[#ffdd59] group-hover:text-white transition-colors max-w-[150px] truncate">
-                                        {user?.name || 'Applicant'}
+                                        {formattedInitialName || user?.name || 'Applicant'}
                                     </span>
                                 </button>
 

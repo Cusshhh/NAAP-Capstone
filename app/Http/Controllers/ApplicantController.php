@@ -72,7 +72,7 @@ class ApplicantController extends Controller
                 'applicant_name' => $validated['applicant_name'],
                 'phone_number' => $validated['phone_number'],
                 'education' => $validated['education'],
-                'to_follow_docs' => $validated['to_follow_docs'],
+                'to_follow_docs' => $validated['to_follow_docs'] ?? [],
                 'custom_file_responses' => $customFileResponses,
                 'dynamic_responses' => $dyn,
                 'status' => 'Submitted',
@@ -223,11 +223,7 @@ class ApplicantController extends Controller
                 }
 
                 if (isset($profile['firstName']) || isset($profile['lastName'])) {
-                    $first = $profile['firstName'] ?? '';
-                    $middle = $profile['middleName'] ?? '';
-                    $last = $profile['lastName'] ?? '';
-                    $ext = $profile['extensionName'] ?? '';
-                    $fullName = trim("{$first} ".($middle ? "{$middle} " : '').$last.($ext ? " {$ext}" : ''));
+                    $fullName = $this->formatFullName($profile);
                     if ($fullName) {
                         $user->name = $fullName;
                     }
@@ -255,11 +251,7 @@ class ApplicantController extends Controller
                 }
 
                 if (isset($profile['firstName']) || isset($profile['lastName'])) {
-                    $first = $profile['firstName'] ?? '';
-                    $middle = $profile['middleName'] ?? '';
-                    $last = $profile['lastName'] ?? '';
-                    $ext = $profile['extensionName'] ?? '';
-                    $fullName = trim("{$first} ".($middle ? "{$middle} " : '').$last.($ext ? " {$ext}" : ''));
+                    $fullName = $this->formatFullName($profile);
                     if ($fullName) {
                         $app->applicant_name = $fullName;
                     }
@@ -326,4 +318,33 @@ class ApplicantController extends Controller
             return response()->json(['error' => 'Failed to delete application'], 500);
         }
     }
+
+    /**
+     * Format applicant full name cleanly with Middle Initial and without N/A extension.
+     */
+    private function formatFullName(array $profile): string
+    {
+        $first = trim($profile['firstName'] ?? '');
+        $last = trim($profile['lastName'] ?? '');
+        $middle = trim($profile['middleName'] ?? '');
+        $ext = trim($profile['extensionName'] ?? '');
+
+        $middleInitial = '';
+        if ($middle !== '' && !in_array(strtolower($middle), ['n/a', 'none', '-', 'null', 'n / a'])) {
+            $cleanMid = trim(str_replace('.', '', $middle));
+            if ($cleanMid !== '') {
+                $middleInitial = strtoupper(substr($cleanMid, 0, 1)) . '.';
+            }
+        }
+
+        $extFormatted = '';
+        if ($ext !== '' && !in_array(strtolower($ext), ['n/a', 'none', '-', 'null', 'n / a'])) {
+            $extFormatted = $ext;
+        }
+
+        $parts = array_filter([$first, $middleInitial, $last, $extFormatted], fn ($p) => $p !== '');
+
+        return implode(' ', $parts);
+    }
 }
+

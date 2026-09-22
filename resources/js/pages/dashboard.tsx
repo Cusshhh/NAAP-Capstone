@@ -32,13 +32,19 @@ import {
     Trash2,
     Newspaper,
     Plus,
-    FileX
+    FileX,
+    ZoomIn,
+    ZoomOut,
+    RotateCcw,
+    Move,
+    Upload
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from "@/components/ui/input";
 import { mockApplications, getApplications, getDynamicNotifications, getJobs, getHRNews, type HRNewsItem } from '@/data/mockData';
+import { formatApplicantFullName } from '@/lib/utils';
 
 // --- HELPERS ---
 const getEventDateParam = (dateStr?: string) => {
@@ -401,13 +407,9 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
     // Helper to compute full name cleanly without state getter crash
     const computeFullName = (data: any) => {
-        if (!data) return auth?.user?.name || '';
-        const first = data.firstName || '';
-        const middle = data.middleName ? data.middleName + ' ' : '';
-        const last = data.lastName || '';
-        const ext = data.extensionName ? ' ' + data.extensionName : '';
-        const name = `${first} ${middle}${last}${ext}`.trim();
-        return name || data.fullName || auth?.user?.name || '';
+        const formatted = formatApplicantFullName(data);
+        if (formatted) return formatted;
+        return formatApplicantFullName(auth?.user?.name) || auth?.user?.name || '';
     };
 
     // Profile Data State
@@ -439,7 +441,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 pwd: 'No',
                 phone: '',
                 alternateContact: '',
-                address: 'Pasay City, Philippines',
+                address: '',
                 email: auth.user.email,
                 // CS Form No. 212 (Revised 2026 PDS) Additional Fields
                 gsisNo: '',
@@ -451,14 +453,14 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 schoolName: '',
                 degreeCourse: '',
                 yearGraduated: '',
-                eligibilities: ['Civil Service Professional (CS Prof)'],
+                eligibilities: [],
                 licenseNo: '',
-                yearsOfExperience: '3',
+                yearsOfExperience: '0',
                 recentPositionTitle: '',
                 recentEmployer: '',
-                trainingHours: '16',
+                trainingHours: '0',
                 recentTrainingTitle: '',
-                skills: ['Aviation Operations', 'Communication', 'Technical Support'],
+                skills: [],
                 awards: []
             };
         }
@@ -583,7 +585,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
     const saveProfile = () => {
         const currentPhoto = profileImage || localStorage.getItem(`user_profile_image_${auth.user.id}`);
-        const computedFullName = `${profileData.firstName || ''} ${profileData.middleName ? profileData.middleName + ' ' : ''}${profileData.lastName || ''}${profileData.extensionName ? ' ' + profileData.extensionName : ''}`.trim();
+        const computedFullName = computeFullName(profileData);
 
         const updatedProfile = {
             ...profileData,
@@ -621,27 +623,144 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             const reader = new FileReader();
             reader.onloadend = () => {
                 const base64 = reader.result as string;
-                setProfileImage(base64);
-                localStorage.setItem(`user_profile_image_${auth.user.id}`, base64);
-                
+                openAdjustPhotoModal(base64);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Photo Modal & Adjustment State
+    const [isViewPhotoModalOpen, setIsViewPhotoModalOpen] = useState(false);
+    const [isEditPhotoModalOpen, setIsEditPhotoModalOpen] = useState(false);
+    const [tempPhoto, setTempPhoto] = useState<string | null>(null);
+    const [photoZoom, setPhotoZoom] = useState(100);
+    const [photoOffsetY, setPhotoOffsetY] = useState(0);
+    const [photoOffsetX, setPhotoOffsetX] = useState(0);
+    const editFileInputRef = useRef<HTMLInputElement>(null);
+
+    const openAdjustPhotoModal = (photoUrl?: string | null) => {
+        const targetPhoto = photoUrl || profileImage;
+        if (!targetPhoto) {
+            editFileInputRef.current?.click();
+            return;
+        }
+        setTempPhoto(targetPhoto);
+        setPhotoZoom(100);
+        setPhotoOffsetY(0);
+        setPhotoOffsetX(0);
+        setIsViewPhotoModalOpen(false);
+        setIsEditPhotoModalOpen(true);
+    };
+
+    const handleSelectPhotoForAdjustment = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error('Image file size must be less than 5MB.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64 = reader.result as string;
+                setTempPhoto(base64);
+                setPhotoZoom(100);
+                setPhotoOffsetY(0);
+                setPhotoOffsetX(0);
+                setIsViewPhotoModalOpen(false);
+                setIsEditPhotoModalOpen(true);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleRemovePhoto = () => {
+        setProfileImage(null);
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(`user_profile_image_${auth.user.id}`);
+        }
+        const currentData = {
+            ...profileData,
+            photo: null,
+            avatar: null
+        };
+        setProfileData(currentData);
+        try {
+            localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(currentData));
+        } catch (e) {}
+
+        router.post('/profile/save', {
+            profile_data: currentData
+        }, {
+            onSuccess: () => {
+                toast.success("Profile photo removed.");
+                setIsViewPhotoModalOpen(false);
+                setIsEditPhotoModalOpen(false);
+            }
+        });
+    };
+
+    const handleSaveAdjustedPhoto = () => {
+        if (!tempPhoto) return;
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 400;
+                canvas.height = 400;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, 400, 400);
+
+                ctx.save();
+                ctx.translate(200 + photoOffsetX * 2, 200 + photoOffsetY * 2);
+                const scale = photoZoom / 100;
+                ctx.scale(scale, scale);
+
+                const aspect = img.width / img.height;
+                let drawW = 400;
+                let drawH = 400;
+                if (aspect > 1) {
+                    drawH = 400;
+                    drawW = 400 * aspect;
+                } else {
+                    drawW = 400;
+                    drawH = 400 / aspect;
+                }
+
+                ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+                ctx.restore();
+
+                const croppedBase64 = canvas.toDataURL('image/jpeg', 0.92);
+                setProfileImage(croppedBase64);
+
                 const currentData = {
                     ...profileData,
-                    photo: base64,
-                    avatar: base64
+                    photo: croppedBase64,
+                    avatar: croppedBase64
                 };
                 setProfileData(currentData);
-                localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(currentData));
+                try {
+                    localStorage.setItem(`user_profile_image_${auth.user.id}`, croppedBase64);
+                    localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(currentData));
+                } catch (e) {}
 
                 router.post('/profile/save', {
                     profile_data: currentData
                 }, {
                     onSuccess: () => {
-                        toast.success("Profile photo updated!");
+                        toast.success("Profile photo adjusted and saved!");
+                        setIsEditPhotoModalOpen(false);
                     }
                 });
-            };
-            reader.readAsDataURL(file);
-        }
+            } catch (err) {
+                console.error("Error cropping photo: ", err);
+                toast.error("Failed to crop photo.");
+            }
+        };
+        img.src = tempPhoto;
     };
 
     const [viewingDocument, setViewingDocument] = useState<{ name: string; url: string; fileName?: string } | null>(null);
@@ -1496,7 +1615,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 )}
                                             </div>
                                             <span className="text-sm font-bold hidden sm:block text-[#ffdd59] group-hover:text-white transition-colors max-w-[150px] truncate">
-                                                {user.name}
+                                                {formatApplicantFullName(profileData) || formatApplicantFullName(user.name) || user.name}
                                             </span>
                                         </button>
                                     </CustomTooltip>
@@ -1536,7 +1655,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                     <div className="container mx-auto px-6 py-10 relative z-10">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                             <div>
-                                <h1 className="text-3xl font-bold">{getGreeting()}, {user.name}!</h1>
+                                <h1 className="text-3xl font-bold">{getGreeting()}, {formatApplicantFullName(profileData) || formatApplicantFullName(user.name) || user.name}!</h1>
                                 {(() => {
                                     const activeCount = myApplications.filter(a => !['Hired', 'Rejected', 'Withdrawn', 'Archived'].includes(a.status)).length;
 
@@ -1981,7 +2100,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                             // --- PROFILE TAB ---
                             <div className="max-w-4xl mx-auto animate-in fade-in duration-300">
                                 <div className="flex items-center gap-6 mb-8">
-                                    <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                    <div className="relative group cursor-pointer" onClick={() => setIsViewPhotoModalOpen(true)}>
                                         <div className="w-24 h-24 bg-[#193153] rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg ring-4 ring-gray-100 overflow-hidden">
                                             {profileImage ? (
                                                 <img
@@ -1994,16 +2113,24 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 user.name.charAt(0).toUpperCase()
                                             )}
                                         </div>
-                                        <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Camera className="w-8 h-8 text-white" />
+                                        <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button 
+                                                type="button" 
+                                                title="View Photo"
+                                                onClick={(e) => { e.stopPropagation(); setIsViewPhotoModalOpen(true); }} 
+                                                className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors"
+                                            >
+                                                <Eye className="w-5 h-5" />
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                title="Adjust Photo"
+                                                onClick={(e) => { e.stopPropagation(); openAdjustPhotoModal(profileImage); }} 
+                                                className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors"
+                                            >
+                                                <Camera className="w-5 h-5" />
+                                            </button>
                                         </div>
-                                        <input
-                                            type="file"
-                                            ref={fileInputRef}
-                                            className="hidden"
-                                            accept="image/*"
-                                            onChange={handleImageUpload}
-                                        />
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex justify-between items-start">
@@ -2023,7 +2150,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 Reset My Applications
                                             </Button>
                                         </div>
-                                        <div className="flex gap-2 mt-3">
+                                        <div className="flex flex-wrap gap-2 mt-3">
                                             {// Toggle between Edit and Save/Cancel
                                                 isEditingProfile ? (
                                                     <>
@@ -3074,6 +3201,177 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                             </Button>
                             <Button size="sm" onClick={handleAddCustomDocument} className="bg-[#193153] hover:bg-[#193153]/90 text-white">
                                 Add Document Slot
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* --- VIEW PROFILE PICTURE DIALOG --- */}
+                <Dialog open={isViewPhotoModalOpen} onOpenChange={setIsViewPhotoModalOpen}>
+                    <DialogContent className="sm:max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 flex flex-col items-center text-center">
+                        <DialogHeader className="w-full text-center pb-2">
+                            <DialogTitle className="text-xl font-bold text-[#193153] flex items-center justify-center gap-2">
+                                <Eye className="w-5 h-5 text-blue-600" /> View Profile Picture
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        {profileImage ? (
+                            <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-full overflow-hidden border-4 border-[#ffdd59] shadow-xl bg-[#193153] my-4 flex items-center justify-center">
+                                <img src={profileImage} alt="Profile Picture" className="w-full h-full object-cover" />
+                            </div>
+                        ) : (
+                            <div className="w-48 h-48 rounded-full bg-[#193153] text-[#ffdd59] font-bold text-6xl flex items-center justify-center shadow-inner my-4 border-4 border-white">
+                                {(user?.name || 'A').charAt(0).toUpperCase()}
+                            </div>
+                        )}
+
+                        <div className="flex flex-wrap justify-center gap-2 pt-2 w-full">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openAdjustPhotoModal(profileImage)}
+                                className="flex items-center gap-1.5 text-xs font-bold text-[#193153] border-blue-200 hover:bg-blue-50 cursor-pointer"
+                            >
+                                <Camera className="w-4 h-4 text-blue-600" /> Adjust / Crop Photo
+                            </Button>
+                            <label htmlFor="view-modal-upload" className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-3 py-2 rounded-md cursor-pointer">
+                                <Upload className="w-4 h-4" /> Upload New Photo
+                                <input id="view-modal-upload" type="file" accept="image/*" className="hidden" onChange={handleSelectPhotoForAdjustment} />
+                            </label>
+                            {profileImage && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleRemovePhoto}
+                                    className="flex items-center gap-1.5 text-xs font-medium text-red-600 border-red-200 hover:bg-red-50 cursor-pointer"
+                                >
+                                    <Trash2 className="w-4 h-4" /> Remove Photo
+                                </Button>
+                            )}
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* --- ADJUST & CROP PHOTO DIALOG --- */}
+                <Dialog open={isEditPhotoModalOpen} onOpenChange={setIsEditPhotoModalOpen}>
+                    <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
+                        <DialogHeader className="pb-2 border-b border-gray-100">
+                            <DialogTitle className="text-lg font-bold text-[#193153] flex items-center gap-2">
+                                <Camera className="w-5 h-5 text-blue-600" /> Adjust & Crop Profile Picture
+                            </DialogTitle>
+                            <p className="text-xs text-gray-500">Zoom and position your photo so your face fits perfectly in the circular frame.</p>
+                        </DialogHeader>
+
+                        <div className="flex flex-col items-center py-4 space-y-5">
+                            {/* Circular Preview Container */}
+                            <div className="relative w-52 h-52 rounded-full overflow-hidden border-4 border-[#ffdd59] shadow-xl bg-gray-900 flex items-center justify-center">
+                                {tempPhoto ? (
+                                    <img
+                                        src={tempPhoto}
+                                        alt="Adjustment Preview"
+                                        className="w-full h-full object-cover transition-transform duration-75"
+                                        style={{
+                                            transform: `scale(${photoZoom / 100}) translate(${photoOffsetX}px, ${photoOffsetY}px)`
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="text-white text-sm font-semibold">No photo selected</div>
+                                )}
+                            </div>
+
+                            {/* Adjustments Controls */}
+                            <div className="w-full space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200 text-xs">
+                                {/* Zoom Slider */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-1 font-semibold text-gray-700">
+                                        <span className="flex items-center gap-1"><ZoomIn className="w-3.5 h-3.5 text-blue-600" /> Zoom Scale</span>
+                                        <span className="text-blue-600 font-bold">{photoZoom}%</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 font-bold text-gray-800 border-gray-300 hover:bg-gray-200 cursor-pointer" onClick={() => setPhotoZoom(prev => Math.max(100, prev - 10))}>-</Button>
+                                        <input
+                                            type="range"
+                                            min="100"
+                                            max="250"
+                                            step="5"
+                                            value={photoZoom}
+                                            onChange={(e) => setPhotoZoom(Number(e.target.value))}
+                                            className="w-full accent-blue-600 cursor-pointer"
+                                        />
+                                        <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 font-bold text-gray-800 border-gray-300 hover:bg-gray-200 cursor-pointer" onClick={() => setPhotoZoom(prev => Math.min(250, prev + 10))}>+</Button>
+                                    </div>
+                                </div>
+
+                                {/* Vertical Position */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-1 font-semibold text-gray-700">
+                                        <span className="flex items-center gap-1"><Move className="w-3.5 h-3.5 text-blue-600" /> Vertical Position (Up / Down)</span>
+                                        <span className="text-gray-500 font-bold">{photoOffsetY}px</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 font-bold text-gray-800 border-gray-300 hover:bg-gray-200 cursor-pointer" onClick={() => setPhotoOffsetY(prev => Math.max(-80, prev - 5))}>↑</Button>
+                                        <input
+                                            type="range"
+                                            min="-80"
+                                            max="80"
+                                            step="2"
+                                            value={photoOffsetY}
+                                            onChange={(e) => setPhotoOffsetY(Number(e.target.value))}
+                                            className="w-full accent-blue-600 cursor-pointer"
+                                        />
+                                        <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 font-bold text-gray-800 border-gray-300 hover:bg-gray-200 cursor-pointer" onClick={() => setPhotoOffsetY(prev => Math.min(80, prev + 5))}>↓</Button>
+                                    </div>
+                                </div>
+
+                                {/* Horizontal Position */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-1 font-semibold text-gray-700">
+                                        <span className="flex items-center gap-1"><Move className="w-3.5 h-3.5 text-blue-600" /> Horizontal Position (Left / Right)</span>
+                                        <span className="text-gray-500 font-bold">{photoOffsetX}px</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 font-bold text-gray-800 border-gray-300 hover:bg-gray-200 cursor-pointer" onClick={() => setPhotoOffsetX(prev => Math.max(-80, prev - 5))}>←</Button>
+                                        <input
+                                            type="range"
+                                            min="-80"
+                                            max="80"
+                                            step="2"
+                                            value={photoOffsetX}
+                                            onChange={(e) => setPhotoOffsetX(Number(e.target.value))}
+                                            className="w-full accent-blue-600 cursor-pointer"
+                                        />
+                                        <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 font-bold text-gray-800 border-gray-300 hover:bg-gray-200 cursor-pointer" onClick={() => setPhotoOffsetX(prev => Math.min(80, prev + 5))}>→</Button>
+                                    </div>
+                                </div>
+
+                                {/* Reset & Choose File Buttons */}
+                                <div className="flex justify-between items-center pt-1 border-t border-gray-200">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => { setPhotoZoom(100); setPhotoOffsetY(0); setPhotoOffsetX(0); }}
+                                        className="text-xs text-gray-600 hover:text-gray-900 cursor-pointer"
+                                    >
+                                        <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reset Adjustment
+                                    </Button>
+
+                                    <label htmlFor="edit-modal-upload" className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1">
+                                        <Upload className="w-3.5 h-3.5" /> Choose Different Image
+                                        <input id="edit-modal-upload" ref={editFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleSelectPhotoForAdjustment} />
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="gap-2 sm:gap-0">
+                            <Button type="button" variant="outline" onClick={() => setIsEditPhotoModalOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button type="button" onClick={handleSaveAdjustedPhoto} className="bg-[#193153] hover:bg-[#193153]/90 text-[#ffdd59] font-bold">
+                                Save & Apply Photo
                             </Button>
                         </DialogFooter>
                     </DialogContent>

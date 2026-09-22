@@ -42,6 +42,26 @@ class PublicJobController extends Controller
 
         $isExpired = $vacancy->deadline && $vacancy->deadline->isPast() && ! $vacancy->deadline->isToday();
 
+        $parseJsonArray = function ($val) {
+            if (is_null($val)) return [];
+            $arr = [];
+            if (is_array($val)) {
+                $arr = array_values($val);
+            } elseif (is_string($val)) {
+                $decoded = json_decode($val, true);
+                if (is_array($decoded)) {
+                    $arr = array_values($decoded);
+                } else {
+                    $arr = array_values(array_filter(array_map('trim', explode("\n", $val))));
+                }
+            }
+            return array_values(array_unique($arr, SORT_REGULAR));
+        };
+
+        $responsibilities = $parseJsonArray($vacancy->responsibilities);
+        $requirements = $parseJsonArray($vacancy->requirements);
+        $customFileReqs = $parseJsonArray($vacancy->custom_file_requirements);
+
         $application = null;
         $interview = null;
         if (auth()->check()) {
@@ -58,14 +78,21 @@ class PublicJobController extends Controller
             'job' => [
                 'id' => $vacancy->id,
                 'title' => $vacancy->title,
+                'plantilla_item' => $vacancy->plantilla_item,
                 'department' => $vacancy->department,
                 'employmentType' => $vacancy->employment_type,
                 'location' => $vacancy->location,
                 'description' => $vacancy->description,
-                'responsibilities' => $vacancy->responsibilities,
-                'requirements' => $vacancy->requirements,
+                'competency' => $vacancy->competency,
+                'responsibilities' => $responsibilities,
+                'requirements' => $requirements,
+                'qs_education' => $vacancy->qs_education,
+                'qs_experience' => $vacancy->qs_experience,
+                'qs_eligibility' => $vacancy->qs_eligibility,
+                'qs_training' => $vacancy->qs_training,
                 'salaryGrade' => $vacancy->salary_grade,
-                'postedDate' => $vacancy->created_at->toDateString(),
+                'custom_file_requirements' => $customFileReqs,
+                'postedDate' => $vacancy->created_at ? $vacancy->created_at->toDateString() : null,
                 'deadline' => $vacancy->deadline ? $vacancy->deadline->toDateString() : null,
                 'applicantCount' => $vacancy->applications()->count(),
                 'status' => $isExpired ? 'Closed' : $vacancy->status,
@@ -80,7 +107,9 @@ class PublicJobController extends Controller
                 'status' => $application->status,
                 'submittedDate' => $application->created_at->toDateString(),
                 'dynamic_responses' => $application->dynamic_responses,
+                'to_follow_docs' => $application->to_follow_docs ?? [],
                 'toFollowDocs' => $application->to_follow_docs ?? [],
+                'custom_file_responses' => $application->custom_file_responses ?? [],
             ] : null,
             'interview' => $interview ? [
                 'date' => $interview->date,

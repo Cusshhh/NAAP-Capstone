@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { ArrowLeft, MapPin, Briefcase, Clock, Calendar, Users, CheckCircle, Upload, TrendingUp, Shield, Edit, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Briefcase, Clock, Calendar, Users, CheckCircle, Upload, TrendingUp, Shield, Edit, Plus, Trash2, ExternalLink } from 'lucide-react';
  import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from "@/components/ui/textarea"
 import { mockJobs, SALARY_GRADE_MAP, getJobs } from '@/data/mockData';
 import { calculateAIScore } from '@/utils/aiScoring';
+import { formatApplicantFullName } from '@/lib/utils';
 
 interface JobDetailsProps {
     id: string;
@@ -36,11 +37,35 @@ interface JobDetailsProps {
     interview?: any;
 }
 
+const parseArrayField = (field: any): any[] => {
+    if (!field) return [];
+    if (Array.isArray(field)) return field;
+    if (typeof field === 'string') {
+        try {
+            const parsed = JSON.parse(field);
+            if (Array.isArray(parsed)) return parsed;
+            return [field];
+        } catch (e) {
+            return field.split('\n').map(s => s.trim()).filter(Boolean);
+        }
+    }
+    return [];
+};
+
 export default function JobDetails({ id, auth, job: serverJob, application, interview }: JobDetailsProps) {
     const user = auth?.user;
     const isAdmin = !!(user && (user.is_admin || user.role === 'super_admin' || user.role === 'hr_admin' || user.role === 'hr_staff' || user.email === 'admin@naap.edu.ph'));
     const job = serverJob;
-    const isExpired = job.status === 'Closed' || (job.deadline ? new Date(job.deadline).setHours(23, 59, 59, 999) < new Date().getTime() : false);
+    const isExpired = job?.status === 'Closed' || (job?.deadline ? new Date(job.deadline).setHours(23, 59, 59, 999) < new Date().getTime() : false);
+
+    const safeResponsibilities = Array.from(new Set(parseArrayField(job?.responsibilities)));
+    const safeRequirements = Array.from(new Set(parseArrayField(job?.requirements)));
+    const safeCustomFiles = parseArrayField(job?.custom_file_requirements).map((req, idx) => {
+        if (typeof req === 'string') {
+            return { id: `custom-${idx}`, label: req };
+        }
+        return { id: req?.id || `custom-${idx}`, label: req?.label || req?.name || String(req || '') };
+    });
     const [hasApplied, setHasApplied] = useState(application !== null && application !== undefined);
     const [isApplyOpen, setIsApplyOpen] = useState(false);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -271,7 +296,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
 
         setIsSubmitting(true);
 
-        const fullName = `${formData.firstName} ${formData.middleName ? formData.middleName + ' ' : ''}${formData.lastName}${formData.extensionName ? ' ' + formData.extensionName : ''}`.trim();
+        const fullName = formatApplicantFullName(formData);
 
         // Gather uploaded documents from localStorage (including base64 contents)
         const docNames = [
@@ -467,9 +492,16 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                                 {job.applicantCount} applicants
                                             </div>
                                         </div>
-                                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
-                                            {job.employmentType}
-                                        </Badge>
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+                                                {job.employmentType || 'Full-time'}
+                                            </Badge>
+                                            {job.plantilla_item && (
+                                                <Badge variant="outline" className="border-indigo-300 text-indigo-800 bg-indigo-50 font-mono text-xs">
+                                                    Item No. {job.plantilla_item}
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <p className="mt-4 text-lg font-semibold text-[#193153] flex items-center">
                                             <TrendingUp className="h-5 w-5 mr-2 text-blue-600" />
                                             Salary Grade {job.salaryGrade || 'N/A'}
@@ -489,29 +521,54 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     <p className="text-gray-700 leading-relaxed whitespace-pre-line">{job.description}</p>
                                 </section>
 
-                                <section className="mb-8">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-4">Key Responsibilities</h3>
-                                    <ul className="space-y-2">
-                                        {job.responsibilities?.map((resp: string, index: number) => (
-                                            <li key={index} className="flex items-start">
-                                                <span className="text-blue-600 mr-2">•</span>
-                                                <span className="text-gray-700">{resp}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </section>
+                                {job.competency && (
+                                    <section className="mb-8">
+                                        <h3 className="text-xl font-bold text-gray-900 mb-4">Core & Functional Competencies</h3>
+                                        <p className="text-gray-700 leading-relaxed whitespace-pre-line">{job.competency}</p>
+                                    </section>
+                                )}
 
-                                <section className="mb-8">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-4">Requirements</h3>
-                                    <ul className="space-y-2">
-                                        {job.requirements?.map((req: string, index: number) => (
-                                            <li key={index} className="flex items-start">
-                                                <span className="text-blue-600 mr-2">✓</span>
-                                                <span className="text-gray-700">{req}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </section>
+                                {safeResponsibilities.length > 0 && (
+                                    <section className="mb-8">
+                                        <h3 className="text-xl font-bold text-gray-900 mb-4">Key Responsibilities</h3>
+                                        <ul className="space-y-2">
+                                            {safeResponsibilities.map((resp: any, index: number) => (
+                                                <li key={index} className="flex items-start">
+                                                    <span className="text-blue-600 mr-2">•</span>
+                                                    <span className="text-gray-700">{typeof resp === 'string' ? resp : (resp?.title || resp?.name || JSON.stringify(resp))}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </section>
+                                )}
+
+                                {safeRequirements.length > 0 && (
+                                    <section className="mb-8">
+                                        <h3 className="text-xl font-bold text-gray-900 mb-4">Qualification Standards</h3>
+                                        <ul className="space-y-2">
+                                            {safeRequirements.map((req: any, index: number) => (
+                                                <li key={index} className="flex items-start">
+                                                    <span className="text-blue-600 mr-2">✓</span>
+                                                    <span className="text-gray-700">{typeof req === 'string' ? req : (req?.title || req?.name || JSON.stringify(req))}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </section>
+                                )}
+
+                                {safeCustomFiles.length > 0 && (
+                                    <section className="mb-8">
+                                        <h3 className="text-xl font-bold text-gray-900 mb-4">Required Document Attachments</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {safeCustomFiles.map((customReq: any, index: number) => (
+                                                <Badge key={customReq.id || index} variant="outline" className="border-blue-300 bg-blue-50 text-blue-900 py-1 px-3 text-xs flex items-center">
+                                                    <Upload className="w-3 h-3 mr-1.5 text-blue-600" />
+                                                    {customReq.label}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
@@ -840,30 +897,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     </div>
                                 )}
                             </div>
-
-                                {job.custom_file_requirements && job.custom_file_requirements.length > 0 && (
-                                    <div className="space-y-4 pt-4 border-t border-gray-100">
-                                        <h4 className="font-bold text-[#193153] text-sm">Additional Required Files</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {job.custom_file_requirements.map((req: { id: number, label: string }) => (
-                                                <div key={req.id}>
-                                                    <Label htmlFor={`custom-${req.id}`} className="text-xs font-medium text-gray-700 mb-1 block">
-                                                        {req.label} *
-                                                    </Label>
-                                                    <Input
-                                                        id={`custom-${req.id}`}
-                                                        type="file"
-                                                        onChange={(e) => handleCustomFileChange(req.label, e.target.files?.[0] || null)}
-                                                        className="h-9 text-xs"
-                                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                                        required
-                                                    />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                        </div>
 
                         {/* 3. Contact & Address */}
                         <div className="space-y-4">
@@ -1121,153 +1155,89 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                         </div>
 
 
-                        {/* 7. Documents */}
+                        {/* 7. Requirements */}
                         <div className="space-y-4">
-                            <h3 className="font-bold text-lg text-[#193153] border-b pb-2 flex items-center gap-2">
-                                <Upload className="w-5 h-5" /> Requirements
-                            </h3>
-                            <p className="text-sm text-gray-500">Please upload valid PDF or Image files.</p>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {[
-                                    { label: "Letter of Intent", key: "Letter of Intent", naming: "LOI_SURNAME", cscLink: null },
-                                    { label: "Personal Data Sheet (CS Form 212, Rev. 2025)", key: "Personal Data Sheet (PDS)", naming: "PDS_SURNAME", cscLink: "https://www.csc.gov.ph/downloads/2025-oraohra" },
-                                    { label: "Work Experience Sheet (WES)", key: "Work Experience Sheet", naming: "WES_SURNAME", cscLink: "https://www.csc.gov.ph/downloads/2025-oraohra" },
-                                    { label: "Certificate of Eligibility", key: "Certificate of Eligibility", naming: "COE_SURNAME", cscLink: null },
-                                    { label: "Transcript of Records (TOR)", key: "Transcript of Records (TOR)", naming: "TOR_SURNAME", cscLink: null },
-                                    { label: "Relevant Training Certificates", key: "Training Certificates", naming: "TRNG_SURNAME", cscLink: null },
-                                    { label: "Performance Rating (IPCR/OPCR)", key: "Performance Rating", naming: "PR_SURNAME", cscLink: null }
-                                ].map((docItem, i) => {
-                                    const docLabel = docItem.label;
-                                    const storageKey = docItem.key;
-
-                                    const isAttached = attachedDocs[storageKey];
-
-                                    // Check for manual upload WITH content
-                                    const hasManualContent = localStorage.getItem(`doc_${user?.id}_${storageKey}`) === 'uploaded' && localStorage.getItem(`content_${user?.id}_${storageKey}`);
-                                    const isProfileAvailable = localStorage.getItem(`profile_doc_${user?.id}_${storageKey}`) === 'uploaded';
-
-                                    return (
-                                        <div 
-                                            key={i} 
-                                            className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between min-h-[160px] shrink-0 ${
-                                                isAttached ? 'bg-green-50/60 border-green-300 shadow-xs' : 'bg-gray-50/80 border-gray-200 hover:border-blue-200'
-                                            }`}
-                                        >
-                                            {/* Top Section: Document Title & Preferred Naming */}
-                                            <div className="flex flex-col border-b border-gray-200/50 pb-1.5 gap-1">
-                                                <div className="flex items-center justify-between gap-1">
-                                                    <Label className="font-bold text-xs sm:text-sm text-[#193153] leading-snug line-clamp-1 block">
-                                                        {docLabel} <span className="text-red-500">*</span>
-                                                    </Label>
-                                                </div>
-                                                <div className="flex items-center justify-between gap-1 flex-wrap">
-                                                    <span className="text-[10px] font-semibold text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
-                                                        📌 Preferred File Name: {docItem.naming}
-                                                    </span>
-                                                    {docItem.cscLink && (
-                                                        <a 
-                                                            href={docItem.cscLink} 
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer"
-                                                            className="text-[10px] text-blue-600 hover:text-blue-800 font-medium underline flex items-center gap-0.5"
-                                                        >
-                                                            Download 2025 Form
-                                                        </a>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Middle Section: Status Badge (Left) & To Follow Checkbox (Right) - Fixed 26px height */}
-                                            <div className="h-[26px] flex items-center justify-between gap-2">
-                                                <div className="flex items-center">
-                                                    {isAttached && !toFollowDocs[storageKey] ? (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold text-green-700 bg-white border border-green-300 shadow-2xs">
-                                                            <CheckCircle className="w-3 h-3 text-green-600" /> {hasManualContent ? 'Attached' : 'From Profile'}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[10px] text-gray-400 font-medium italic">Pending Upload</span>
-                                                    )}
-                                                </div>
-
-                                                {/* To Follow Toggle */}
-                                                <div className="flex items-center space-x-1.5 shrink-0 bg-white px-2 py-0.5 rounded-md border border-gray-200 shadow-2xs">
-                                                    <Checkbox
-                                                        id={`to-follow-${i}`}
-                                                        checked={toFollowDocs[storageKey] || false}
-                                                        disabled={isAttached}
-                                                        onCheckedChange={(checked) => {
-                                                            setToFollowDocs(prev => ({ ...prev, [storageKey]: !!checked }));
-                                                        }}
-                                                    />
-                                                    <Label htmlFor={`to-follow-${i}`} className="text-[11px] font-medium text-gray-600 cursor-pointer select-none">
-                                                        To Follow
-                                                    </Label>
-                                                </div>
-                                            </div>
-
-                                            {/* Bottom Section: File Input or Action Container - Fixed 36px height */}
-                                            <div className="h-[36px] flex items-center">
-                                                {!isAttached && !toFollowDocs[storageKey] ? (
-                                                    <Input
-                                                        type="file"
-                                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                                        required={!toFollowDocs[storageKey]}
-                                                        className="bg-white h-8 text-xs border-gray-200 focus:border-[#193153] w-full cursor-pointer"
-                                                        onChange={(e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) {
-                                                                handleFileUpload(storageKey, file);
-                                                            }
-                                                        }}
-                                                    />
-                                                ) : (
-                                                    <div className="text-xs text-gray-600 flex justify-between items-center bg-white px-2.5 py-1 rounded-lg border border-gray-200/80 w-full h-8">
-                                                        <span className="font-medium truncate text-[11px]">{toFollowDocs[storageKey] ? 'Marked as "To Follow".' : (hasManualContent ? 'Ready to upload.' : 'Using profile document.')}</span>
-                                                        {!toFollowDocs[storageKey] && isAttached && (
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-5 text-red-500 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 font-bold shrink-0"
-                                                                onClick={() => {
-                                                                    localStorage.removeItem(`doc_${user?.id}_${storageKey}`);
-                                                                    localStorage.removeItem(`file_${user?.id}_${storageKey}`);
-                                                                    localStorage.removeItem(`content_${user?.id}_${storageKey}`);
-                                                                    const newDocs = { ...attachedDocs };
-                                                                    delete newDocs[storageKey];
-                                                                    setAttachedDocs(newDocs);
-                                                                    toast.info("Attachment removed.");
-                                                                }}
-                                                            >
-                                                                {hasManualContent ? 'Remove' : 'Change'}
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-
-                                {/* 8th Slot in Grid: Dashed "+ Add Other Document" Card */}
-                                <div 
+                            <div className="flex items-center justify-between border-b pb-2">
+                                <h3 className="font-bold text-lg text-[#193153] flex items-center gap-2">
+                                    <Upload className="w-5 h-5 text-[#193153]" /> Requirements
+                                </h3>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-dashed border-blue-400 text-blue-700 hover:bg-blue-50 font-bold gap-1 text-xs h-8 px-2.5 shadow-2xs cursor-pointer"
                                     onClick={() => {
                                         setExtraCustomDocs(prev => [
                                             ...prev,
                                             { id: Date.now(), label: '', file: null }
                                         ]);
                                     }}
-                                    className="p-3.5 rounded-xl border-2 border-dashed border-blue-300 hover:border-blue-600 bg-blue-50/40 hover:bg-blue-50/80 transition-all flex flex-col items-center justify-center h-[145px] shrink-0 cursor-pointer group text-center space-y-1.5 shadow-2xs"
                                 >
-                                    <div className="w-10 h-10 rounded-full bg-blue-100 group-hover:bg-blue-600 text-blue-600 group-hover:text-white flex items-center justify-center transition-colors shadow-2xs">
-                                        <Plus className="w-5 h-5 stroke-[2.5]" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-xs sm:text-sm text-[#193153] group-hover:text-blue-700">Add Other Document</h4>
-                                        <p className="text-[11px] text-gray-500 font-medium">Click to upload custom supporting files</p>
-                                    </div>
-                                </div>
+                                    <Plus className="w-3.5 h-3.5 text-blue-600" />
+                                    Add Other Document
+                                </Button>
+                            </div>
+                            <p className="text-xs text-gray-500">Please upload valid PDF or Image files for all required documents.</p>
+
+                            {/* Job Required Files Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {(() => {
+                                    const defaultCoreDocs = [
+                                        "Letter of Intent",
+                                        "Personal Data Sheet (CS Form 212, Rev. 2025)",
+                                        "Work Experience Sheet (WES)",
+                                        "Certificate of Eligibility",
+                                        "Transcript of Records (TOR)",
+                                        "Relevant Training Certificates",
+                                        "Performance Rating (IPCR/OPCR)"
+                                    ];
+
+                                    const reqList = safeCustomFiles.length > 0
+                                        ? safeCustomFiles
+                                        : defaultCoreDocs.map((label, idx) => ({ id: `core-${idx}`, label }));
+
+                                    return reqList.map((req, i) => {
+                                        const reqLabel = typeof req === 'string' ? req : req.label;
+                                        const isToFollow = toFollowDocs[reqLabel] || false;
+                                        return (
+                                            <div key={req.id || i} className="p-3 bg-gray-50/80 border border-gray-200 rounded-xl space-y-2 shadow-2xs">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <Label htmlFor={`req-${i}`} className="text-xs font-semibold text-[#193153] leading-snug block">
+                                                        {reqLabel} {!isToFollow && <span className="text-red-500">*</span>}
+                                                    </Label>
+
+                                                    <div className="flex items-center space-x-1.5 shrink-0 bg-white px-2 py-0.5 rounded border border-gray-200 shadow-2xs">
+                                                        <Checkbox
+                                                            id={`to-follow-${i}`}
+                                                            checked={isToFollow}
+                                                            onCheckedChange={(checked) => {
+                                                                setToFollowDocs(prev => ({ ...prev, [reqLabel]: !!checked }));
+                                                            }}
+                                                        />
+                                                        <Label htmlFor={`to-follow-${i}`} className="text-[11px] font-medium text-gray-600 cursor-pointer select-none">
+                                                            To Follow
+                                                        </Label>
+                                                    </div>
+                                                </div>
+
+                                                {isToFollow ? (
+                                                    <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg font-medium">
+                                                        ⏳ Marked as "To Follow". You may submit this document later.
+                                                    </div>
+                                                ) : (
+                                                    <Input
+                                                        id={`req-${i}`}
+                                                        type="file"
+                                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                        onChange={(e) => handleCustomFileChange(reqLabel, e.target.files?.[0] || null)}
+                                                        className="h-9 text-xs bg-white border-gray-200 focus:border-[#193153] cursor-pointer"
+                                                        required={!isToFollow}
+                                                    />
+                                                )}
+                                            </div>
+                                        );
+                                    });
+                                })()}
                             </div>
 
                             {/* Extra Custom Supporting Documents Upload List */}
@@ -1278,21 +1248,6 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                             <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                             Additional Supporting Documents ({extraCustomDocs.length})
                                         </Label>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="border-dashed border-blue-400 text-blue-700 hover:bg-blue-50 font-bold gap-1 text-xs h-7 px-2.5 shadow-xs cursor-pointer"
-                                            onClick={() => {
-                                                setExtraCustomDocs(prev => [
-                                                    ...prev,
-                                                    { id: Date.now(), label: '', file: null }
-                                                ]);
-                                            }}
-                                        >
-                                            <Plus className="w-3 h-3 text-blue-600" />
-                                            Add Another
-                                        </Button>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1591,66 +1546,151 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 </h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                                     {(() => {
-                                        const defaultRequirements = [
-                                            { label: 'Letter of Intent', keyMatch: ['loi', 'letter of intent', 'letter'] },
-                                            { label: 'Personal Data Sheet (CS Form 212)', keyMatch: ['pds', 'personal data sheet'] },
-                                            { label: 'Work Experience Sheet (WES)', keyMatch: ['wes', 'work experience'] },
-                                            { label: 'Transcript of Records (TOR)', keyMatch: ['tor', 'transcript'] },
-                                            { label: 'Certificates of Employment / Training / License', keyMatch: ['coe', 'certificate', 'training', 'license', 'prc'] },
+                                        const defaultCoreDocs = [
+                                            "Letter of Intent",
+                                            "Personal Data Sheet (CS Form 212, Rev. 2025)",
+                                            "Work Experience Sheet (WES)",
+                                            "Certificate of Eligibility",
+                                            "Transcript of Records (TOR)",
+                                            "Relevant Training Certificates",
+                                            "Performance Rating (IPCR/OPCR)"
                                         ];
 
-                                        const rawDocs = application.dynamic_responses?.documents || application.documents;
-                                        
-                                        let submittedMap: Record<string, string> = {};
-                                        if (rawDocs && typeof rawDocs === 'object') {
-                                            if (Array.isArray(rawDocs)) {
-                                                rawDocs.forEach((d: any) => {
-                                                    if (typeof d === 'string') {
-                                                        submittedMap[d] = d;
-                                                    } else if (d && d.name) {
-                                                        submittedMap[d.name] = d.name;
-                                                    }
-                                                });
-                                            } else {
-                                                submittedMap = rawDocs;
-                                            }
-                                        } else if (application.resume) {
-                                            submittedMap['Letter of Intent'] = application.resume;
+                                        // Get job requirements
+                                        const reqList = safeCustomFiles.length > 0
+                                            ? safeCustomFiles.map((req: any) => typeof req === 'string' ? req : req.label)
+                                            : defaultCoreDocs;
+
+                                        // Get submitted custom files
+                                        const customResponses: Record<string, any> = application.custom_file_responses 
+                                            || application.dynamic_responses?.custom_files 
+                                            || customFiles 
+                                            || {};
+
+                                        // Get submitted to-follow docs
+                                        const toFollowList: string[] = Array.isArray(application.to_follow_docs)
+                                            ? application.to_follow_docs
+                                            : (Array.isArray(application.toFollowDocs)
+                                                ? application.toFollowDocs
+                                                : (application.dynamic_responses?.to_follow_docs || Object.keys(toFollowDocs).filter(k => toFollowDocs[k])));
+
+                                        // Gather legacy documents if any
+                                        const rawDocs = application.dynamic_responses?.documents || application.documents || [];
+                                        let legacyDocsMap: Record<string, string> = {};
+                                        if (Array.isArray(rawDocs)) {
+                                            rawDocs.forEach((d: any) => {
+                                                if (typeof d === 'string') legacyDocsMap[d] = d;
+                                                else if (d?.name && d?.fileName) legacyDocsMap[d.name] = d.fileName;
+                                            });
+                                        } else if (rawDocs && typeof rawDocs === 'object') {
+                                            legacyDocsMap = rawDocs;
                                         }
 
-                                        const hasAnyDocs = Object.keys(submittedMap).length > 0;
+                                        const renderedKeys = new Set<string>();
 
-                                        return defaultRequirements.map((req, idx) => {
-                                            const matchKey = Object.keys(submittedMap).find(k => 
-                                                req.keyMatch.some(m => k.toLowerCase().includes(m))
-                                            );
-                                            const fileName = matchKey ? submittedMap[matchKey] : null;
-                                            // Only mark uploaded if matched in submittedMap, or if legacy single upload only index 0 is present
-                                            const isUploaded = !!matchKey || (hasAnyDocs && idx === 0 && Object.keys(submittedMap).length === 1 && !matchKey);
+                                        return (
+                                            <>
+                                                {reqList.map((reqLabel: string, idx: number) => {
+                                                    renderedKeys.add(reqLabel);
 
-                                            return (
-                                                <div key={idx} className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-md">
-                                                    <div className="flex items-center gap-2 overflow-hidden">
-                                                        <span className="text-blue-600 font-bold text-xs">📄</span>
-                                                        <div className="truncate">
-                                                            <p className="font-semibold text-gray-800 text-[11px] truncate">{req.label}</p>
-                                                            <p className="text-[10px] text-gray-400 truncate">
-                                                                {isUploaded ? (fileName && typeof fileName === 'string' ? fileName : 'Attached Document') : 'To follow'}
-                                                            </p>
+                                                    // Check if uploaded
+                                                    const fileObj = customResponses[reqLabel] || legacyDocsMap[reqLabel];
+                                                    const isToFollow = toFollowList.includes(reqLabel) || !!toFollowDocs[reqLabel];
+                                                    const isUploaded = !!fileObj || (!!attachedDocs[reqLabel] && !isToFollow);
+
+                                                    let fileDisplay = '';
+                                                    let fileUrl: string | null = null;
+                                                    if (fileObj) {
+                                                        if (typeof fileObj === 'string') {
+                                                            fileDisplay = fileObj.split('/').pop() || fileObj;
+                                                            fileUrl = fileObj.startsWith('http') || fileObj.startsWith('/storage')
+                                                                ? fileObj
+                                                                : `/storage/${fileObj}`;
+                                                        } else if (fileObj?.name) {
+                                                            fileDisplay = fileObj.name;
+                                                        } else {
+                                                            fileDisplay = 'Uploaded File';
+                                                        }
+                                                    } else if (isUploaded) {
+                                                        fileDisplay = 'Attached Document';
+                                                    }
+
+                                                    return (
+                                                        <div key={idx} className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-md hover:border-blue-200 transition-colors">
+                                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                                <span className="text-blue-600 font-bold text-xs">📄</span>
+                                                                <div className="truncate">
+                                                                    <p className="font-semibold text-gray-800 text-[11px] truncate">{reqLabel}</p>
+                                                                    {fileUrl ? (
+                                                                        <a
+                                                                            href={fileUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="text-[10px] text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center gap-1 truncate"
+                                                                        >
+                                                                            <span>{fileDisplay}</span>
+                                                                            <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                                                                        </a>
+                                                                    ) : (
+                                                                        <p className="text-[10px] text-gray-400 truncate">
+                                                                            {isUploaded ? (fileDisplay || 'Attached Document') : (isToFollow ? 'Marked as "To Follow"' : 'Pending')}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            {isUploaded ? (
+                                                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] shrink-0 font-semibold">
+                                                                    Uploaded & Received
+                                                                </Badge>
+                                                            ) : isToFollow ? (
+                                                                <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] shrink-0 font-semibold">
+                                                                    To Follow
+                                                                </Badge>
+                                                            ) : (
+                                                                <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-[10px] shrink-0 font-semibold">
+                                                                    Pending
+                                                                </Badge>
+                                                            )}
                                                         </div>
-                                                    </div>
-                                                    {isUploaded ? (
-                                                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] shrink-0 font-semibold">
-                                                            Uploaded & Received
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] shrink-0 font-semibold">
-                                                            To Follow
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                            );
-                                        });
+                                                    );
+                                                })}
+
+                                                {/* Extra Supporting Documents Uploaded */}
+                                                {Object.keys(customResponses).filter(k => !renderedKeys.has(k)).map((extraKey: string, idx: number) => {
+                                                    const fileObj = customResponses[extraKey];
+                                                    const fileDisplay = typeof fileObj === 'string' ? fileObj.split('/').pop() : (fileObj?.name || 'Attached File');
+                                                    const fileUrl = typeof fileObj === 'string'
+                                                        ? (fileObj.startsWith('http') || fileObj.startsWith('/storage') ? fileObj : `/storage/${fileObj}`)
+                                                        : null;
+                                                    return (
+                                                        <div key={`extra-${idx}`} className="flex items-center justify-between p-2.5 bg-blue-50/60 border border-blue-200 rounded-md hover:border-blue-300 transition-colors">
+                                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                                <span className="text-blue-600 font-bold text-xs">📎</span>
+                                                                <div className="truncate">
+                                                                    <p className="font-semibold text-[#193153] text-[11px] truncate">{extraKey} <span className="text-[10px] text-blue-600 font-normal">(Extra Doc)</span></p>
+                                                                    {fileUrl ? (
+                                                                        <a
+                                                                            href={fileUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="text-[10px] text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center gap-1 truncate"
+                                                                        >
+                                                                            <span>{fileDisplay}</span>
+                                                                            <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                                                                        </a>
+                                                                    ) : (
+                                                                        <p className="text-[10px] text-gray-500 truncate">{fileDisplay}</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] shrink-0 font-semibold">
+                                                                Uploaded & Received
+                                                            </Badge>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </>
+                                        );
                                     })()}
                                 </div>
                             </div>

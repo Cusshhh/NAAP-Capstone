@@ -1,8 +1,44 @@
-// AI Scoring Utility for Job-Specific Applicant Qualification Analysis
-// Based on NAAP Criteria: Education (30%), Work Experience (35%), Eligibility (20%), Training & Certification (15%)
+// AI Qualification & Scoring Utility for NAAP Careers Portal
+// Enforces CHED 14 Official Discipline Clusters, Degree Tier Hierarchy, & Nonsense Credential Filtering
+// Criteria Weights: Education (30%), Work Experience (35%), Civil Service & Board Eligibility (20%), Training & Certification (15%)
 
 export type QualificationCategory = 'education' | 'experience' | 'eligibility' | 'training';
 export type MatchStatus = 'FULLY_MATCHED' | 'PARTIALLY_MATCHED' | 'NOT_MATCHED' | 'NOT_INDICATED';
+
+export type DisciplineCluster =
+    | 'AVIATION_AERONAUTICS'
+    | 'IT_COMPUTER_STUDIES'
+    | 'ENGINEERING_TECHNOLOGY'
+    | 'LAW_LEGAL_STUDIES'
+    | 'BUSINESS_ADMINISTRATION'
+    | 'EDUCATION_TEACHER_TRAINING'
+    | 'HEALTH_MEDICAL_SCIENCES'
+    | 'NATURAL_SCIENCES'
+    | 'SOCIAL_BEHAVIORAL_SCIENCES'
+    | 'COMMUNICATION_JOURNALISM'
+    | 'MARITIME_STUDIES'
+    | 'ARCHITECTURE_TOWN_PLANNING'
+    | 'HUMANITIES_ARTS'
+    | 'AGRICULTURE_FORESTRY'
+    | 'GENERAL_OTHER';
+
+export const DISCIPLINE_CLUSTER_LABELS: Record<DisciplineCluster, string> = {
+    AVIATION_AERONAUTICS: 'Aviation & Aeronautical Sciences',
+    IT_COMPUTER_STUDIES: 'Information Technology & Computer Studies',
+    ENGINEERING_TECHNOLOGY: 'Engineering & Industrial Technology',
+    LAW_LEGAL_STUDIES: 'Law & Jurisprudence',
+    BUSINESS_ADMINISTRATION: 'Business & Financial Management',
+    EDUCATION_TEACHER_TRAINING: 'Education & Teacher Training',
+    HEALTH_MEDICAL_SCIENCES: 'Health & Medical Sciences',
+    NATURAL_SCIENCES: 'Natural Sciences & Mathematics',
+    SOCIAL_BEHAVIORAL_SCIENCES: 'Social & Behavioral Sciences',
+    COMMUNICATION_JOURNALISM: 'Communication & Mass Media',
+    MARITIME_STUDIES: 'Maritime Studies & Marine Operations',
+    ARCHITECTURE_TOWN_PLANNING: 'Architecture & Environmental Planning',
+    HUMANITIES_ARTS: 'Humanities & Fine Arts',
+    AGRICULTURE_FORESTRY: 'Agriculture & Forestry',
+    GENERAL_OTHER: 'General / Non-Specific Field'
+};
 
 export interface JobRequirementItem {
     id: string;
@@ -92,13 +128,132 @@ export const CATEGORY_LABELS: Record<QualificationCategory, string> = {
 };
 
 /**
+ * Detect CHED 14 Official Discipline Cluster from degree or job text string
+ */
+export function detectDisciplineCluster(text: string): DisciplineCluster {
+    const t = (text || '').toLowerCase().trim();
+    if (!t || isNonsenseCredential(t)) return 'GENERAL_OTHER';
+
+    // 1. Aviation & Aeronautics
+    if (t.includes('aviation') || t.includes('aeronautical') || t.includes('pilot') || t.includes('flying') ||
+        t.includes('amt') || t.includes('avionics') || t.includes('flight') || t.includes('aircraft') || t.includes('cabin crew')) {
+        return 'AVIATION_AERONAUTICS';
+    }
+
+    // 2. Information Technology & Computer Studies
+    if (t.includes('information technology') || t.includes('computer science') || t.includes('software') ||
+        t.includes('information systems') || t.includes('computer engineering') || t.includes('web dev') ||
+        t.includes('cybersecurity') || t.includes('programming') || t.match(/\b(it|cs|is)\b/)) {
+        return 'IT_COMPUTER_STUDIES';
+    }
+
+    // 3. Engineering & Industrial Technology
+    if (t.includes('engineering') || t.includes('mechanical') || t.includes('electrical') ||
+        t.includes('civil eng') || t.includes('electronics') || t.includes('mechatronics') || t.includes('industrial tech')) {
+        return 'ENGINEERING_TECHNOLOGY';
+    }
+
+    // 4. Law & Jurisprudence
+    if (t.includes('law') || t.includes('juris') || t.includes('llb') || t.includes('paralegal') || t.includes('legal')) {
+        return 'LAW_LEGAL_STUDIES';
+    }
+
+    // 5. Education & Teacher Training
+    if (t.includes('education') || t.includes('teaching') || t.includes('academics') || t.includes('pedagogy') ||
+        t.includes('secondary ed') || t.includes('elementary ed') || t.match(/\b(maed|bed|bsed|beed)\b/)) {
+        return 'EDUCATION_TEACHER_TRAINING';
+    }
+
+    // 6. Business Administration & Accountancy
+    if (t.includes('business') || t.includes('accountancy') || t.includes('finance') || t.includes('marketing') ||
+        t.includes('human resource') || t.includes('management') || t.includes('cpa') || t.match(/\b(bsba|mba|bsa)\b/)) {
+        return 'BUSINESS_ADMINISTRATION';
+    }
+
+    // 7. Health & Medical Sciences
+    if (t.includes('nursing') || t.includes('medicine') || t.includes('pharmacy') || t.includes('medical') ||
+        t.includes('physical therapy') || t.includes('public health') || t.match(/\b(bsn|md)\b/)) {
+        return 'HEALTH_MEDICAL_SCIENCES';
+    }
+
+    // 8. Maritime Studies
+    if (t.includes('maritime') || t.includes('marine') || t.includes('nautical') || t.includes('seaman')) {
+        return 'MARITIME_STUDIES';
+    }
+
+    // 9. Architecture & Planning
+    if (t.includes('architecture') || t.includes('urban planning') || t.includes('interior design')) {
+        return 'ARCHITECTURE_TOWN_PLANNING';
+    }
+
+    // 10. Communication & Mass Media
+    if (t.includes('communication') || t.includes('journalism') || t.includes('broadcasting') || t.includes('media')) {
+        return 'COMMUNICATION_JOURNALISM';
+    }
+
+    // 11. Social & Behavioral Sciences
+    if (t.includes('psychology') || t.includes('criminology') || t.includes('sociology') || t.includes('political science')) {
+        return 'SOCIAL_BEHAVIORAL_SCIENCES';
+    }
+
+    // 12. Natural Sciences & Mathematics
+    if (t.includes('biology') || t.includes('chemistry') || t.includes('physics') || t.includes('mathematics') || t.includes('statistics')) {
+        return 'NATURAL_SCIENCES';
+    }
+
+    // 13. Humanities & Fine Arts
+    if (t.includes('english') || t.includes('literature') || t.includes('history') || t.includes('philosophy') || t.includes('fine arts')) {
+        return 'HUMANITIES_ARTS';
+    }
+
+    // 14. Agriculture & Forestry
+    if (t.includes('agriculture') || t.includes('forestry') || t.includes('fisheries')) {
+        return 'AGRICULTURE_FORESTRY';
+    }
+
+    return 'GENERAL_OTHER';
+}
+
+/**
+ * Detect Degree Education Level (Doctoral > Master's > Bachelor's > Vocational > High School)
+ */
+export function detectDegreeLevel(text: string): 'doctoral' | 'masters' | 'bachelor' | 'vocational' | 'highschool' {
+    const t = (text || '').toLowerCase();
+    if (t.includes('doctoral') || t.includes('ph.d') || t.includes('phd') || t.includes('doctor of')) return 'doctoral';
+    if (t.includes('master') || t.includes('ms') || t.includes('ma') || t.includes('mba') || t.includes('maed')) return 'masters';
+    if (t.includes('bachelor') || t.includes('bs') || t.includes('ba') || t.includes('college') || t.includes('degree')) return 'bachelor';
+    if (t.includes('vocational') || t.includes('associate') || t.includes('certificate') || t.includes('diploma')) return 'vocational';
+    return 'bachelor'; // Default baseline for unspecified higher ed
+}
+
+/**
+ * Filter nonsense, fake, or spam credentials entered by applicants attempting to trick the form
+ */
+export function isNonsenseCredential(text: string): boolean {
+    const t = (text || '').toLowerCase().trim();
+    if (!t) return true;
+
+    const fakeWords = [
+        'everything', 'anything', 'magic', 'asdf', 'qwerty', 'n/a', 'none', 'nothing',
+        'fake', 'test', 'sample', 'xxx', 'lol', 'hacker', 'god', 'random', 'whatever',
+        '1234', 'admin', 'foo', 'bar', 'academics in everything'
+    ];
+
+    if (fakeWords.some(word => t === word || t.includes(word))) return true;
+
+    // Reject entries with no alphabetic characters or repetitive spam characters
+    if (!/[a-z]{3,}/i.test(t)) return true;
+    if (/(.)\1{4,}/i.test(t)) return true;
+
+    return false;
+}
+
+/**
  * Extract structured requirements from a Job Vacancy object.
- * Reads explicit dynamic_requirements or parses requirements text lines.
  */
 export function extractJobRequirements(job: any): JobRequirementItem[] {
     if (!job) return getDefaultRequirementsForTitle('General Position');
 
-    // 1. If explicit structured requirements exist
     if (Array.isArray(job.dynamic_requirements) && job.dynamic_requirements.length > 0) {
         return job.dynamic_requirements.map((req: any, index: number) => ({
             id: req.id || `req_${index + 1}`,
@@ -110,7 +265,6 @@ export function extractJobRequirements(job: any): JobRequirementItem[] {
         }));
     }
 
-    // 2. Parse text requirements array or newline-delimited text
     const rawReqs: string[] = Array.isArray(job.requirements)
         ? job.requirements
         : (typeof job.requirements === 'string' ? job.requirements.split('\n') : []);
@@ -137,7 +291,7 @@ export function extractJobRequirements(job: any): JobRequirementItem[] {
                 category: 'education',
                 requirement: clean.includes(':') ? clean.split(':')[0].trim() : 'Educational Degree Requirement',
                 required_value: clean.includes(':') ? clean.split(':').slice(1).join(':').trim() : clean,
-                mandatory: isMandatory || lower.includes('law') || lower.includes('bachelor')
+                mandatory: isMandatory || lower.includes('law') || lower.includes('bachelor') || lower.includes('master')
             });
         } else if (lower.includes('year') || lower.includes('experience') || lower.includes('work') || lower.includes('service') || lower.includes('background')) {
             const yrsMatch = clean.match(/(\d+)\s*year/i);
@@ -204,16 +358,15 @@ export function getDefaultRequirementsForTitle(title: string): JobRequirementIte
             { id: 'eng_elig', category: 'eligibility', requirement: 'Professional License', required_value: 'PRC Board Engineer / CAAP AMT License', mandatory: true },
             { id: 'eng_trn', category: 'training', requirement: 'Training & L&D', required_value: '16 hours technical training', mandatory: false }
         ];
-    } else if (t.includes('it support') || t.includes('programmer') || t.includes('software') || t.includes('computer')) {
+    } else if (t.includes('it support') || t.includes('programmer') || t.includes('software') || t.includes('computer') || t.includes('information technology')) {
         return [
-            { id: 'it_edu', category: 'education', requirement: 'Educational Degree', required_value: "Bachelor's Degree in IT / Computer Science", mandatory: true },
+            { id: 'it_edu', category: 'education', requirement: 'Educational Degree', required_value: "Master's Degree or Bachelor's Degree in Information Technology / Computer Science", mandatory: true },
             { id: 'it_exp', category: 'experience', requirement: 'Work Experience', required_value: '3 years IT support experience', mandatory: false },
             { id: 'it_elig', category: 'eligibility', requirement: 'Civil Service Eligibility', required_value: 'CS Professional or CS Subprofessional', mandatory: false },
             { id: 'it_trn', category: 'training', requirement: 'Training & L&D', required_value: '8 hours relevant IT training', mandatory: false }
         ];
     }
 
-    // Default General 1st/2nd Level Position
     return [
         { id: 'gen_edu', category: 'education', requirement: 'Educational Degree', required_value: "Bachelor's Degree", mandatory: true },
         { id: 'gen_exp', category: 'experience', requirement: 'Work Experience', required_value: '2 years relevant experience', mandatory: false },
@@ -223,7 +376,7 @@ export function getDefaultRequirementsForTitle(title: string): JobRequirementIte
 }
 
 /**
- * Main Deterministic Requirement-Based Qualification Evaluation Engine
+ * Main Deterministic Requirement-Based Qualification Evaluation Engine with CHED Discipline & Tier Matching
  */
 export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): QualificationAnalysisOutput {
     let jobObj: any = null;
@@ -240,7 +393,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
     // 1. Retrieve job requirements
     const requirements = extractJobRequirements(jobObj);
 
-    // 2. Applicant Data Extraction
+    // 2. Applicant Data Extraction & Validation
     const degreeCourse = String(dyn.degreeCourse || dyn.course || app?.degreeCourse || app?.education || '').trim();
     const edLevelRaw = String(dyn.educationLevel || app?.educationLevel || app?.education || '').toLowerCase();
 
@@ -249,7 +402,6 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
     else if (edLevelRaw.includes('master')) degreeLevelLabel = "Master's Degree";
     else if (edLevelRaw.includes('bachelor')) degreeLevelLabel = "Bachelor's Degree";
     else if (edLevelRaw.includes('vocational')) degreeLevelLabel = "Vocational Diploma";
-    else if (edLevelRaw.includes('highschool')) degreeLevelLabel = "High School Graduate";
 
     const fullEduText = degreeCourse ? `${degreeLevelLabel} in ${degreeCourse}` : (edLevelRaw ? degreeLevelLabel : '');
 
@@ -295,60 +447,35 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
         let explanation = '';
 
         if (cat === 'education') {
-            if (!fullEduText) {
-                status = 'NOT_INDICATED';
-                applicantValue = 'No educational background submitted';
-                explanation = 'No educational background information was provided in the submitted records.';
+            if (!fullEduText || isNonsenseCredential(fullEduText)) {
+                status = 'NOT_MATCHED';
+                applicantValue = fullEduText || 'Invalid / Unverified degree submitted';
+                explanation = 'The submitted educational record is invalid, nonsense, or unverified.';
+                if (req.mandatory) hasUnmatchedMandatory = true;
             } else {
                 applicantValue = fullEduText;
-                const reqLower = req.required_value.toLowerCase();
-                const appLower = fullEduText.toLowerCase();
+                const reqDiscipline = detectDisciplineCluster(req.required_value + ' ' + jobTitle);
+                const appDiscipline = detectDisciplineCluster(fullEduText);
+                const reqLevel = detectDegreeLevel(req.required_value);
+                const appLevel = detectDegreeLevel(fullEduText);
 
-                const isLawReq = reqLower.includes('law') || reqLower.includes('llb') || reqLower.includes('juris');
-                const isAviationReq = reqLower.includes('aviation') || reqLower.includes('flying') || reqLower.includes('pilot');
-                const isEngReq = reqLower.includes('engineer') || reqLower.includes('amt') || reqLower.includes('mechanic');
-                const isITReq = reqLower.includes('it') || reqLower.includes('computer') || reqLower.includes('software');
-
-                if (isLawReq) {
-                    if (appLower.includes('law') || appLower.includes('llb') || appLower.includes('juris')) {
-                        status = 'FULLY_MATCHED'; multiplier = 1.00;
-                        explanation = "Applicant's degree matches the required Law degree (LLB/JD).";
-                    } else {
-                        status = 'NOT_MATCHED'; multiplier = 0.00;
-                        explanation = `Applicant's degree (${fullEduText}) does not match the required Law degree (${req.required_value}).`;
-                    }
-                } else if (isAviationReq) {
-                    if (appLower.includes('aviation') || appLower.includes('flying') || appLower.includes('pilot') || appLower.includes('aero')) {
-                        status = 'FULLY_MATCHED'; multiplier = 1.00;
-                        explanation = "Applicant's degree matches the required Aviation field.";
-                    } else {
-                        status = 'NOT_MATCHED'; multiplier = 0.00;
-                        explanation = `Applicant's degree (${fullEduText}) does not match the required Aviation field.`;
-                    }
-                } else if (isEngReq) {
-                    if (appLower.includes('engineer') || appLower.includes('amt') || appLower.includes('aero') || appLower.includes('aircraft')) {
-                        status = 'FULLY_MATCHED'; multiplier = 1.00;
-                        explanation = "Applicant's degree matches the required Engineering / AMT field.";
-                    } else {
-                        status = 'NOT_MATCHED'; multiplier = 0.00;
-                        explanation = `Applicant's degree (${fullEduText}) does not match the required Engineering / AMT field.`;
-                    }
-                } else if (isITReq) {
-                    if (appLower.includes('it') || appLower.includes('computer') || appLower.includes('information') || appLower.includes('cs') || appLower.includes('software')) {
-                        status = 'FULLY_MATCHED'; multiplier = 1.00;
-                        explanation = "Applicant's degree matches the required IT / Computer Science field.";
-                    } else {
-                        status = 'NOT_MATCHED'; multiplier = 0.00;
-                        explanation = `Applicant's degree (${fullEduText}) does not match the required IT field.`;
-                    }
+                if (reqDiscipline !== 'GENERAL_OTHER' && appDiscipline !== reqDiscipline) {
+                    status = 'NOT_MATCHED';
+                    multiplier = 0.00;
+                    explanation = `Applicant's degree field (${fullEduText}) belongs to ${DISCIPLINE_CLUSTER_LABELS[appDiscipline]}, which does NOT match the required ${DISCIPLINE_CLUSTER_LABELS[reqDiscipline]} discipline for this position.`;
+                    if (req.mandatory) hasUnmatchedMandatory = true;
+                } else if (reqLevel === 'masters' && appLevel === 'bachelor') {
+                    status = 'PARTIALLY_MATCHED';
+                    multiplier = 0.60;
+                    explanation = `Applicant holds a Bachelor's degree in ${DISCIPLINE_CLUSTER_LABELS[appDiscipline]}, partially meeting the Master's degree requirement (60% tier credit).`;
+                } else if (reqLevel === 'doctoral' && (appLevel === 'masters' || appLevel === 'bachelor')) {
+                    status = 'PARTIALLY_MATCHED';
+                    multiplier = appLevel === 'masters' ? 0.75 : 0.50;
+                    explanation = `Applicant holds a ${degreeLevelLabel}, partially meeting the Doctoral degree requirement.`;
                 } else {
-                    if (edLevelRaw.includes('bachelor') || edLevelRaw.includes('master') || edLevelRaw.includes('doctoral')) {
-                        status = 'FULLY_MATCHED'; multiplier = 1.00;
-                        explanation = "Applicant holds a Bachelor's degree or higher which satisfies the general educational requirement.";
-                    } else {
-                        status = 'PARTIALLY_MATCHED'; multiplier = 0.50;
-                        explanation = `Applicant's educational level (${degreeLevelLabel}) partially satisfies the requirement.`;
-                    }
+                    status = 'FULLY_MATCHED';
+                    multiplier = 1.00;
+                    explanation = `Applicant's degree (${fullEduText}) fully matches the required ${DISCIPLINE_CLUSTER_LABELS[reqDiscipline]} discipline and degree tier.`;
                 }
             }
         } else if (cat === 'experience') {
@@ -366,7 +493,6 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
 
                 const isLegalExpReq = reqLower.includes('legal') || reqLower.includes('law');
                 const isFltExpReq = reqLower.includes('flight') || reqLower.includes('flying') || reqLower.includes('pilot');
-                const isITExpReq = reqLower.includes('it') || reqLower.includes('support') || reqLower.includes('computer');
 
                 let isFieldRelevant = true;
                 if (isLegalExpReq && !expLower.includes('legal') && !expLower.includes('law') && !expLower.includes('attorney')) isFieldRelevant = false;
@@ -374,7 +500,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
 
                 if (!isFieldRelevant) {
                     status = 'NOT_MATCHED'; multiplier = 0.00;
-                    explanation = `Applicant's experience is not in the required field for ${req.required_value}.`;
+                    explanation = `Applicant's declared work experience field is not relevant to ${req.required_value}.`;
                 } else if (yrsExp >= reqYrs) {
                     status = 'FULLY_MATCHED'; multiplier = 1.00;
                     explanation = `Applicant has ${yrsExp} years of relevant experience, meeting or exceeding the required ${reqYrs} years.`;
@@ -401,7 +527,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
                 const hasPilot = appEligLower.includes('cpl') || appEligLower.includes('fi rating') || appEligLower.includes('atpl') || appEligLower.includes('caap');
                 const hasEng = appEligLower.includes('board') || appEligLower.includes('engineer') || appEligLower.includes('amt');
                 const hasProCS = appEligLower.includes('professional') || (appEligLower.includes('ra1080') && !appEligLower.includes('7160')) || appEligLower.includes('pd 907');
-                const hasSubPro = appEligLower.includes('sub professional') || appEligLower.includes('barangay') || appEligLower.includes('mc 11');
+                const hasSubPro = appEligLower.includes('sub professional') || appEligLower.includes('barangay');
 
                 if (reqLower.includes('bar') || reqLower.includes('ra 1080 (legal)')) {
                     if (hasBar) {
@@ -409,7 +535,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
                         explanation = "Applicant possesses BAR / RA 1080 Legal eligibility.";
                     } else {
                         status = 'NOT_MATCHED'; multiplier = 0.00;
-                        explanation = `Applicant possesses ${fullEligText}, which does not satisfy the required BAR / RA 1080 Legal eligibility.`;
+                        explanation = `Applicant possesses ${fullEligText}, which does not satisfy BAR / RA 1080 Legal eligibility.`;
                     }
                 } else if (reqLower.includes('cpl') || reqLower.includes('fi rating') || reqLower.includes('caap license')) {
                     if (hasPilot || licNo.length > 3) {
@@ -417,7 +543,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
                         explanation = "Applicant possesses required CAAP Pilot / FI License.";
                     } else {
                         status = 'NOT_MATCHED'; multiplier = 0.00;
-                        explanation = `Applicant possesses ${fullEligText}, which does not satisfy the required CAAP Pilot License.`;
+                        explanation = `Applicant possesses ${fullEligText}, which does not satisfy CAAP Pilot License requirement.`;
                     }
                 } else if (reqLower.includes('board engineer') || reqLower.includes('amt license')) {
                     if (hasEng || hasPilot) {
@@ -425,15 +551,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
                         explanation = "Applicant possesses PRC Engineering Board / CAAP AMT License.";
                     } else {
                         status = 'NOT_MATCHED'; multiplier = 0.00;
-                        explanation = `Applicant possesses ${fullEligText}, which does not satisfy the required Engineering Board / AMT License.`;
-                    }
-                } else if (reqLower.includes('subprofessional') && reqLower.includes('professional')) {
-                    if (hasProCS || hasSubPro || hasBar || hasEng || hasPilot) {
-                        status = 'FULLY_MATCHED'; multiplier = 1.00;
-                        explanation = "Applicant possesses CS Professional or Subprofessional eligibility as allowed.";
-                    } else {
-                        status = 'NOT_MATCHED'; multiplier = 0.00;
-                        explanation = `Applicant possesses ${fullEligText}, which does not satisfy Civil Service eligibility.`;
+                        explanation = `Applicant possesses ${fullEligText}, which does not satisfy Engineering Board / AMT License requirement.`;
                     }
                 } else if (reqLower.includes('professional')) {
                     if (hasProCS || hasBar || hasEng || hasPilot) {
@@ -460,7 +578,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
             if (trnHrs === 0 && !recentTrn) {
                 status = 'NOT_INDICATED';
                 applicantValue = 'No training or L&D hours submitted';
-                explanation = 'No training hours or seminar certificates were provided in the submitted records.';
+                explanation = 'No training hours or seminar certificates were provided in submitted records.';
             } else {
                 applicantValue = fullTrnText || `${trnHrs} hours training`;
                 const reqHrsMatch = req.required_value.match(/(\d+)/);
@@ -496,7 +614,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
             if (req.mandatory) {
                 hasUnmatchedMandatory = true;
             }
-        } else { // NOT_INDICATED
+        } else {
             notIndicatedCount++;
             categoryScores[cat].hasMissing = true;
             if (req.mandatory) {
@@ -537,7 +655,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
         catSummary.has_missing = data.hasMissing;
 
         if (data.evalCount > 0) {
-            catSummary.score = Math.round((data.totalScore / data.evalCount) * 10000) / 100; // 0 to 100%
+            catSummary.score = Math.round((data.totalScore / data.evalCount) * 10000) / 100;
             totalActiveWeightSum += catSummary.configured_weight;
         } else {
             catSummary.score = 0;
@@ -545,7 +663,6 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
         }
     });
 
-    // Normalize active category weights to sum up to 100%
     let calculatedOverallScore = 0;
 
     (Object.keys(categories) as QualificationCategory[]).forEach(cat => {
@@ -558,18 +675,14 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
 
     calculatedOverallScore = Math.round(calculatedOverallScore * 100) / 100;
 
-    // Apply Mandatory Cap & Alerts
+    // 5. Apply Mandatory Cap & Alerts
     if (hasUnmatchedMandatory) {
         calculatedOverallScore = Math.min(20.00, calculatedOverallScore);
-        alerts.push("⚠️ Mandatory Requirement Not Met: One or more mandatory position requirements were not matched.");
+        alerts.push("⚠️ Mandatory Requirement Mismatch: Applicant failed to match mandatory degree field or professional license.");
     }
 
     if (hasMissingMandatory) {
         alerts.push("ℹ Mandatory Information Missing: A mandatory requirement is not indicated in the applicant's submitted records.");
-    }
-
-    if (notIndicatedCount > 0 && !hasMissingMandatory) {
-        alerts.push(`ℹ Information Gap: ${notIndicatedCount} requirement(s) were not indicated in submitted records.`);
     }
 
     const hasExplicitRequirements = Boolean(
@@ -580,20 +693,11 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
         )
     );
 
-    // Vacancy Requirements Not Configured alert removed per HR UI refinement request
-
-    // 5. Generate AI Executive Summary Text (Strictly no "Qualified/Hired" hiring decision language)
     let summaryText = "";
-    if (!hasExplicitRequirements) {
-        summaryText = `Notice: This job vacancy (${jobTitle}) has no custom requirements configured by HR/Admin. Evaluation relies on standard title benchmark requirements until explicit job criteria are added in Job Management.`;
-    } else if (hasUnmatchedMandatory) {
-        summaryText = `The applicant's submitted qualifications do not meet mandatory requirements configured for ${jobTitle}. Critical gaps exist in required professional eligibility or degree fields.`;
+    if (hasUnmatchedMandatory) {
+        summaryText = `The applicant's submitted qualifications do not meet mandatory requirements for ${jobTitle}. Critical gaps exist in required professional eligibility or degree discipline.`;
     } else if (fullyMatchedCount === requirements.length) {
         summaryText = `The applicant meets or exceeds all evaluated qualification standards configured for ${jobTitle} across Education, Experience, Eligibility, and Training.`;
-    } else if (partiallyMatchedCount > 0 || notMatchedCount > 0) {
-        summaryText = `The applicant satisfies major requirements for ${jobTitle}, but has partial or unmatched areas (e.g. experience duration or specific training hours) requiring HR/Admin screening review.`;
-    } else if (notIndicatedCount > 0) {
-        summaryText = `The applicant matches evaluated areas for ${jobTitle}, but ${notIndicatedCount} requirement(s) are not indicated in submitted records and require verification during HR screening.`;
     } else {
         summaryText = `Qualification analysis computed based on evaluated education, experience, eligibility, and training criteria for ${jobTitle}.`;
     }
@@ -619,7 +723,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
 }
 
 /**
- * Backward compatibility wrapper for existing callers expecting evaluateQualificationMatch
+ * Backward compatibility wrapper
  */
 export function evaluateQualificationMatch(jobTitle: string, app: any) {
     if (!app) {
@@ -651,9 +755,6 @@ export function evaluateQualificationMatch(jobTitle: string, app: any) {
     };
 }
 
-/**
- * Legacy Helpers
- */
 export function calculateEducationScore(educationLevel: any, requiredEducation: any = 'bachelor'): number {
     return educationLevel === 'doctoral_graduate' ? 5 : (educationLevel === 'masters' ? 3 : 1);
 }
