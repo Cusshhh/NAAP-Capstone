@@ -1102,7 +1102,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 text: `Latest NAAP HR News: "${newsItem.title}"`,
                 time: newsItem.date || new Date().toISOString().split('T')[0],
                 isRead: readNotifications.includes(newsNotifyId),
-                type: 'info'
+                type: 'news',
+                newsId: newsItem.id
             });
         });
 
@@ -1629,6 +1630,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                     } else {
                                                                         router.visit('/jobs');
                                                                     }
+                                                                } else if (n.type === 'news' || n.newsId) {
+                                                                    router.visit(n.newsId ? `/hr-news/${n.newsId}` : '/hr-news');
                                                                 } else if (n.jobId) {
                                                                     router.visit(`/jobs/${n.jobId}`);
                                                                 } else {
