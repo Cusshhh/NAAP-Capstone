@@ -91,11 +91,13 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
         return () => window.removeEventListener('storage', handleSync);
     }, [dbApplications, dbJobs, unfilledStaffingCount, fetchDashboardEvents]);
 
-    // Auto-refresh admin dashboard data every 5 seconds
+    // Auto-refresh admin dashboard data gently every 30 seconds when tab is active
     React.useEffect(() => {
         const interval = setInterval(() => {
-            router.reload({ only: ['dbApplications', 'dbJobs', 'unfilledStaffingCount'], preserveScroll: true, preserveState: true });
-        }, 5000);
+            if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+                router.reload({ only: ['dbApplications', 'dbJobs', 'unfilledStaffingCount'], preserveScroll: true, preserveState: true });
+            }
+        }, 30000);
         return () => clearInterval(interval);
     }, []);
 

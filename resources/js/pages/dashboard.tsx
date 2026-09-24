@@ -932,11 +932,13 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         return (unapplied.length > 0 ? unapplied : unique).slice(0, 4);
     }, [jobs, myApplications, propApplications]);
 
-    // Auto-refresh applications every 5 seconds so status changes show up automatically
+    // Auto-refresh applications gently every 30 seconds when tab is active so status changes show up automatically
     useEffect(() => {
         const interval = setInterval(() => {
-            router.reload({ only: ['propApplications', 'dbApplications'], preserveScroll: true, preserveState: true });
-        }, 5000);
+            if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+                router.reload({ only: ['propApplications', 'dbApplications'], preserveScroll: true, preserveState: true });
+            }
+        }, 30000);
         return () => clearInterval(interval);
     }, []);
 
