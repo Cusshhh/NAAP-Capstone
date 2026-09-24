@@ -54,7 +54,7 @@ class HandleInertiaRequests extends Middleware
                 ? \App\Models\Message::where('sender_id', '!=', $request->user()->id)->where('is_read', false)->count()
                 : 0,
             'pending_applicants_count' => $request->user() && ($request->user()->isAdmin() || in_array($request->user()->email, ['admin@naap.edu.ph', 'admin@admin.com']))
-                ? \App\Models\Application::whereIn('status', ['Submitted', 'Pending Review', 'Under Review'])->count()
+                ? \App\Models\Application::whereIn('status', ['Submitted', 'Pending Review', 'Pending'])->count()
                 : 0,
             'flash' => [
                 'message' => $request->session()->get('message'),

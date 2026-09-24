@@ -17,22 +17,17 @@ import axios from 'axios';
 
 interface AdminLayoutProps {
     children: ReactNode;
-    auth: {
-        user: {
-            name: string;
-            email: string;
-            role?: string;
-            is_super_admin?: boolean;
-            is_admin?: boolean;
-        };
+    auth?: {
+        user?: any;
     };
+    user?: any;
     title?: string;
     headerActions?: ReactNode;
 }
 
-export default function AdminLayout({ children, auth, title, headerActions }: AdminLayoutProps) {
-    const admin = auth?.user || { name: 'Admin', email: '' } as any;
+export default function AdminLayout({ children, auth, user: userProp, title, headerActions }: AdminLayoutProps) {
     const { url, props } = usePage<any>();
+    const admin = auth?.user || userProp || (props as any)?.auth?.user || (props as any)?.user || { name: 'NAAP Admin', email: 'admin@naap.edu.ph' };
     const unreadMessagesCount = (props as any)?.unread_messages_count || 0;
     const serverPendingApplicantsCount = (props as any)?.pending_applicants_count || 0;
 
@@ -126,10 +121,10 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
         };
     }, [props]);
 
-    const pendingApplicantsCount = typeof window !== 'undefined' ? clientPendingCount : (serverPendingApplicantsCount || clientPendingCount);
+    const pendingApplicantsCount = clientPendingCount;
 
     const [notificationsOpen, setNotificationsOpen] = React.useState(false);
-    const storageKey = `read_admin_notifs_${admin.id || admin.email || 'admin'}`;
+    const storageKey = `read_admin_notifs_${admin.email || admin.id || 'admin_shared'}`;
     const [readNotifIds, setReadNotifIds] = React.useState<string[]>(() => {
         if (typeof window !== 'undefined') {
             try {
@@ -140,6 +135,28 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
         }
         return [];
     });
+
+    React.useEffect(() => {
+        const syncNotifs = () => {
+            if (typeof window !== 'undefined') {
+                try {
+                    const saved = localStorage.getItem(storageKey);
+                    if (saved) {
+                        setReadNotifIds(JSON.parse(saved));
+                    }
+                } catch (e) {}
+            }
+        };
+
+        syncNotifs();
+
+        window.addEventListener('storage', syncNotifs);
+        window.addEventListener('admin_notifs_updated', syncNotifs);
+        return () => {
+            window.removeEventListener('storage', syncNotifs);
+            window.removeEventListener('admin_notifs_updated', syncNotifs);
+        };
+    }, [storageKey]);
 
     const [dbInterviews, setDbInterviews] = React.useState<any[]>([]);
     const [dbActivityLogs, setDbActivityLogs] = React.useState<any[]>([]);
@@ -314,6 +331,9 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
         const updated = Array.from(new Set([...readNotifIds, ...allIds]));
         setReadNotifIds(updated);
         localStorage.setItem(storageKey, JSON.stringify(updated));
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('admin_notifs_updated'));
+        }
     };
 
     const handleMarkSingleRead = (id: string, href: string) => {
@@ -321,6 +341,9 @@ export default function AdminLayout({ children, auth, title, headerActions }: Ad
             const updated = [...readNotifIds, id];
             setReadNotifIds(updated);
             localStorage.setItem(storageKey, JSON.stringify(updated));
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('admin_notifs_updated'));
+            }
         }
         router.visit(href);
     };

@@ -845,7 +845,7 @@ export interface HRNewsItem {
     fullContent?: string; // Full HTML content for article page
 }
 
-const defaultHRNews: HRNewsItem[] = [
+export const defaultHRNews: HRNewsItem[] = [
     {
         id: 1,
         title: "NAAP Launches New Employee Wellness Program",
@@ -989,7 +989,7 @@ export const getHRNews = (): HRNewsItem[] => {
         const localNews = localStorage.getItem('mock_hr_news');
         if (localNews) {
             const parsed = JSON.parse(localNews);
-            if (Array.isArray(parsed)) return parsed;
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         }
         return defaultHRNews;
     } catch (e) {

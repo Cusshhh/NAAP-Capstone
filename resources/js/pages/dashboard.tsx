@@ -27,6 +27,7 @@ import {
     ChevronRight,
     AlertCircle,
     Ban,
+    Lock,
     Camera,
     Eye,
     Trash2,
@@ -37,14 +38,15 @@ import {
     ZoomOut,
     RotateCcw,
     Move,
-    Upload
+    Upload,
+    CheckCheck
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from "@/components/ui/input";
 import { mockApplications, getApplications, getDynamicNotifications, getJobs, getHRNews, type HRNewsItem } from '@/data/mockData';
-import { formatApplicantFullName } from '@/lib/utils';
+import { formatApplicantFullName, formatApplicantFirstName } from '@/lib/utils';
 
 // --- HELPERS ---
 const getEventDateParam = (dateStr?: string) => {
@@ -369,12 +371,35 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     // Profile Image State
     const [profileImage, setProfileImage] = useState<string | null>(() => {
         const pData = auth?.user?.profile_data || {};
-        return auth?.user?.avatar_url 
+        const isPhotoRemoved = pData.photo_removed || (pData.avatar_url === null && pData.photo === null && pData.avatar === null && !auth?.user?.avatar_url);
+        if (isPhotoRemoved) {
+            if (typeof window !== 'undefined' && auth?.user?.id) {
+                localStorage.removeItem(`user_profile_image_${auth.user.id}`);
+            }
+            return null;
+        }
+
+        const serverPhoto = auth?.user?.avatar_url 
             || pData.avatar_url 
             || pData.photo 
-            || pData.avatar 
-            || (typeof window !== 'undefined' ? localStorage.getItem(`user_profile_image_${auth.user.id}`) : null) 
-            || null;
+            || pData.avatar;
+        if (serverPhoto) return serverPhoto;
+
+        if (typeof window !== 'undefined' && auth?.user?.id) {
+            const savedData = localStorage.getItem(`user_profile_data_${auth.user.id}`);
+            if (savedData) {
+                try {
+                    const parsed = JSON.parse(savedData);
+                    if (parsed && parsed.email && parsed.email.toLowerCase() !== auth.user.email.toLowerCase()) {
+                        localStorage.removeItem(`user_profile_data_${auth.user.id}`);
+                        localStorage.removeItem(`user_profile_image_${auth.user.id}`);
+                        return null;
+                    }
+                } catch (e) {}
+            }
+            return localStorage.getItem(`user_profile_image_${auth.user.id}`) || null;
+        }
+        return null;
     });
 
     const getCombinedInterviews = () => {
@@ -418,19 +443,26 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         let initial: any = null;
         if (dbProfileData) {
             initial = { ...dbProfileData };
-        } else if (typeof window !== 'undefined') {
+        } else if (typeof window !== 'undefined' && auth?.user?.id) {
             const saved = localStorage.getItem(`user_profile_data_${auth.user.id}`);
             if (saved) {
                 try {
-                    initial = JSON.parse(saved);
+                    const parsed = JSON.parse(saved);
+                    if (parsed && parsed.email && parsed.email.toLowerCase() === auth.user.email.toLowerCase()) {
+                        initial = parsed;
+                    } else {
+                        localStorage.removeItem(`user_profile_data_${auth.user.id}`);
+                        localStorage.removeItem(`user_profile_image_${auth.user.id}`);
+                    }
                 } catch (e) {}
             }
         }
 
         if (!initial) {
+            const nameParts = (auth?.user?.name || '').trim().split(' ');
             initial = {
-                lastName: auth.user.name.split(' ').slice(-1)[0] || '',
-                firstName: auth.user.name.split(' ').slice(0, -1).join(' ') || '',
+                lastName: nameParts.length > 1 ? nameParts[nameParts.length - 1] : '',
+                firstName: nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : (nameParts[0] || ''),
                 middleName: '',
                 extensionName: '',
                 age: '',
@@ -467,6 +499,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
         return {
             ...initial,
+            email: auth.user.email,
             fullName: computeFullName(initial)
         };
     });
@@ -584,15 +617,24 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     };
 
     const saveProfile = () => {
-        const currentPhoto = profileImage || localStorage.getItem(`user_profile_image_${auth.user.id}`);
+        const hasNoPhoto = profileImage === null;
+        const currentPhoto = hasNoPhoto ? null : (profileImage || localStorage.getItem(`user_profile_image_${auth.user.id}`));
         const computedFullName = computeFullName(profileData);
 
         const updatedProfile = {
             ...profileData,
+            email: auth.user.email,
             fullName: computedFullName || profileData.fullName || auth.user.name,
             photo: currentPhoto,
-            avatar: currentPhoto
+            avatar: currentPhoto,
+            avatar_url: currentPhoto,
+            photo_removed: hasNoPhoto,
+            remove_avatar: hasNoPhoto,
         };
+
+        if (hasNoPhoto && typeof window !== 'undefined' && auth?.user?.id) {
+            localStorage.removeItem(`user_profile_image_${auth.user.id}`);
+        }
 
         setProfileData(updatedProfile);
 
@@ -1094,6 +1136,14 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         }
     };
 
+    const handleMarkAllRead = () => {
+        const readNotifications = JSON.parse(localStorage.getItem(`read_notifications_${auth.user.id}`) || '[]');
+        const allNotifIds = notifications.map(n => n.id);
+        const updated = Array.from(new Set([...readNotifications, ...allNotifIds]));
+        localStorage.setItem(`read_notifications_${auth.user.id}`, JSON.stringify(updated));
+        setNotifications(buildNotifications());
+    };
+
     useEffect(() => {
         setNotifications(buildNotifications());
 
@@ -1532,71 +1582,84 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                             </div>
 
                             {/* Right Menu */}
-                            <div className="flex items-center space-x-4">
-                                {/* <Link href="/jobs" className="hidden md:block text-sm font-medium text-blue-100 hover:text-[#ffdd59] transition-colors">
-                                    Browse Jobs
-                                </Link>
-                                <div className="h-6 w-px bg-white/20 hidden md:block"></div> */}
-
+                            <div className="flex items-center space-x-2">
                                 {/* Notification Bell */}
                                 <div className="relative">
                                     <CustomTooltip content="Notifications" side="bottom">
                                         <button
                                             onClick={handleViewNotifications}
-                                            className="p-2 hover:bg-white/10 rounded-full transition-colors relative"
+                                            className="w-9 h-9 rounded-full flex items-center justify-center p-0 transition-colors relative text-white hover:bg-white/10 hover:text-[#ffdd59] outline-none cursor-pointer border border-transparent hover:border-white/10 group"
+                                            title="Notifications"
                                         >
-                                            <Bell className="w-5 h-5 text-white" />
+                                            <Bell className="w-5 h-5 text-white group-hover:text-[#ffdd59]" />
                                             {notifications.some(n => !n.isRead) && (
-                                                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-[#193153]"></span>
+                                                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#193153] animate-pulse"></span>
                                             )}
                                         </button>
                                     </CustomTooltip>
 
                                     {notificationsOpen && (
-                                        <div className="absolute right-0 mt-2 w-80 max-h-[350px] overflow-y-auto bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 text-gray-800 animate-in fade-in zoom-in-95 duration-200 shadow-2xl">
-                                            {notifications.length === 0 ? (
-                                                <div className="px-4 py-8 text-center text-gray-400 text-sm">No notifications yet</div>
-                                            ) : (
-                                                notifications.map(n => (
-                                                    <div
-                                                        key={n.id}
-                                                        onClick={() => {
-                                                            handleMarkAsRead(n.id);
-                                                            if (n.type === 'message') {
-                                                                const matchingApp = (myApplications || []).find((a: any) => String(a.jobId) === String(n.jobId) || String(a.id) === String(n.jobId));
-                                                                if (matchingApp) {
-                                                                    openMessages(matchingApp.id, matchingApp.jobTitle || 'Job Position');
-                                                                } else if ((myApplications || []).length > 0) {
-                                                                    openMessages(myApplications[0].id, myApplications[0].jobTitle || 'Job Position');
-                                                                } else {
-                                                                    router.visit('/jobs');
-                                                                }
-                                                            } else if (n.jobId) {
-                                                                router.visit(`/jobs/${n.jobId}`);
-                                                            } else {
-                                                                router.visit(`/jobs`);
-                                                            }
-                                                        }}
-                                                        className={`px-4 py-3 border-b border-gray-100 last:border-0 cursor-pointer transition-all duration-200 ${n.isRead ? 'bg-gray-50/80 hover:bg-gray-100/60' : 'bg-white hover:bg-blue-50/10'}`}
+                                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 text-gray-800 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+                                                <span className="font-bold text-xs uppercase tracking-wider text-[#193153]">Notifications</span>
+                                                {notifications.some(n => !n.isRead) && (
+                                                    <button 
+                                                        onClick={handleMarkAllRead} 
+                                                        className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer"
                                                     >
-                                                        <div className="flex gap-3">
-                                                            {!n.isRead && <div className="mt-1.5 w-2 h-2 bg-blue-600 rounded-full shrink-0"></div>}
-                                                            <div>
-                                                                <p className={`text-sm leading-snug ${n.isRead ? 'text-gray-400 font-normal' : 'text-gray-900 font-semibold hover:text-blue-700'}`}>{n.text}</p>
-                                                                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                                                                    <Clock className="w-3 h-3" /> {safeFormatDate(n.time)}
-                                                                </p>
+                                                        <CheckCheck className="w-3.5 h-3.5" /> Mark read
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="max-h-72 overflow-y-auto">
+                                                {notifications.length === 0 ? (
+                                                    <div className="px-4 py-6 text-center text-gray-400 text-xs">No notifications yet</div>
+                                                ) : (
+                                                    notifications.map(n => (
+                                                        <div
+                                                            key={n.id}
+                                                            onClick={() => {
+                                                                handleMarkAsRead(n.id);
+                                                                if (n.type === 'message') {
+                                                                    const matchingApp = (myApplications || []).find((a: any) => String(a.jobId) === String(n.jobId) || String(a.id) === String(n.jobId));
+                                                                    if (matchingApp) {
+                                                                        openMessages(matchingApp.id, matchingApp.jobTitle || 'Job Position');
+                                                                    } else if ((myApplications || []).length > 0) {
+                                                                        openMessages(myApplications[0].id, myApplications[0].jobTitle || 'Job Position');
+                                                                    } else {
+                                                                        router.visit('/jobs');
+                                                                    }
+                                                                } else if (n.jobId) {
+                                                                    router.visit(`/jobs/${n.jobId}`);
+                                                                } else {
+                                                                    router.visit(`/jobs`);
+                                                                }
+                                                            }}
+                                                            className={`px-4 py-3 border-b border-gray-50 last:border-0 cursor-pointer transition-colors ${
+                                                                n.isRead ? 'bg-gray-50/70 hover:bg-gray-100/60' : 'bg-blue-50/40 hover:bg-blue-50/80'
+                                                            }`}
+                                                        >
+                                                            <div className="flex gap-2.5 items-start">
+                                                                {!n.isRead && <div className="mt-1.5 w-2 h-2 bg-red-500 rounded-full shrink-0 animate-pulse"></div>}
+                                                                <div className="flex-1">
+                                                                    <p className={`text-xs leading-snug ${n.isRead ? 'text-gray-500 font-normal' : 'text-gray-900 font-semibold'}`}>
+                                                                        {n.text}
+                                                                    </p>
+                                                                    <span className="text-[10px] text-blue-600 font-medium mt-1 flex items-center gap-1">
+                                                                        <Clock className="w-3 h-3" /> {safeFormatDate(n.time)} &bull; Click to open
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                ))
-                                            )}
+                                                    ))
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* User Profile Pill & Actions Area */}
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                     <CustomTooltip content="View Profile" side="bottom">
                                         <button
                                             onClick={() => setActiveTab('profile')}
@@ -1614,32 +1677,30 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                     user.name.charAt(0).toUpperCase()
                                                 )}
                                             </div>
-                                            <span className="text-sm font-bold hidden sm:block text-[#ffdd59] group-hover:text-white transition-colors max-w-[150px] truncate">
+                                            <span className="text-sm font-bold hidden sm:block text-[#ffdd59] group-hover:text-white transition-colors max-w-xs truncate">
                                                 {formatApplicantFullName(profileData) || formatApplicantFullName(user.name) || user.name}
                                             </span>
                                         </button>
                                     </CustomTooltip>
 
                                     <CustomTooltip content="Account Settings" side="bottom">
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="text-white hover:bg-white/10 hover:text-[#ffdd59] h-9 w-9 p-0"
+                                        <button
                                             onClick={() => router.get('/settings/profile')}
+                                            className="w-9 h-9 rounded-full flex items-center justify-center p-0 transition-colors relative text-white hover:bg-white/10 hover:text-[#ffdd59] outline-none cursor-pointer border border-transparent hover:border-white/10 group"
+                                            title="Account Settings"
                                         >
-                                            <Settings className="w-4.5 h-4.5" />
-                                        </Button>
+                                            <Settings className="w-5 h-5 text-white group-hover:text-[#ffdd59]" />
+                                        </button>
                                     </CustomTooltip>
 
                                     <CustomTooltip content="Logout" side="bottom">
-                                        <Button 
-                                            onClick={handleLogout} 
-                                            size="sm" 
-                                            variant="ghost" 
-                                            className="text-white hover:bg-white/10 hover:text-[#ffdd59] h-9 w-9 p-0" 
+                                        <button
+                                            onClick={handleLogout}
+                                            className="w-9 h-9 rounded-full flex items-center justify-center p-0 transition-colors relative text-white hover:bg-white/10 hover:text-[#ffdd59] outline-none cursor-pointer border border-transparent hover:border-white/10 group"
+                                            title="Logout"
                                         >
-                                            <LogOut className="w-4.5 h-4.5" />
-                                        </Button>
+                                            <LogOut className="w-5 h-5 text-white group-hover:text-[#ffdd59]" />
+                                        </button>
                                     </CustomTooltip>
                                 </div>
                             </div>
@@ -1655,7 +1716,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                     <div className="container mx-auto px-6 py-10 relative z-10">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                             <div>
-                                <h1 className="text-3xl font-bold">{getGreeting()}, {formatApplicantFullName(profileData) || formatApplicantFullName(user.name) || user.name}!</h1>
+                                <h1 className="text-3xl font-bold">{getGreeting()}, {formatApplicantFirstName(profileData) || formatApplicantFirstName(user.name) || (user.name ? user.name.split(' ')[0] : 'Applicant')}!</h1>
                                 {(() => {
                                     const activeCount = myApplications.filter(a => !['Hired', 'Rejected', 'Withdrawn', 'Archived'].includes(a.status)).length;
 
@@ -1730,27 +1791,195 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                 {/* LEFT COLUMN: Stats & List (70%) */}
                                 <div className="w-full lg:w-3/4 space-y-8">
 
-                                    {/* Stats Row */}
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {[
-                                            { label: 'Total', value: statusCounts.total, color: 'text-gray-700', bg: 'bg-gray-50', border: 'border-gray-200' },
-                                            { label: 'Submitted', value: statusCounts.submitted, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-                                            { label: 'In Review', value: statusCounts.underReview, color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200' },
-                                            { label: 'Interview', value: scheduledInterviewsCount, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
-                                        ].map((stat, i) => (
-                                            <div
-                                                key={i}
-                                                onClick={() => setFilterStatus(stat.label)}
-                                                className={`p-4 rounded-xl border flex flex-col items-center justify-center hover:scale-105 transition-all cursor-pointer ${filterStatus === stat.label
-                                                    ? `${stat.bg} ${stat.border.replace('border-', 'border-2 border-')}` // Highlight active
-                                                    : 'bg-white border-gray-100 hover:shadow-md'
-                                                    }`}
-                                            >
-                                                <span className={`text-3xl font-bold ${stat.color}`}>{stat.value}</span>
-                                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-1">{stat.label}</span>
+                                    {/* Live Application Progress Tracker (Visual Stepper) */}
+                                    {(() => {
+                                        const latestApp = myApplications && myApplications.length > 0
+                                            ? (myApplications.find(a => !['Withdrawn'].includes(a.status)) || myApplications[0])
+                                            : null;
+
+                                        const getStepStatus = (stepIndex: number) => {
+                                            if (!latestApp) return 'upcoming';
+                                            let currentStatus = latestApp.status;
+
+                                            if (!['Hired', 'Rejected', 'Withdrawn'].includes(currentStatus) && latestApp.jobTitle && typeof window !== 'undefined') {
+                                                try {
+                                                    const savedInterviews = getCombinedInterviews();
+                                                    const hasInterview = savedInterviews.some((interview: any) => {
+                                                        if (!interview) return false;
+                                                        const isMatchingJob = (interview.position || '').toLowerCase() === latestApp.jobTitle.toLowerCase();
+                                                        return isMatchingJob && checkInterviewMatch(interview);
+                                                    });
+                                                    if (hasInterview) {
+                                                        currentStatus = 'Interview';
+                                                    }
+                                                } catch (e) {}
+                                            }
+
+                                            if (currentStatus === 'Withdrawn') {
+                                                if (stepIndex === 1) return 'completed';
+                                                if (stepIndex === 4) return 'withdrawn';
+                                                return 'upcoming';
+                                            }
+                                            if (currentStatus === 'Submitted') {
+                                                if (stepIndex === 1) return 'current';
+                                                return 'upcoming';
+                                            }
+                                            if (currentStatus === 'Under Review') {
+                                                if (stepIndex === 1) return 'completed';
+                                                if (stepIndex === 2) return 'current';
+                                                return 'upcoming';
+                                            }
+                                            if (currentStatus === 'Interview Scheduled' || currentStatus === 'Interview') {
+                                                if (stepIndex <= 2) return 'completed';
+                                                if (stepIndex === 3) return 'current';
+                                                return 'upcoming';
+                                            }
+                                            if (currentStatus === 'Hired') {
+                                                if (stepIndex <= 3) return 'completed';
+                                                if (stepIndex === 4) return 'hired';
+                                            }
+                                            if (currentStatus === 'Rejected') {
+                                                if (stepIndex <= 3) return 'completed';
+                                                if (stepIndex === 4) return 'rejected';
+                                            }
+                                            return 'upcoming';
+                                        };
+
+                                        return (
+                                            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                                                    <div>
+                                                        <h2 className="text-lg font-bold text-[#193153] flex items-center gap-2">
+                                                            <Briefcase className="w-5 h-5 text-blue-600" />
+                                                            Live Application Progress Tracker
+                                                        </h2>
+                                                        <p className="text-xs text-gray-500 mt-0.5">
+                                                            {latestApp ? (
+                                                                <>Target Position: <strong className="text-gray-900">{latestApp.jobTitle}</strong> ({latestApp.location || 'Pasay City'})</>
+                                                            ) : (
+                                                                'No active job application under review. Explore open positions to start your application.'
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                    {latestApp && (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Current Status:</span>
+                                                            {getStatusBadge(latestApp.status, latestApp.jobTitle)}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {latestApp ? (
+                                                    <div className="py-3 px-2">
+                                                        <div className="grid grid-cols-4 gap-2 relative">
+                                                            {/* Connecting Line */}
+                                                            <div className="absolute top-5 left-[12%] right-[12%] h-1 bg-gray-200 -z-0 rounded-full" />
+                                                            <div
+                                                                className="absolute top-5 left-[12%] h-1 bg-blue-600 -z-0 rounded-full transition-all duration-500"
+                                                                style={{
+                                                                    width: (() => {
+                                                                        const st4 = getStepStatus(4);
+                                                                        const st3 = getStepStatus(3);
+                                                                        const st2 = getStepStatus(2);
+                                                                        if (st4 !== 'upcoming') return '76%';
+                                                                        if (st3 === 'current') return '50%';
+                                                                        if (st2 === 'current') return '25%';
+                                                                        return '0%';
+                                                                    })()
+                                                                }}
+                                                            />
+
+                                                            {/* Step 1: Submitted */}
+                                                            {(() => {
+                                                                const st = getStepStatus(1);
+                                                                const isDone = st === 'completed';
+                                                                const isCurrent = st === 'current';
+                                                                return (
+                                                                    <div className="flex flex-col items-center text-center z-10">
+                                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shadow-sm transition-all ${
+                                                                            isDone || isCurrent ? 'bg-blue-600 text-white ring-4 ring-blue-100' : 'bg-gray-100 text-gray-400 border border-gray-300'
+                                                                        }`}>
+                                                                            {isDone ? <CheckCircle className="w-5 h-5" /> : '1'}
+                                                                        </div>
+                                                                        <span className={`text-xs font-bold mt-2.5 ${isCurrent || isDone ? 'text-blue-900' : 'text-gray-400'}`}>1. Submitted</span>
+                                                                        <span className="text-[10px] text-gray-500 hidden sm:block mt-0.5">Application Logged</span>
+                                                                    </div>
+                                                                );
+                                                            })()}
+
+                                                            {/* Step 2: In Review */}
+                                                            {(() => {
+                                                                const st = getStepStatus(2);
+                                                                const isDone = st === 'completed';
+                                                                const isCurrent = st === 'current';
+                                                                return (
+                                                                    <div className="flex flex-col items-center text-center z-10">
+                                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shadow-sm transition-all ${
+                                                                            isCurrent ? 'bg-amber-500 text-white ring-4 ring-amber-100 animate-pulse' : isDone ? 'bg-blue-600 text-white ring-4 ring-blue-100' : 'bg-gray-100 text-gray-400 border border-gray-300'
+                                                                        }`}>
+                                                                            {isDone ? <CheckCircle className="w-5 h-5" /> : '2'}
+                                                                        </div>
+                                                                        <span className={`text-xs font-bold mt-2.5 ${isCurrent ? 'text-amber-800 font-extrabold' : isDone ? 'text-blue-900' : 'text-gray-400'}`}>2. In Review</span>
+                                                                        <span className="text-[10px] text-gray-500 hidden sm:block mt-0.5">HR & AI Evaluation</span>
+                                                                    </div>
+                                                                );
+                                                            })()}
+
+                                                            {/* Step 3: Interview */}
+                                                            {(() => {
+                                                                const st = getStepStatus(3);
+                                                                const isDone = st === 'completed';
+                                                                const isCurrent = st === 'current';
+                                                                return (
+                                                                    <div className="flex flex-col items-center text-center z-10">
+                                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shadow-sm transition-all ${
+                                                                            isCurrent ? 'bg-purple-600 text-white ring-4 ring-purple-100 animate-pulse' : isDone ? 'bg-blue-600 text-white ring-4 ring-blue-100' : 'bg-gray-100 text-gray-400 border border-gray-300'
+                                                                        }`}>
+                                                                            {isDone ? <CheckCircle className="w-5 h-5" /> : '3'}
+                                                                        </div>
+                                                                        <span className={`text-xs font-bold mt-2.5 ${isCurrent ? 'text-purple-900 font-extrabold' : isDone ? 'text-blue-900' : 'text-gray-400'}`}>3. Interview</span>
+                                                                        <span className="text-[10px] text-gray-500 hidden sm:block mt-0.5">Board Assessment</span>
+                                                                    </div>
+                                                                );
+                                                            })()}
+
+                                                            {/* Step 4: Final Result */}
+                                                            {(() => {
+                                                                const st = getStepStatus(4);
+                                                                const isHired = st === 'hired';
+                                                                const isRejected = st === 'rejected';
+                                                                const isWithdrawn = st === 'withdrawn';
+                                                                return (
+                                                                    <div className="flex flex-col items-center text-center z-10">
+                                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shadow-sm transition-all ${
+                                                                            isHired ? 'bg-emerald-600 text-white ring-4 ring-emerald-100' : isRejected ? 'bg-red-600 text-white ring-4 ring-red-100' : isWithdrawn ? 'bg-slate-600 text-white ring-4 ring-slate-100' : 'bg-gray-100 text-gray-400 border border-gray-300'
+                                                                        }`}>
+                                                                            {isHired ? <CheckCircle className="w-5 h-5" /> : isRejected ? <XCircle className="w-5 h-5" /> : isWithdrawn ? <Ban className="w-5 h-5" /> : '4'}
+                                                                        </div>
+                                                                        <span className={`text-xs font-bold mt-2.5 ${isHired ? 'text-emerald-700 font-extrabold' : isRejected ? 'text-red-700' : isWithdrawn ? 'text-slate-700' : 'text-gray-400'}`}>
+                                                                            {isHired ? '4. Hired 🎉' : isRejected ? '4. Decision Released' : isWithdrawn ? '4. Withdrawn' : '4. Final Result'}
+                                                                        </span>
+                                                                        <span className="text-[10px] text-gray-500 hidden sm:block mt-0.5">
+                                                                            {isHired ? 'Appointed to Position' : isRejected ? 'Re-application Period' : isWithdrawn ? 'Cancelled by Applicant' : 'Official HR Outcome'}
+                                                                        </span>
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="py-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                                        <p className="text-xs font-semibold text-slate-600">You currently have no active job application under review.</p>
+                                                        <Link href="/jobs" className="inline-block mt-2">
+                                                            <Button size="sm" className="bg-[#193153] text-white font-bold text-xs px-4">
+                                                                Explore Open Positions
+                                                            </Button>
+                                                        </Link>
+                                                    </div>
+                                                )}
                                             </div>
-                                        ))}
-                                    </div>
+                                        );
+                                    })()}
 
 
                                      {/* Application List */}
@@ -1817,7 +2046,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                                                                         <div className="flex items-center justify-end gap-1.5">
                                                                             <CustomTooltip content="View Details" side="top">
-                                                                                <Link href={`/jobs/${app.jobId}`}>
+                                                                                <Link href={`/jobs/${app.jobId}?viewSubmitted=1`}>
                                                                                     <Button variant="ghost" size="sm" className="text-slate-600 hover:text-[#193153] hover:bg-slate-100 h-9 w-9 p-0">
                                                                                         <FileText className="w-5 h-5" />
                                                                                     </Button>
@@ -1841,23 +2070,12 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                                     </span>
                                                                                 )}
                                                                             </div>
-                                                                            {['Withdrawn', 'Rejected'].includes(app.status) ? (
-                                                                                <CustomTooltip content="Delete" side="top" align="right">
-                                                                                    <Button
-                                                                                        variant="ghost"
-                                                                                        size="sm"
-                                                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 h-9 w-9 p-0"
-                                                                                        onClick={() => requestDelete(app.id, app.jobTitle)}
-                                                                                    >
-                                                                                        <Trash2 className="w-5 h-5 text-red-500 hover:text-red-700 cursor-pointer transition-colors" />
-                                                                                    </Button>
-                                                                                </CustomTooltip>
-                                                                            ) : app.status === 'Hired' ? null : (
+                                                                             {['Withdrawn', 'Hired', 'Rejected'].includes(app.status) ? null : (
                                                                                 <CustomTooltip content="Withdraw Application" side="top" align="right">
                                                                                     <Button
                                                                                         variant="ghost"
                                                                                         size="sm"
-                                                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 h-9 w-9 p-0"
+                                                                                        className="text-amber-600 hover:text-amber-800 hover:bg-amber-50 h-9 w-9 p-0"
                                                                                         onClick={() => requestWithdraw(app.id, app.jobTitle)}
                                                                                     >
                                                                                         <FileX className="w-5 h-5" />
@@ -2978,24 +3196,60 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
                         {/* Message Input Footer */}
                         <div className="p-3 bg-white border-t shrink-0">
-                            <form
-                                onSubmit={(e: React.FormEvent) => { e.preventDefault(); sendMessage(); }}
-                                className="flex gap-2"
-                            >
-                                <Input
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder="Type a message..."
-                                    className="flex-1 h-9 text-xs"
-                                />
-                                <Button
-                                    type="submit"
-                                    disabled={!newMessage.trim()}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 h-9 text-xs"
-                                >
-                                    <Send className="h-3.5 w-3.5" />
-                                </Button>
-                            </form>
+                            {(() => {
+                                const activeApp = myApplications.find(app => String(app.id) === String(activeMessageAppId));
+                                const isClosedStatus = activeApp && ['Hired', 'Rejected'].includes(activeApp.status);
+                                const isAdminInitiated = messages.some(msg => msg.sender?.id !== user.id || msg.sender?.role === 'admin' || msg.sender?.email === 'admin@naap.edu.ph' || msg.sender?.email === 'admin@admin.com');
+
+                                if (isClosedStatus) {
+                                    return (
+                                        <div className="flex flex-col items-center justify-center gap-1.5 p-3 text-slate-700 bg-slate-100 rounded-lg border border-slate-200 text-center">
+                                            <div className="flex items-center gap-1.5 font-semibold text-xs text-slate-800">
+                                                <Ban className="h-4 w-4 shrink-0 text-slate-600" />
+                                                <span>Messaging Closed</span>
+                                            </div>
+                                            <p className="text-[11px] text-slate-600 leading-snug">
+                                                Messaging is closed because your application is <span className="font-semibold text-slate-900">{activeApp?.status}</span>.
+                                            </p>
+                                        </div>
+                                    );
+                                }
+
+                                if (!isAdminInitiated) {
+                                    return (
+                                        <div className="flex flex-col items-center justify-center gap-1.5 p-3 text-amber-800 bg-amber-50 rounded-lg border border-amber-200 text-center">
+                                            <div className="flex items-center gap-1.5 font-semibold text-xs text-amber-900">
+                                                <Lock className="h-4 w-4 shrink-0 text-amber-600" />
+                                                <span>Messaging Locked</span>
+                                            </div>
+                                            <p className="text-[11px] text-amber-800 leading-snug">
+                                                Waiting for Admin to initiate communication for your application.
+                                            </p>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <form
+                                        onSubmit={(e: React.FormEvent) => { e.preventDefault(); sendMessage(); }}
+                                        className="flex gap-2"
+                                    >
+                                        <Input
+                                            value={newMessage}
+                                            onChange={(e) => setNewMessage(e.target.value)}
+                                            placeholder="Type a message..."
+                                            className="flex-1 h-9 text-xs"
+                                        />
+                                        <Button
+                                            type="submit"
+                                            disabled={!newMessage.trim()}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 h-9 text-xs"
+                                        >
+                                            <Send className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </form>
+                                );
+                            })()}
                         </div>
                     </div>
                 )}

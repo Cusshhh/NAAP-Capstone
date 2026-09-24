@@ -35,6 +35,13 @@ interface JobDetailsProps {
     job: any;
     application?: any;
     interview?: any;
+    restriction?: {
+        type: 'hired' | 'active_app' | 'cooldown';
+        jobTitle?: string;
+        daysLeft?: number;
+        unlockDate?: string;
+        message: string;
+    } | null;
 }
 
 const parseArrayField = (field: any): any[] => {
@@ -52,7 +59,7 @@ const parseArrayField = (field: any): any[] => {
     return [];
 };
 
-export default function JobDetails({ id, auth, job: serverJob, application, interview }: JobDetailsProps) {
+export default function JobDetails({ id, auth, job: serverJob, application, interview, restriction }: JobDetailsProps) {
     const user = auth?.user;
     const isAdmin = !!(user && (user.is_admin || user.role === 'super_admin' || user.role === 'hr_admin' || user.role === 'hr_staff' || user.email === 'admin@naap.edu.ph'));
     const job = serverJob;
@@ -67,14 +74,52 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
         return { id: req?.id || `custom-${idx}`, label: req?.label || req?.name || String(req || '') };
     });
     const [hasApplied, setHasApplied] = useState(application !== null && application !== undefined);
+    const [localApp, setLocalApp] = useState<any>(null);
+    const activeApp = application || localApp;
+    const appData = activeApp;
+
     const [isApplyOpen, setIsApplyOpen] = useState(false);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [uploadingDocLabel, setUploadingDocLabel] = useState<string | null>(null);
     const [profileImage, setProfileImage] = useState<string | null>(null);
 
     useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('viewSubmitted') === '1' || params.get('viewDetails') === '1') {
+                setIsDetailsOpen(true);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
         if (user && typeof window !== 'undefined') {
-            setProfileImage(localStorage.getItem(`user_profile_image_${user.id}`));
+            const pData = (user as any)?.profile_data || {};
+            const isRemoved = pData.photo_removed || (pData.avatar_url === null && pData.photo === null && pData.avatar === null && !(user as any)?.avatar_url);
+            if (isRemoved) {
+                localStorage.removeItem(`user_profile_image_${user.id}`);
+                setProfileImage(null);
+                return;
+            }
+            const serverPhoto = (user as any)?.avatar_url || pData.avatar_url || pData.photo || pData.avatar || (user as any)?.avatar;
+            if (serverPhoto) {
+                setProfileImage(serverPhoto);
+            } else {
+                const savedData = localStorage.getItem(`user_profile_data_${user.id}`);
+                if (savedData) {
+                    try {
+                        const parsed = JSON.parse(savedData);
+                        if (parsed && parsed.email && parsed.email.toLowerCase() !== user.email.toLowerCase()) {
+                            localStorage.removeItem(`user_profile_data_${user.id}`);
+                            localStorage.removeItem(`user_profile_image_${user.id}`);
+                            setProfileImage(null);
+                            return;
+                        }
+                    } catch (e) {}
+                }
+                setProfileImage(localStorage.getItem(`user_profile_image_${user.id}`));
+            }
         }
     }, [user]);
 
@@ -132,15 +177,22 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
     // Update the useEffect hook to populate form data from local storage when the application form (isApplyOpen) is opened.
     // This ensures that users don't have to re-enter their information if they have already saved it in their dashboard.
     useEffect(() => {
-        if (isApplyOpen && typeof window !== 'undefined') {
-            const savedProfile = localStorage.getItem(`user_profile_data_${user?.id}`);
-            if (savedProfile) {
-                const profile = JSON.parse(savedProfile);
-                const rawCivil = (profile.civilStatus || prev.civilStatus || 'single').toLowerCase();
-                const civilStatusVal = rawCivil === 'other' ? 'others' : rawCivil;
+        if (isApplyOpen && typeof window !== 'undefined' && user) {
+            const savedProfileStr = localStorage.getItem(`user_profile_data_${user.id}`);
+            if (savedProfileStr) {
+                try {
+                    const profile = JSON.parse(savedProfileStr);
+                    if (profile && profile.email && profile.email.toLowerCase() !== user.email.toLowerCase()) {
+                        localStorage.removeItem(`user_profile_data_${user.id}`);
+                        localStorage.removeItem(`user_profile_image_${user.id}`);
+                        return;
+                    }
+                    const rawCivil = (profile.civilStatus || 'single').toLowerCase();
+                    const civilStatusVal = rawCivil === 'other' ? 'others' : rawCivil;
 
-                setFormData(prev => ({
-                    ...prev,
+                    setFormData(prev => ({
+                        ...prev,
+                        email: user.email,
                     lastName: profile.lastName || prev.lastName,
                     firstName: profile.firstName || prev.firstName,
                     middleName: profile.middleName || prev.middleName || '',
@@ -155,7 +207,6 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                     contactNumber: profile.phone || prev.contactNumber || '',
                     alternateContact: profile.alternateContact || prev.alternateContact || '',
                     address: profile.address || prev.address || '',
-                    email: profile.email || prev.email,
                     // CS Form No. 212 Gov IDs (PDS Sec I)
                     gsisNo: profile.gsisNo || prev.gsisNo || '',
                     sssNo: profile.sssNo || prev.sssNo || '',
@@ -184,7 +235,8 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                 if (profile.eligibilities && Array.isArray(profile.eligibilities) && profile.eligibilities.length > 0) {
                     setSelectedEligibilities(profile.eligibilities);
                 }
-            }
+            } catch (e) {}
+        }
 
             // Check for attached docs
             const docMap: Record<string, boolean> = {};
@@ -251,24 +303,29 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                 const localApps = JSON.parse(localStorage.getItem('mock_applications_custom') || '[]');
 
                 // Check if any application matches user email AND (job ID or job Title)
-                const hasAppliedLocally = localApps.some((app: any) =>
-                    app.applicantEmail === user.email &&
-                    (String(app.jobId) === String(job.id) || app.jobTitle === job.title)
+                const foundApp = localApps.find((app: any) =>
+                    (app.applicantEmail === user.email || app.email === user.email) &&
+                    (String(app.jobId) === String(job.id) || (app.jobTitle && app.jobTitle.toLowerCase() === job.title?.toLowerCase()))
                 );
 
-                if (hasAppliedLocally) {
+                if (foundApp || application) {
                     setHasApplied(true);
+                    if (foundApp) setLocalApp(foundApp);
                 }
             };
 
             checkApplicationStatus();
         }
-    }, [user, job]);
+    }, [user, job, application]);
 
     const handleApplyClick = () => {
         if (isExpired) return;
         if (!user) {
             router.visit('/login');
+            return;
+        }
+        if (restriction) {
+            toast.error(restriction.message);
             return;
         }
         setIsApplyOpen(true);
@@ -423,6 +480,41 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
         }));
     };
 
+    const handleUploadToFollowDocument = (documentLabel: string, file: File) => {
+        if (!application?.id || !file) return;
+
+        try {
+            setUploadingDocLabel(documentLabel);
+            const toastId = toast.loading(`Uploading '${documentLabel}'...`);
+
+            const formDataPayload = new FormData();
+            formDataPayload.append('document_label', documentLabel);
+            formDataPayload.append('file', file);
+
+            router.post(`/applications/${application.id}/upload-to-follow`, formDataPayload, {
+                onSuccess: () => {
+                    setUploadingDocLabel(null);
+                    toast.dismiss(toastId);
+                    toast.success(`'${documentLabel}' uploaded successfully!`, {
+                        description: "Your document has been received and synced with your application."
+                    });
+                },
+                onError: (errors) => {
+                    setUploadingDocLabel(null);
+                    toast.dismiss(toastId);
+                    const firstErr = Object.values(errors)[0] as string;
+                    toast.error(`Failed to upload document: ${firstErr || 'Unknown error'}`);
+                },
+                onFinish: () => {
+                    setUploadingDocLabel(null);
+                }
+            });
+        } catch (err: any) {
+            setUploadingDocLabel(null);
+            toast.error(`Failed to initiate upload: ${err?.message || 'Error occurred'}`);
+        }
+    };
+
 
 
     if (!job) {
@@ -463,7 +555,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     user.name.charAt(0).toUpperCase()
                                 )}
                             </div>
-                            <span className="text-sm font-medium group-hover:text-[#ffdd59] transition-colors">{user.name}</span>
+                            <span className="text-sm font-medium group-hover:text-[#ffdd59] transition-colors max-w-xs truncate">{user.name}</span>
                         </Link>
                     )}
                 </div>
@@ -643,7 +735,25 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     </div>
                                 ) : (
                                     // APPLICANT VIEW
-                                    isExpired ? (
+                                    (hasApplied || activeApp) ? (
+                                        <div className="space-y-3 mb-3">
+                                            <Button
+                                                className="w-full bg-green-600 text-white font-bold transition-colors cursor-default"
+                                                size="lg"
+                                                disabled
+                                            >
+                                                <CheckCircle className="w-5 h-5 mr-2" />
+                                                Applied
+                                            </Button>
+                                            <Button
+                                                onClick={() => setIsDetailsOpen(true)}
+                                                className="w-full bg-[#193153] hover:bg-[#ffdd59] hover:text-[#193153] font-bold transition-colors"
+                                                size="lg"
+                                            >
+                                                View Submitted Details
+                                            </Button>
+                                        </div>
+                                    ) : isExpired ? (
                                         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-3 text-center">
                                             <p className="text-sm text-red-800 font-bold">
                                                 Applications Closed
@@ -653,25 +763,21 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                             </p>
                                         </div>
                                     ) : user ? (
-                                        (hasApplied || application) ? (
+                                        restriction ? (
                                             <div className="space-y-3 mb-3">
+                                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 leading-relaxed">
+                                                    <div className="font-bold flex items-center gap-1.5 text-amber-950 mb-1">
+                                                        <span>⚠️</span> CSC Application Policy Notice
+                                                    </div>
+                                                    <p className="text-[11px] text-amber-800">{restriction.message}</p>
+                                                </div>
                                                 <Button
-                                                    className="w-full bg-green-600 text-white font-bold transition-colors cursor-default"
-                                                    size="lg"
                                                     disabled
+                                                    className="w-full bg-slate-200 text-slate-500 font-bold cursor-not-allowed border-0 shadow-none"
+                                                    size="lg"
                                                 >
-                                                    <CheckCircle className="w-5 h-5 mr-2" />
-                                                    Applied
+                                                    Application Restricted
                                                 </Button>
-                                                {application && (
-                                                    <Button
-                                                        onClick={() => setIsDetailsOpen(true)}
-                                                        className="w-full bg-[#193153] hover:bg-[#ffdd59] hover:text-[#193153] font-bold transition-colors"
-                                                        size="lg"
-                                                    >
-                                                        View Submitted Details
-                                                    </Button>
-                                                )}
                                             </div>
                                         ) : (
                                             <Button
@@ -1328,22 +1434,22 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                         </DialogDescription>
                     </DialogHeader>
 
-                    {application && (
+                    {appData ? (
                         <div className="overflow-y-auto flex-1 pr-2 my-2 space-y-6">
-                            {/* 1. Status Tracker */}
-                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                                <h4 className="font-bold text-[#193153] text-sm mb-3 flex items-center gap-1.5">
-                                    <Clock className="w-4 h-4 text-blue-600" />
-                                    Application Status: <span className="underline ml-1 font-extrabold text-[#193153]">{application.status}</span>
-                                </h4>
+                                {/* 1. Status Tracker */}
+                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                    <h4 className="font-bold text-[#193153] text-sm mb-3 flex items-center gap-1.5">
+                                        <Clock className="w-4 h-4 text-blue-600" />
+                                        Application Status: <span className="underline ml-1 font-extrabold text-[#193153]">{appData.status}</span>
+                                    </h4>
                                 
                                 {/* Timeline Steps */}
                                 <div className="flex items-center justify-between max-w-md mx-auto pt-2 pb-4">
                                     {[
                                         { label: 'Applied', active: true },
-                                        { label: 'Review', active: ['Under Review', 'Interview Scheduled', 'Interview', 'Hired', 'Rejected'].includes(application.status) },
-                                        { label: 'Interview', active: ['Interview Scheduled', 'Interview', 'Hired', 'Rejected'].includes(application.status) },
-                                        { label: 'Result', active: ['Hired', 'Rejected'].includes(application.status), isEnd: true }
+                                        { label: 'Review', active: ['Under Review', 'Interview Scheduled', 'Interview', 'Hired', 'Rejected'].includes(appData.status) },
+                                        { label: 'Interview', active: ['Interview Scheduled', 'Interview', 'Hired', 'Rejected'].includes(appData.status) },
+                                        { label: 'Result', active: ['Hired', 'Rejected'].includes(appData.status), isEnd: true }
                                     ].map((step, i) => (
                                         <div key={i} className="flex-1 flex items-center">
                                             <div className="flex flex-col items-center relative">
@@ -1367,13 +1473,13 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 <div className="h-4" /> {/* Spacer for labels */}
                             </div>
 
-                            {application.status === 'Rejected' && (
+                            {appData.status === 'Rejected' && (
                                 <div className="bg-red-50 border border-red-200 text-red-950 p-4 rounded-lg flex flex-col gap-1.5 shadow-sm">
                                     <span className="font-bold text-sm flex items-center gap-1.5 text-red-700">
                                         ❌ Rejection Details
                                     </span>
                                     <p className="text-xs font-semibold leading-relaxed">
-                                        Feedback from HR: <span className="font-normal text-red-800">{application.dynamic_responses?.rejection_reason || 'Minimum education or experience requirements not met.'}</span>
+                                        Feedback from HR: <span className="font-normal text-red-800">{appData.dynamic_responses?.rejection_reason || 'Minimum education or experience requirements not met.'}</span>
                                     </p>
                                 </div>
                             )}
@@ -1417,7 +1523,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                         <span className="text-gray-500 font-medium">Highest Education Level</span>
                                         <span className="font-bold text-gray-900 mt-1">
                                             {(() => {
-                                                const rawEd = application.dynamic_responses?.educationLevel || application.education || '';
+                                                const rawEd = appData.dynamic_responses?.educationLevel || appData.education || '';
                                                 if (rawEd.includes('doctoral')) return 'Doctoral / Ph.D. Degree';
                                                 if (rawEd.includes('master')) return "Master's Degree";
                                                 if (rawEd.includes('bachelor')) return "Bachelor's Degree";
@@ -1429,40 +1535,40 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     </div>
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
                                         <span className="text-gray-500 font-medium">Degree / Course Title</span>
-                                        <span className="font-bold text-gray-900 mt-1">{application.dynamic_responses?.degreeCourse || 'N/A'}</span>
+                                        <span className="font-bold text-gray-900 mt-1">{appData.dynamic_responses?.degreeCourse || 'N/A'}</span>
                                     </div>
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
                                         <span className="text-gray-500 font-medium">School / University</span>
-                                        <span className="font-bold text-gray-900 mt-1">{application.dynamic_responses?.schoolName || 'N/A'}</span>
+                                        <span className="font-bold text-gray-900 mt-1">{appData.dynamic_responses?.schoolName || 'N/A'}</span>
                                     </div>
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
                                         <span className="text-gray-500 font-medium">Years of Experience</span>
                                         <span className="font-bold text-gray-900 mt-1">
-                                            {application.dynamic_responses?.yearsOfExperience || 0} years
+                                            {appData.dynamic_responses?.yearsOfExperience || 0} years
                                         </span>
                                     </div>
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
                                         <span className="text-gray-500 font-medium">Recent Position Title</span>
-                                        <span className="font-bold text-gray-900 mt-1">{application.dynamic_responses?.recentPositionTitle || 'N/A'}</span>
+                                        <span className="font-bold text-gray-900 mt-1">{appData.dynamic_responses?.recentPositionTitle || 'N/A'}</span>
                                     </div>
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
                                         <span className="text-gray-500 font-medium">Recent Employer / Agency</span>
-                                        <span className="font-bold text-gray-900 mt-1">{application.dynamic_responses?.recentEmployer || 'N/A'}</span>
+                                        <span className="font-bold text-gray-900 mt-1">{appData.dynamic_responses?.recentEmployer || 'N/A'}</span>
                                     </div>
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
                                         <span className="text-gray-500 font-medium">Training Hours Completed</span>
                                         <span className="font-bold text-gray-900 mt-1">
-                                            {application.dynamic_responses?.trainingHours || 0} hours
+                                            {appData.dynamic_responses?.trainingHours || 0} hours
                                         </span>
                                     </div>
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
                                         <span className="text-gray-500 font-medium">License / Registration No.</span>
-                                        <span className="font-bold text-gray-900 mt-1">{application.dynamic_responses?.licenseNo || 'N/A'}</span>
+                                        <span className="font-bold text-gray-900 mt-1">{appData.dynamic_responses?.licenseNo || 'N/A'}</span>
                                     </div>
                                     <div className="flex flex-col bg-gray-50 p-2.5 rounded border border-gray-100">
                                         <span className="text-gray-500 font-medium">Open to other positions?</span>
                                         <span className="font-bold text-gray-900 mt-1 capitalize">
-                                            {application.dynamic_responses?.openToOthers || 'Yes'}
+                                            {appData.dynamic_responses?.openToOthers || 'Yes'}
                                         </span>
                                     </div>
                                 </div>
@@ -1470,11 +1576,11 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
 
                             {/* 4. Personal Info Submitted */}
                             {(() => {
-                                const nameParts = (application?.applicant_name || '').trim().split(/\s+/);
-                                const parsedFirstName = application.dynamic_responses?.firstName || nameParts[0] || 'N/A';
-                                const parsedLastName = application.dynamic_responses?.lastName || (nameParts.length > 1 ? nameParts[nameParts.length - 1] : 'N/A');
-                                const parsedMiddleName = application.dynamic_responses?.middleName || (nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : 'N/A');
-                                const parsedContact = application.dynamic_responses?.contactNumber || application.phone_number || 'N/A';
+                                const nameParts = (appData?.applicant_name || appData?.applicant?.name || '').trim().split(/\s+/);
+                                const parsedFirstName = appData.dynamic_responses?.firstName || nameParts[0] || 'N/A';
+                                const parsedLastName = appData.dynamic_responses?.lastName || (nameParts.length > 1 ? nameParts[nameParts.length - 1] : 'N/A');
+                                const parsedMiddleName = appData.dynamic_responses?.middleName || (nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : 'N/A');
+                                const parsedContact = appData.dynamic_responses?.contactNumber || appData.phone_number || 'N/A';
 
                                 return (
                                     <div className="space-y-4">
@@ -1495,24 +1601,24 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                             <div className="flex flex-col">
                                                 <span className="text-gray-500">Age / Sex</span>
                                                 <span className="font-semibold text-gray-900 mt-0.5">
-                                                    {application.dynamic_responses?.age ? `${application.dynamic_responses.age} yrs old` : 'N/A'} / {application.dynamic_responses?.sex || 'N/A'}
+                                                    {appData.dynamic_responses?.age ? `${appData.dynamic_responses.age} yrs old` : 'N/A'} / {appData.dynamic_responses?.sex || 'N/A'}
                                                 </span>
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-gray-500">Civil Status</span>
-                                                <span className="font-semibold text-gray-900 mt-0.5 capitalize">{application.dynamic_responses?.civilStatus || 'N/A'}</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5 capitalize">{appData.dynamic_responses?.civilStatus || 'N/A'}</span>
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-gray-500">Religion</span>
-                                                <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.religion || 'N/A'}</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5">{appData.dynamic_responses?.religion || 'N/A'}</span>
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-gray-500">Indigenous Group Member (IP)?</span>
-                                                <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.isIP || 'No'}</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5">{appData.dynamic_responses?.isIP || 'No'}</span>
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-gray-500">Person with Disability (PWD)?</span>
-                                                <span className="font-semibold text-gray-900 mt-0.5">{application.dynamic_responses?.isPWD || 'No'}</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5">{appData.dynamic_responses?.isPWD || 'No'}</span>
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-gray-500">Contact Number</span>
@@ -1520,7 +1626,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                             </div>
                                             <div className="flex flex-col col-span-2 md:col-span-3">
                                                 <span className="text-gray-500">Residential Address</span>
-                                                <span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{application.dynamic_responses?.address || 'N/A'}</span>
+                                                <span className="font-semibold text-gray-900 mt-0.5 leading-relaxed">{appData.dynamic_responses?.address || 'N/A'}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -1528,11 +1634,11 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                             })()}
 
                             {/* 5. Eligibilities */}
-                            {application.dynamic_responses?.eligibilities && application.dynamic_responses.eligibilities.length > 0 && (
+                            {appData.dynamic_responses?.eligibilities && appData.dynamic_responses.eligibilities.length > 0 && (
                                 <div className="space-y-3">
                                     <h4 className="font-bold text-[#193153] text-sm border-b pb-1">Eligibilities & Licenses</h4>
                                     <ul className="list-disc list-inside space-y-1 text-xs text-gray-700 pl-1">
-                                        {application.dynamic_responses.eligibilities.map((elig: string, index: number) => (
+                                        {appData.dynamic_responses.eligibilities.map((elig: string, index: number) => (
                                             <li key={index} className="font-medium text-gray-800">{elig}</li>
                                         ))}
                                     </ul>
@@ -1562,20 +1668,20 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                             : defaultCoreDocs;
 
                                         // Get submitted custom files
-                                        const customResponses: Record<string, any> = application.custom_file_responses 
-                                            || application.dynamic_responses?.custom_files 
+                                        const customResponses: Record<string, any> = appData.custom_file_responses 
+                                            || appData.dynamic_responses?.custom_files 
                                             || customFiles 
                                             || {};
 
                                         // Get submitted to-follow docs
-                                        const toFollowList: string[] = Array.isArray(application.to_follow_docs)
-                                            ? application.to_follow_docs
-                                            : (Array.isArray(application.toFollowDocs)
-                                                ? application.toFollowDocs
-                                                : (application.dynamic_responses?.to_follow_docs || Object.keys(toFollowDocs).filter(k => toFollowDocs[k])));
+                                        const toFollowList: string[] = Array.isArray(appData.to_follow_docs)
+                                            ? appData.to_follow_docs
+                                            : (Array.isArray(appData.toFollowDocs)
+                                                ? appData.toFollowDocs
+                                                : (appData.dynamic_responses?.to_follow_docs || Object.keys(toFollowDocs).filter(k => toFollowDocs[k])));
 
                                         // Gather legacy documents if any
-                                        const rawDocs = application.dynamic_responses?.documents || application.documents || [];
+                                        const rawDocs = appData.dynamic_responses?.documents || appData.documents || [];
                                         let legacyDocsMap: Record<string, string> = {};
                                         if (Array.isArray(rawDocs)) {
                                             rawDocs.forEach((d: any) => {
@@ -1643,9 +1749,40 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                                                     Uploaded & Received
                                                                 </Badge>
                                                             ) : isToFollow ? (
-                                                                <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] shrink-0 font-semibold">
-                                                                    To Follow
-                                                                </Badge>
+                                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                                    <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] font-semibold">
+                                                                        To Follow
+                                                                    </Badge>
+                                                                    <label className="cursor-pointer">
+                                                                        <input
+                                                                            type="file"
+                                                                            className="hidden"
+                                                                            accept=".pdf,.jpg,.jpeg,.png"
+                                                                            disabled={uploadingDocLabel === reqLabel}
+                                                                            onChange={(e) => {
+                                                                                const selectedFile = e.target.files?.[0];
+                                                                                if (selectedFile) {
+                                                                                    handleUploadToFollowDocument(reqLabel, selectedFile);
+                                                                                    e.target.value = '';
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-sm transition-colors ${
+                                                                            uploadingDocLabel === reqLabel 
+                                                                                ? 'bg-gray-400 cursor-not-allowed' 
+                                                                                : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+                                                                        }`}>
+                                                                            {uploadingDocLabel === reqLabel ? (
+                                                                                <span>Uploading...</span>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <Upload className="w-2.5 h-2.5 mr-1" />
+                                                                                    Upload Now
+                                                                                </>
+                                                                            )}
+                                                                        </span>
+                                                                    </label>
+                                                                </div>
                                                             ) : (
                                                                 <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-[10px] shrink-0 font-semibold">
                                                                     Pending
@@ -1695,7 +1832,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 </div>
                             </div>
                         </div>
-                    )}
+                    ) : null}
 
                     <DialogFooter className="border-t pt-4 shrink-0 mt-2">
                         <Button onClick={() => setIsDetailsOpen(false)} className="bg-[#193153] text-white hover:bg-[#ffdd59] hover:text-[#193153] font-bold">

@@ -48,3 +48,28 @@ export function formatApplicantFullName(data: any): string {
     return parts.join(' ');
 }
 
+export function formatApplicantFirstName(data: any): string {
+    if (!data) return '';
+
+    if (typeof data === 'string') {
+        let str = data.trim();
+        if (!str) return '';
+        str = str.replace(/\s+(N\/A|n\/a|None|none|-)\s*$/i, '');
+        const firstWord = str.split(' ')[0] || str;
+        return firstWord;
+    }
+
+    const first = (data.firstName || data.first_name || '').trim();
+    if (first && !['n/a', 'none', '-', 'null'].includes(first.toLowerCase())) {
+        return first.split(' ')[0] || first;
+    }
+
+    const fallback = (data.fullName || data.full_name || data.name || data.applicant_name || data.candidateName || '').trim();
+    if (fallback) {
+        const cleaned = fallback.replace(/\s+(N\/A|n\/a|None|none|-)\s*$/i, '');
+        return cleaned.split(' ')[0] || cleaned;
+    }
+
+    return '';
+}
+

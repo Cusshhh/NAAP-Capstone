@@ -65,6 +65,7 @@ Route::get('/api/open-jobs', function () {
 
 Route::get('/dashboard', [\App\Http\Controllers\ApplicantController::class, 'dashboard'])->middleware(['auth'])->name('dashboard');
 Route::post('/profile/save', [\App\Http\Controllers\ApplicantController::class, 'saveProfileData'])->middleware(['auth'])->name('profile.saveData');
+Route::post('/applications/{application}/upload-to-follow', [\App\Http\Controllers\ApplicantController::class, 'uploadToFollowDocument'])->middleware(['auth'])->name('applications.upload-to-follow');
 
 Route::get('/calendar', function () {
     $user = Auth::user();
@@ -247,13 +248,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->get()
                 ->map(function ($u) {
                     $profile = is_array($u->profile_data) ? $u->profile_data : json_decode($u->profile_data ?? '{}', true);
-                    $avatarUrl = $profile['avatar_url'] ?? $profile['avatar'] ?? $profile['photo'] ?? null;
+                    $isPhotoRemoved = !empty($profile['photo_removed']) || !empty($profile['remove_avatar']) || (array_key_exists('avatar_url', $profile) && $profile['avatar_url'] === null && array_key_exists('photo', $profile) && $profile['photo'] === null);
 
-                    // Fallback to Application photo if profile avatar is not set
-                    if (! $avatarUrl) {
-                        $app = \App\Models\Application::where('email', $u->email)->latest()->first();
-                        if ($app && is_array($app->dynamic_responses) && ! empty($app->dynamic_responses['photo'])) {
-                            $avatarUrl = $app->dynamic_responses['photo'];
+                    $avatarUrl = null;
+                    if (!$isPhotoRemoved) {
+                        $avatarUrl = $profile['avatar_url'] ?? $profile['avatar'] ?? $profile['photo'] ?? null;
+                        if (! $avatarUrl) {
+                            $app = \App\Models\Application::where('email', $u->email)->latest()->first();
+                            if ($app && is_array($app->dynamic_responses) && ! empty($app->dynamic_responses['photo'])) {
+                                $avatarUrl = $app->dynamic_responses['photo'];
+                            }
                         }
                     }
 
@@ -294,7 +298,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'applications' => $rawApps->map(function ($app) use ($unreadAppIds) {
                     $user = \App\Models\User::where('email', $app->email)->first();
                     $profile = $user && is_array($user->profile_data) ? $user->profile_data : ($user ? json_decode($user->profile_data ?? '{}', true) : []);
-                    $avatarUrl = $profile['avatar_url'] ?? $profile['avatar'] ?? $profile['photo'] ?? ($app->dynamic_responses['photo'] ?? null);
+                    $isPhotoRemoved = !empty($profile['photo_removed']) || !empty($profile['remove_avatar']) || (array_key_exists('avatar_url', $profile) && $profile['avatar_url'] === null && array_key_exists('photo', $profile) && $profile['photo'] === null);
+
+                    $avatarUrl = null;
+                    if (!$isPhotoRemoved) {
+                        $avatarUrl = $profile['avatar_url'] ?? $profile['avatar'] ?? $profile['photo'] ?? ($app->dynamic_responses['photo'] ?? null);
+                    }
 
                     return [
                         'id' => $app->id,
@@ -552,12 +561,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     ->first();
 
                 $userProf = $app->user && is_array($app->user->profile_data) ? $app->user->profile_data : [];
+                $isPhotoRemoved = !empty($userProf['photo_removed']) || !empty($userProf['remove_avatar']) || (array_key_exists('avatar_url', $userProf) && $userProf['avatar_url'] === null && array_key_exists('photo', $userProf) && $userProf['photo'] === null);
+
                 $avatarUrl = null;
-                $rawPhoto = $userProf['avatar_url'] ?? $userProf['photo'] ?? $userProf['avatar'] ?? ($app->dynamic_responses['photo'] ?? null);
-                if (! empty($rawPhoto)) {
-                    $avatarUrl = (str_starts_with($rawPhoto, 'data:') || str_starts_with($rawPhoto, 'http') || str_starts_with($rawPhoto, '/'))
-                        ? $rawPhoto
-                        : '/storage/'.$rawPhoto;
+                if (!$isPhotoRemoved) {
+                    $rawPhoto = $userProf['avatar_url'] ?? $userProf['photo'] ?? $userProf['avatar'] ?? ($app->dynamic_responses['photo'] ?? null);
+                    if (! empty($rawPhoto)) {
+                        $avatarUrl = (str_starts_with($rawPhoto, 'data:') || str_starts_with($rawPhoto, 'http') || str_starts_with($rawPhoto, '/'))
+                            ? $rawPhoto
+                            : '/storage/'.$rawPhoto;
+                    }
                 }
 
                 $realEducation = ! empty($userProf['highestEducation'])

@@ -22,6 +22,13 @@ export default function Profile({ mustVerifyEmail, status }: any) {
 
     // Avatar State
     const [avatarPreview, setAvatarPreview] = useState<string | null>(() => {
+        const isRemoved = user.profile_data?.photo_removed || (user.profile_data && user.profile_data.avatar_url === null && user.profile_data.photo === null && !user.avatar_url);
+        if (isRemoved) {
+            if (user?.id && typeof window !== 'undefined') {
+                localStorage.removeItem(`user_profile_image_${user.id}`);
+            }
+            return null;
+        }
         return user.avatar_url 
             || user.profile_data?.avatar_url 
             || user.profile_data?.photo 
@@ -100,7 +107,12 @@ export default function Profile({ mustVerifyEmail, status }: any) {
         e.preventDefault();
         profileForm.patch('/settings/profile', {
             preserveScroll: true,
-            onSuccess: () => toast.success('Information Updated Successfully'),
+            onSuccess: () => {
+                if (profileForm.data.remove_avatar && user?.id && typeof window !== 'undefined') {
+                    localStorage.removeItem(`user_profile_image_${user.id}`);
+                }
+                toast.success('Information Updated Successfully');
+            },
             onError: () => toast.error('Failed to update profile. Please check the form.'),
         });
     };
@@ -399,13 +411,13 @@ export default function Profile({ mustVerifyEmail, status }: any) {
                                     className="flex items-center gap-2.5 bg-[#244066]/80 hover:bg-[#2e4f7e] border border-blue-300/30 rounded-full pl-1.5 pr-4 py-1 transition-all duration-200 group shadow-xs cursor-pointer"
                                 >
                                     <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden ring-2 ring-white/50 group-hover:ring-[#ffdd59] transition-all shrink-0">
-                                        {avatarPreview || user?.avatar_url || user?.profile_data?.avatar_url || user?.profile_data?.photo || (typeof window !== 'undefined' ? localStorage.getItem(`user_profile_image_${user?.id}`) : null) ? (
-                                            <img src={avatarPreview || user?.avatar_url || user?.profile_data?.avatar_url || user?.profile_data?.photo || (typeof window !== 'undefined' ? localStorage.getItem(`user_profile_image_${user?.id}`) : null) || ''} alt="Profile" className="w-full h-full object-cover" />
+                                        {!profileForm.data.remove_avatar && (avatarPreview || (!user?.profile_data?.photo_removed && (user?.avatar_url || user?.profile_data?.avatar_url || user?.profile_data?.photo))) ? (
+                                            <img src={avatarPreview || user?.avatar_url || user?.profile_data?.avatar_url || user?.profile_data?.photo || ''} alt="Profile" className="w-full h-full object-cover" />
                                         ) : (
                                             (user?.name || 'A').charAt(0).toUpperCase()
                                         )}
                                     </div>
-                                    <span className="text-sm font-bold hidden sm:block text-[#ffdd59] group-hover:text-white transition-colors max-w-[150px] truncate">
+                                    <span className="text-sm font-bold hidden sm:block text-[#ffdd59] group-hover:text-white transition-colors max-w-xs truncate">
                                         {formattedInitialName || user?.name || 'Applicant'}
                                     </span>
                                 </button>

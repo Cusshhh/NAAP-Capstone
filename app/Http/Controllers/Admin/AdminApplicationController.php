@@ -15,6 +15,13 @@ class AdminApplicationController extends Controller
     public function updateStatus(Request $request, Application $application)
     {
         try {
+            if ($application->status === 'Withdrawn') {
+                if ($request->wantsJson()) {
+                    return response()->json(['error' => 'This application has been withdrawn by the applicant and its status cannot be modified.'], 422);
+                }
+                return back()->withErrors(['error' => 'This application has been withdrawn by the applicant and its status cannot be modified.']);
+            }
+
             if ($request->input('status') === 'RESTORE') {
                 $request->merge(['status' => 'Under Review']);
             }

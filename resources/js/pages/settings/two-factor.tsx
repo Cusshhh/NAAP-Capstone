@@ -362,7 +362,7 @@ export default function TwoFactor({
                                             (user?.name || 'A').charAt(0).toUpperCase()
                                         )}
                                     </div>
-                                    <span className="text-sm font-bold hidden sm:block text-[#ffdd59] group-hover:text-white transition-colors max-w-[150px] truncate">
+                                    <span className="text-sm font-bold hidden sm:block text-[#ffdd59] group-hover:text-white transition-colors max-w-xs truncate">
                                         {user?.name || 'Applicant'}
                                     </span>
                                 </button>

@@ -32,16 +32,49 @@ class ApplicantController extends Controller
 
             Log::info('Application validation passed', $validated);
 
-            // Check if applicant already has an active application for this job vacancy
-            $existingApp = Application::where('job_id', $validated['job_id'])
-                ->where('email', $validated['email'])
-                ->whereNotIn('status', ['Withdrawn', 'Rejected'])
+            // 1. Check Hired Employee Lock
+            $hiredApp = Application::where('email', $validated['email'])
+                ->where('status', 'Hired')
                 ->first();
 
-            if ($existingApp) {
+            if ($hiredApp) {
                 return redirect()->back()->withErrors([
-                    'error' => "You already have an active application for '{$validated['job_title']}'. Only 1 active application per position is permitted.",
+                    'error' => "You have been officially Hired for '{$hiredApp->job_title}' at NAAP. Active employee accounts are restricted from submitting new job applications.",
                 ])->withInput();
+            }
+
+            // 2. Check Single Active Application Rule (Max 1 active application across all jobs)
+            $activeApp = Application::where('email', $validated['email'])
+                ->whereIn('status', ['Submitted', 'Under Review', 'Interview Scheduled', 'Interview'])
+                ->first();
+
+            if ($activeApp) {
+                if ((string)$activeApp->job_id === (string)$validated['job_id']) {
+                    return redirect()->back()->withErrors([
+                        'error' => "You already have an active application for '{$validated['job_title']}'. Only 1 active application per position is permitted.",
+                    ])->withInput();
+                } else {
+                    return redirect()->back()->withErrors([
+                        'error' => "Government CSC PRIME-HRM policy permits only ONE (1) active job application at a time. You currently have an active application for '{$activeApp->job_title}'. Please wait for its outcome or withdraw it before applying for another position.",
+                    ])->withInput();
+                }
+            }
+
+            // 3. Check 60-Day Rejection Cooldown Period
+            $rejectedApp = Application::where('email', $validated['email'])
+                ->where('status', 'Rejected')
+                ->latest('updated_at')
+                ->first();
+
+            if ($rejectedApp && $rejectedApp->updated_at) {
+                $cooldownEndDate = $rejectedApp->updated_at->copy()->addDays(60);
+                if (now()->lt($cooldownEndDate)) {
+                    $daysLeft = (int) ceil(now()->diffInSeconds($cooldownEndDate) / 86400);
+                    $unlockDate = $cooldownEndDate->format('F d, Y');
+                    return redirect()->back()->withErrors([
+                        'error' => "Your previous application for '{$rejectedApp->job_title}' was not selected. Pursuant to CSC government recruitment rules, a 60-day waiting period is required before submitting new applications. You may apply again in {$daysLeft} day(s) on {$unlockDate}.",
+                    ])->withInput();
+                }
             }
 
             $customFileResponses = [];
@@ -198,6 +231,19 @@ class ApplicantController extends Controller
             $profile = $request->input('profile_data');
 
             if (is_array($profile)) {
+                // Strictly enforce authenticated user email to prevent identity mixups
+                $profile['email'] = strtolower(trim($user->email));
+
+                if (!empty($profile['remove_avatar']) || !empty($profile['photo_removed'])) {
+                    $profile['avatar_url'] = null;
+                    $profile['photo'] = null;
+                    $profile['avatar'] = null;
+                    $profile['photo_removed'] = true;
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'avatar_url')) {
+                        $user->avatar_url = null;
+                    }
+                }
+
                 foreach (['photo', 'avatar', 'avatar_url'] as $photoKey) {
                     if (isset($profile[$photoKey]) && is_string($profile[$photoKey]) && str_starts_with($profile[$photoKey], 'data:image')) {
                         try {
@@ -285,6 +331,18 @@ class ApplicantController extends Controller
 
             $application->update(['status' => 'Withdrawn']);
 
+            try {
+                ActivityLog::write(
+                    'Application Withdrawn',
+                    "{$application->applicant_name} withdrew their application for {$application->job_title}",
+                    'Villamor Campus',
+                    'FileX',
+                    'text-amber-600 bg-amber-50'
+                );
+            } catch (\Exception $ex) {
+                Log::warning('ActivityLog write failed on withdrawal: '.$ex->getMessage());
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Application withdrawn successfully.',
@@ -297,25 +355,76 @@ class ApplicantController extends Controller
     }
 
     /**
-     * Permanently delete an application.
+     * Permanently delete an application (Blocked for Government CSC Record Retention Compliance).
      */
     public function destroy(Application $application)
     {
+        return response()->json([
+            'error' => 'According to government regulations, official application records cannot be permanently deleted. You may withdraw your application instead.',
+        ], 403);
+    }
+
+    /**
+     * Upload a previously marked "To Follow" document for an application.
+     */
+    public function uploadToFollowDocument(Request $request, Application $application)
+    {
         try {
             if ($application->email !== Auth::user()->email) {
-                return response()->json(['error' => 'Unauthorized action.'], 403);
+                return redirect()->back()->withErrors(['error' => 'Unauthorized action.']);
             }
 
-            $application->delete();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Application deleted permanently.',
+            $validated = $request->validate([
+                'document_label' => 'required|string',
+                'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
             ]);
-        } catch (\Throwable $ex) {
-            Log::error("Error deleting application ID {$application->id}: ".$ex->getMessage());
 
-            return response()->json(['error' => 'Failed to delete application'], 500);
+            $documentLabel = $validated['document_label'];
+            $file = $request->file('file');
+
+            $path = $file->store('applications/custom', 'public');
+            Log::info("To-Follow file uploaded for application {$application->id}: {$documentLabel} => {$path}");
+
+            // Update custom_file_responses
+            $customResponses = $application->custom_file_responses ?? [];
+            if (!is_array($customResponses)) {
+                $customResponses = [];
+            }
+            $customResponses[$documentLabel] = $path;
+
+            // Remove document_label from to_follow_docs array
+            $toFollow = $application->to_follow_docs ?? [];
+            if (!is_array($toFollow)) {
+                $toFollow = [];
+            }
+            $updatedToFollow = array_values(array_filter($toFollow, function ($label) use ($documentLabel) {
+                return trim((string) $label) !== trim((string) $documentLabel);
+            }));
+
+            $application->update([
+                'custom_file_responses' => $customResponses,
+                'to_follow_docs' => $updatedToFollow,
+            ]);
+
+            try {
+                ActivityLog::write(
+                    'To-Follow Document Uploaded',
+                    "{$application->applicant_name} uploaded missing document: {$documentLabel} for {$application->job_title}",
+                    'Villamor Campus',
+                    'FileText',
+                    'text-emerald-600 bg-emerald-50'
+                );
+            } catch (\Exception $ex) {
+                Log::warning('ActivityLog write failed: ' . $ex->getMessage());
+            }
+
+            return redirect()->back()->with('message', "Document '{$documentLabel}' uploaded successfully!");
+        } catch (\Throwable $e) {
+            Log::error("Error uploading to-follow document for application {$application->id}: " . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+
+            return redirect()->back()->withErrors(['error' => 'Failed to upload document: ' . $e->getMessage()]);
         }
     }
 

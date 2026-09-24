@@ -27,10 +27,21 @@ class RegisterUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        $nameParts = explode(' ', trim($request->name));
+        $firstName = $nameParts[0] ?? '';
+        $lastName = count($nameParts) > 1 ? end($nameParts) : '';
+        $cleanEmail = strtolower(trim($request->email));
+
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
+            'name' => trim($request->name),
+            'email' => $cleanEmail,
             'password' => Hash::make($request->password),
+            'profile_data' => [
+                'firstName' => $firstName,
+                'lastName' => $lastName,
+                'email' => $cleanEmail,
+                'fullName' => trim($request->name),
+            ],
         ]);
 
         try {

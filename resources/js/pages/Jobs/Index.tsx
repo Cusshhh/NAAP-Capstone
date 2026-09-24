@@ -29,7 +29,14 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
 
     useEffect(() => {
         if (user && typeof window !== 'undefined') {
-            setProfileImage(localStorage.getItem(`user_profile_image_${user.id}`));
+            const pData = (user as any)?.profile_data || {};
+            const isRemoved = pData.photo_removed || (pData.avatar_url === null && pData.photo === null && pData.avatar === null && !(user as any)?.avatar_url);
+            if (isRemoved) {
+                localStorage.removeItem(`user_profile_image_${user.id}`);
+                setProfileImage(null);
+            } else {
+                setProfileImage(user.avatar_url || pData.avatar_url || pData.photo || pData.avatar || localStorage.getItem(`user_profile_image_${user.id}`));
+            }
         }
     }, [user]);
 
@@ -125,11 +132,11 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                                             user.name.charAt(0).toUpperCase()
                                         )}
                                     </div>
-                                    <span className="text-sm font-medium hidden sm:block group-hover:text-[#ffdd59] transition-colors">{user.name}</span>
+                                    <span className="text-sm font-medium hidden sm:block group-hover:text-[#ffdd59] transition-colors max-w-xs truncate">{user.name}</span>
                                 </Link>
-                                <Button onClick={handleLogout} size="sm" variant="ghost" className="text-white hover:bg-white/10 hover:text-[#ffdd59] p-2">
-                                    <LogOut className="w-4 h-4" />
-                                </Button>
+                                <button onClick={handleLogout} className="w-9 h-9 rounded-full flex items-center justify-center p-0 text-white hover:bg-white/10 hover:text-[#ffdd59] transition-colors outline-none cursor-pointer border border-transparent hover:border-white/10" title="Logout">
+                                    <LogOut className="w-5 h-5 text-white" />
+                                </button>
                             </div>
                         ) : (
                             <div className="flex gap-3">

@@ -15,7 +15,31 @@ export function UserInfo({
 
     useEffect(() => {
         if (user && typeof window !== 'undefined') {
-            setProfileImage(localStorage.getItem(`user_profile_image_${user.id}`));
+            const pData = (user as any)?.profile_data || {};
+            const isRemoved = pData.photo_removed || (pData.avatar_url === null && pData.photo === null && pData.avatar === null && !(user as any)?.avatar_url);
+            if (isRemoved) {
+                localStorage.removeItem(`user_profile_image_${user.id}`);
+                setProfileImage(null);
+                return;
+            }
+            const serverPhoto = (user as any)?.avatar_url || pData.avatar_url || pData.photo || pData.avatar || user.avatar;
+            if (serverPhoto) {
+                setProfileImage(serverPhoto);
+            } else {
+                const savedData = localStorage.getItem(`user_profile_data_${user.id}`);
+                if (savedData) {
+                    try {
+                        const parsed = JSON.parse(savedData);
+                        if (parsed && parsed.email && parsed.email.toLowerCase() !== user.email.toLowerCase()) {
+                            localStorage.removeItem(`user_profile_data_${user.id}`);
+                            localStorage.removeItem(`user_profile_image_${user.id}`);
+                            setProfileImage(null);
+                            return;
+                        }
+                    } catch (e) {}
+                }
+                setProfileImage(localStorage.getItem(`user_profile_image_${user.id}`));
+            }
         }
     }, [user]);
 

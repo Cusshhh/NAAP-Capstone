@@ -1,5 +1,5 @@
 // AI Qualification & Scoring Utility for NAAP Careers Portal
-// Enforces CHED 14 Official Discipline Clusters, Degree Tier Hierarchy, & Nonsense Credential Filtering
+// Enforces CHED 14 Official Discipline Clusters, CSC / PRC / CAAP / TESDA Eligibility Standards, & Degree Tier Hierarchy
 // Criteria Weights: Education (30%), Work Experience (35%), Civil Service & Board Eligibility (20%), Training & Certification (15%)
 
 export type QualificationCategory = 'education' | 'experience' | 'eligibility' | 'training';
@@ -128,90 +128,126 @@ export const CATEGORY_LABELS: Record<QualificationCategory, string> = {
 };
 
 /**
- * Detect CHED 14 Official Discipline Cluster from degree or job text string
+ * Comprehensive CHED 14 Official Discipline Cluster Classifier.
+ * Supports full degree names, common degree abbreviations (BSIT, BSN, BSA, BSBA, LLB, JD, BSED, etc.),
+ * and interdisciplinary degrees (e.g. Aviation IT, Health Informatics).
  */
 export function detectDisciplineCluster(text: string): DisciplineCluster {
     const t = (text || '').toLowerCase().trim();
     if (!t || isNonsenseCredential(t)) return 'GENERAL_OTHER';
 
-    // 1. Aviation & Aeronautics
-    if (t.includes('aviation') || t.includes('aeronautical') || t.includes('pilot') || t.includes('flying') ||
-        t.includes('amt') || t.includes('avionics') || t.includes('flight') || t.includes('aircraft') || t.includes('cabin crew')) {
-        return 'AVIATION_AERONAUTICS';
-    }
-
-    // 2. Information Technology & Computer Studies
+    // 1. Information Technology & Computer Studies
     if (t.includes('information technology') || t.includes('computer science') || t.includes('software') ||
         t.includes('information systems') || t.includes('computer engineering') || t.includes('web dev') ||
-        t.includes('cybersecurity') || t.includes('programming') || t.match(/\b(it|cs|is)\b/)) {
+        t.includes('cybersecurity') || t.includes('programming') || t.includes('data science') ||
+        t.match(/\b(bsit|bscs|bsis|bs cpe|it|cs|is)\b/)) {
         return 'IT_COMPUTER_STUDIES';
+    }
+
+    // 2. Aviation & Aeronautics
+    if (t.includes('aviation') || t.includes('aeronautical') || t.includes('pilot') || t.includes('flying') ||
+        t.includes('amt') || t.includes('avionics') || t.includes('flight') || t.includes('aircraft') ||
+        t.includes('cabin crew') || t.match(/\b(bsae|bs amt|cpl|atpl)\b/)) {
+        return 'AVIATION_AERONAUTICS';
     }
 
     // 3. Engineering & Industrial Technology
     if (t.includes('engineering') || t.includes('mechanical') || t.includes('electrical') ||
-        t.includes('civil eng') || t.includes('electronics') || t.includes('mechatronics') || t.includes('industrial tech')) {
+        t.includes('civil eng') || t.includes('electronics') || t.includes('mechatronics') ||
+        t.includes('industrial tech') || t.match(/\b(bsce|bsme|bsee|bsece|bsie|bsche)\b/)) {
         return 'ENGINEERING_TECHNOLOGY';
     }
 
     // 4. Law & Jurisprudence
-    if (t.includes('law') || t.includes('juris') || t.includes('llb') || t.includes('paralegal') || t.includes('legal')) {
+    if (t.includes('law') || t.includes('juris') || t.includes('llb') || t.includes('paralegal') ||
+        t.includes('legal') || t.match(/\b(ll\.b|j\.d\.|jd)\b/)) {
         return 'LAW_LEGAL_STUDIES';
     }
 
     // 5. Education & Teacher Training
     if (t.includes('education') || t.includes('teaching') || t.includes('academics') || t.includes('pedagogy') ||
-        t.includes('secondary ed') || t.includes('elementary ed') || t.match(/\b(maed|bed|bsed|beed)\b/)) {
+        t.includes('secondary ed') || t.includes('elementary ed') || t.match(/\b(maed|bed|bsed|beed|lpt)\b/)) {
         return 'EDUCATION_TEACHER_TRAINING';
     }
 
-    // 6. Business Administration & Accountancy
+    // 6. Business Administration, Accountancy & Office Management
     if (t.includes('business') || t.includes('accountancy') || t.includes('finance') || t.includes('marketing') ||
-        t.includes('human resource') || t.includes('management') || t.includes('cpa') || t.match(/\b(bsba|mba|bsa)\b/)) {
+        t.includes('human resource') || t.includes('management') || t.includes('cpa') || t.includes('office administration') ||
+        t.match(/\b(bsba|mba|bsa|bsoa|hr|hrdm)\b/)) {
         return 'BUSINESS_ADMINISTRATION';
     }
 
     // 7. Health & Medical Sciences
     if (t.includes('nursing') || t.includes('medicine') || t.includes('pharmacy') || t.includes('medical') ||
-        t.includes('physical therapy') || t.includes('public health') || t.match(/\b(bsn|md)\b/)) {
+        t.includes('physical therapy') || t.includes('public health') || t.includes('radiologic') ||
+        t.match(/\b(bsn|md|bsmt|radtech|pt|ot)\b/)) {
         return 'HEALTH_MEDICAL_SCIENCES';
     }
 
-    // 8. Maritime Studies
-    if (t.includes('maritime') || t.includes('marine') || t.includes('nautical') || t.includes('seaman')) {
+    // 8. Maritime Studies & Marine Operations
+    if (t.includes('maritime') || t.includes('marine') || t.includes('nautical') || t.includes('seaman') ||
+        t.match(/\b(bsmt|bsmar-e|bsmare)\b/)) {
         return 'MARITIME_STUDIES';
     }
 
-    // 9. Architecture & Planning
-    if (t.includes('architecture') || t.includes('urban planning') || t.includes('interior design')) {
+    // 9. Architecture & Environmental Planning
+    if (t.includes('architecture') || t.includes('urban planning') || t.includes('interior design') ||
+        t.match(/\b(bs arch|bsarch)\b/)) {
         return 'ARCHITECTURE_TOWN_PLANNING';
     }
 
     // 10. Communication & Mass Media
-    if (t.includes('communication') || t.includes('journalism') || t.includes('broadcasting') || t.includes('media')) {
+    if (t.includes('communication') || t.includes('journalism') || t.includes('broadcasting') || t.includes('media') ||
+        t.match(/\b(mass com|ab com)\b/)) {
         return 'COMMUNICATION_JOURNALISM';
     }
 
-    // 11. Social & Behavioral Sciences
-    if (t.includes('psychology') || t.includes('criminology') || t.includes('sociology') || t.includes('political science')) {
+    // 11. Social & Behavioral Sciences (Psychology, Criminology, Political Science)
+    if (t.includes('psychology') || t.includes('criminology') || t.includes('sociology') || t.includes('political science') ||
+        t.match(/\b(bs crim|bscrim|bs psych|bspsych|pol sci)\b/)) {
         return 'SOCIAL_BEHAVIORAL_SCIENCES';
     }
 
     // 12. Natural Sciences & Mathematics
-    if (t.includes('biology') || t.includes('chemistry') || t.includes('physics') || t.includes('mathematics') || t.includes('statistics')) {
+    if (t.includes('biology') || t.includes('chemistry') || t.includes('physics') || t.includes('mathematics') ||
+        t.includes('statistics') || t.match(/\b(bs bio|bs chem|bs math)\b/)) {
         return 'NATURAL_SCIENCES';
     }
 
     // 13. Humanities & Fine Arts
-    if (t.includes('english') || t.includes('literature') || t.includes('history') || t.includes('philosophy') || t.includes('fine arts')) {
+    if (t.includes('english') || t.includes('literature') || t.includes('history') || t.includes('philosophy') ||
+        t.includes('fine arts') || t.match(/\b(ab english|ba literature)\b/)) {
         return 'HUMANITIES_ARTS';
     }
 
     // 14. Agriculture & Forestry
-    if (t.includes('agriculture') || t.includes('forestry') || t.includes('fisheries')) {
+    if (t.includes('agriculture') || t.includes('forestry') || t.includes('fisheries') || t.match(/\b(bsa agri)\b/)) {
         return 'AGRICULTURE_FORESTRY';
     }
 
     return 'GENERAL_OTHER';
+}
+
+/**
+ * Returns secondary discipline clusters for interdisciplinary degrees (e.g. Aviation IT, Health Informatics, Environmental Engineering).
+ */
+export function detectSecondaryDisciplineCluster(text: string): DisciplineCluster | null {
+    const t = (text || '').toLowerCase().trim();
+    if (!t) return null;
+
+    if (t.includes('aviation') && (t.includes('information technology') || t.includes('computer') || t.includes('it'))) {
+        return 'AVIATION_AERONAUTICS';
+    }
+    if (t.includes('health') && (t.includes('information') || t.includes('informatics') || t.includes('technology'))) {
+        return 'HEALTH_MEDICAL_SCIENCES';
+    }
+    if (t.includes('educational') && (t.includes('technology') || t.includes('media'))) {
+        return 'EDUCATION_TEACHER_TRAINING';
+    }
+    if (t.includes('agribusiness')) {
+        return 'AGRICULTURE_FORESTRY';
+    }
+    return null;
 }
 
 /**
@@ -221,8 +257,8 @@ export function detectDegreeLevel(text: string): 'doctoral' | 'masters' | 'bache
     const t = (text || '').toLowerCase();
     if (t.includes('doctoral') || t.includes('ph.d') || t.includes('phd') || t.includes('doctor of')) return 'doctoral';
     if (t.includes('master') || t.includes('ms') || t.includes('ma') || t.includes('mba') || t.includes('maed')) return 'masters';
-    if (t.includes('bachelor') || t.includes('bs') || t.includes('ba') || t.includes('college') || t.includes('degree')) return 'bachelor';
-    if (t.includes('vocational') || t.includes('associate') || t.includes('certificate') || t.includes('diploma')) return 'vocational';
+    if (t.includes('bachelor') || t.includes('bs') || t.includes('ba') || t.includes('college') || t.includes('degree') || t.includes('llb') || t.includes('jd')) return 'bachelor';
+    if (t.includes('vocational') || t.includes('associate') || t.includes('certificate') || t.includes('diploma') || t.includes('tesda')) return 'vocational';
     return 'bachelor'; // Default baseline for unspecified higher ed
 }
 
@@ -295,7 +331,7 @@ export function extractJobRequirements(job: any): JobRequirementItem[] {
             });
         } else if (lower.includes('year') || lower.includes('experience') || lower.includes('work') || lower.includes('service') || lower.includes('background')) {
             const yrsMatch = clean.match(/(\d+)\s*year/i);
-            const yrs = yrsMatch ? yrsMatch[1] : '3';
+            const yrs = yrsMatch ? yrsMatch[1] : '2';
             items.push({
                 id: `req_${reqIndex++}`,
                 category: 'experience',
@@ -332,7 +368,7 @@ export function extractJobRequirements(job: any): JobRequirementItem[] {
 }
 
 /**
- * Default standard qualification requirements based on Job Title benchmark
+ * Standard benchmark qualification requirements based on Job Vacancy title
  */
 export function getDefaultRequirementsForTitle(title: string): JobRequirementItem[] {
     const t = (title || '').toLowerCase();
@@ -364,6 +400,20 @@ export function getDefaultRequirementsForTitle(title: string): JobRequirementIte
             { id: 'it_exp', category: 'experience', requirement: 'Work Experience', required_value: '3 years IT support experience', mandatory: false },
             { id: 'it_elig', category: 'eligibility', requirement: 'Civil Service Eligibility', required_value: 'CS Professional or CS Subprofessional', mandatory: false },
             { id: 'it_trn', category: 'training', requirement: 'Training & L&D', required_value: '8 hours relevant IT training', mandatory: false }
+        ];
+    } else if (t.includes('accountant') || t.includes('cashier') || t.includes('budget') || t.includes('finance')) {
+        return [
+            { id: 'act_edu', category: 'education', requirement: 'Educational Degree', required_value: "Bachelor's Degree in Accountancy / Business / Finance", mandatory: true },
+            { id: 'act_exp', category: 'experience', requirement: 'Work Experience', required_value: '2 years financial / accounting experience', mandatory: false },
+            { id: 'act_elig', category: 'eligibility', requirement: 'Professional License', required_value: 'CPA Board / CS Professional / Subprofessional', mandatory: false },
+            { id: 'act_trn', category: 'training', requirement: 'Training & L&D', required_value: '8 hours financial management training', mandatory: false }
+        ];
+    } else if (t.includes('nurse') || t.includes('medical') || t.includes('health')) {
+        return [
+            { id: 'med_edu', category: 'education', requirement: 'Educational Degree', required_value: "Bachelor's Degree in Nursing / Health Sciences", mandatory: true },
+            { id: 'med_exp', category: 'experience', requirement: 'Work Experience', required_value: '1 year clinical / medical experience', mandatory: false },
+            { id: 'med_elig', category: 'eligibility', requirement: 'PRC Board Rating', required_value: 'PRC Registered Nurse (RN) / RA 1080', mandatory: true },
+            { id: 'med_trn', category: 'training', requirement: 'Training & L&D', required_value: '8 hours medical BLS/ACLS training', mandatory: false }
         ];
     }
 
@@ -456,14 +506,39 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
                 applicantValue = fullEduText;
                 const reqDiscipline = detectDisciplineCluster(req.required_value + ' ' + jobTitle);
                 const appDiscipline = detectDisciplineCluster(fullEduText);
+                const appSecondaryDiscipline = detectSecondaryDisciplineCluster(fullEduText);
                 const reqLevel = detectDegreeLevel(req.required_value);
                 const appLevel = detectDegreeLevel(fullEduText);
+                const appLower = fullEduText.toLowerCase();
+                const reqLowerText = req.required_value.toLowerCase();
 
-                if (reqDiscipline !== 'GENERAL_OTHER' && appDiscipline !== reqDiscipline) {
+                // Flexible discipline matching (Primary Cluster, Secondary Cluster, or General Degree acceptance)
+                const isDisciplineMatched = reqDiscipline === 'GENERAL_OTHER' ||
+                    reqLowerText.includes('any bachelor') || reqLowerText.includes('bachelor\'s degree in any') ||
+                    reqDiscipline === appDiscipline ||
+                    (appSecondaryDiscipline !== null && reqDiscipline === appSecondaryDiscipline) ||
+                    (reqDiscipline === 'IT_COMPUTER_STUDIES' && (appLower.includes('information technology') || appLower.includes('computer science') || appLower.includes('software') || appLower.includes('it'))) ||
+                    (reqDiscipline === 'AVIATION_AERONAUTICS' && (appLower.includes('aviation') || appLower.includes('aeronautical') || appLower.includes('flight')));
+
+                const acceptsBachelor = reqLowerText.includes('bachelor') || reqLevel === 'bachelor';
+
+                const degreeRank: Record<string, number> = { doctoral: 4, masters: 3, bachelor: 2, vocational: 1, highschool: 0 };
+                const appRank = degreeRank[appLevel] || 2;
+                const reqRank = acceptsBachelor ? 2 : (degreeRank[reqLevel] || 2);
+
+                if (!isDisciplineMatched) {
                     status = 'NOT_MATCHED';
                     multiplier = 0.00;
                     explanation = `Applicant's degree field (${fullEduText}) belongs to ${DISCIPLINE_CLUSTER_LABELS[appDiscipline]}, which does NOT match the required ${DISCIPLINE_CLUSTER_LABELS[reqDiscipline]} discipline for this position.`;
                     if (req.mandatory) hasUnmatchedMandatory = true;
+                } else if (appRank >= reqRank) {
+                    status = 'FULLY_MATCHED';
+                    multiplier = 1.00;
+                    if (appRank > reqRank) {
+                        explanation = `Applicant holds a higher degree tier (${degreeLevelLabel}), which meets and exceeds the minimum ${reqLevel === 'bachelor' || acceptsBachelor ? "Bachelor's Degree" : "required degree"} standard (100% full credit).`;
+                    } else {
+                        explanation = `Applicant's degree (${fullEduText}) fully matches the required ${DISCIPLINE_CLUSTER_LABELS[reqDiscipline]} discipline and degree tier.`;
+                    }
                 } else if (reqLevel === 'masters' && appLevel === 'bachelor') {
                     status = 'PARTIALLY_MATCHED';
                     multiplier = 0.60;
@@ -473,9 +548,10 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
                     multiplier = appLevel === 'masters' ? 0.75 : 0.50;
                     explanation = `Applicant holds a ${degreeLevelLabel}, partially meeting the Doctoral degree requirement.`;
                 } else {
-                    status = 'FULLY_MATCHED';
-                    multiplier = 1.00;
-                    explanation = `Applicant's degree (${fullEduText}) fully matches the required ${DISCIPLINE_CLUSTER_LABELS[reqDiscipline]} discipline and degree tier.`;
+                    status = 'NOT_MATCHED';
+                    multiplier = 0.00;
+                    explanation = `Applicant's educational level (${degreeLevelLabel}) does not meet the minimum required degree tier.`;
+                    if (req.mandatory) hasUnmatchedMandatory = true;
                 }
             }
         } else if (cat === 'experience') {
@@ -493,10 +569,12 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
 
                 const isLegalExpReq = reqLower.includes('legal') || reqLower.includes('law');
                 const isFltExpReq = reqLower.includes('flight') || reqLower.includes('flying') || reqLower.includes('pilot');
+                const isItExpReq = reqLower.includes('it') || reqLower.includes('software') || reqLower.includes('programmer');
 
                 let isFieldRelevant = true;
                 if (isLegalExpReq && !expLower.includes('legal') && !expLower.includes('law') && !expLower.includes('attorney')) isFieldRelevant = false;
                 if (isFltExpReq && !expLower.includes('flight') && !expLower.includes('pilot') && !expLower.includes('flying') && !expLower.includes('instructor')) isFieldRelevant = false;
+                if (isItExpReq && !expLower.includes('it') && !expLower.includes('tech') && !expLower.includes('support') && !expLower.includes('developer') && !expLower.includes('system') && !expLower.includes('computer')) isFieldRelevant = false;
 
                 if (!isFieldRelevant) {
                     status = 'NOT_MATCHED'; multiplier = 0.00;
@@ -526,8 +604,19 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
                 const hasBar = appEligLower.includes('bar') || appEligLower.includes('lawyer') || (licNo && licNo.toLowerCase().includes('bar'));
                 const hasPilot = appEligLower.includes('cpl') || appEligLower.includes('fi rating') || appEligLower.includes('atpl') || appEligLower.includes('caap');
                 const hasEng = appEligLower.includes('board') || appEligLower.includes('engineer') || appEligLower.includes('amt');
-                const hasProCS = appEligLower.includes('professional') || (appEligLower.includes('ra1080') && !appEligLower.includes('7160')) || appEligLower.includes('pd 907');
-                const hasSubPro = appEligLower.includes('sub professional') || appEligLower.includes('barangay');
+                const hasCpa = appEligLower.includes('cpa') || appEligLower.includes('certified public accountant');
+                const hasNurse = appEligLower.includes('nurse') || appEligLower.includes('rn') || appEligLower.includes('lpt') || appEligLower.includes('teacher');
+                const hasPD907 = appEligLower.includes('pd 907') || appEligLower.includes('honor graduate') || appEligLower.includes('summa cum laude') || appEligLower.includes('magna cum laude') || appEligLower.includes('cum laude');
+
+                const hasProCS = (appEligLower.includes('professional') && !appEligLower.includes('sub professional') && !appEligLower.includes('subprofessional')) ||
+                    (appEligLower.includes('ra1080') && !appEligLower.includes('7160')) ||
+                    hasPD907 || hasCpa || hasNurse || appEligLower.includes('csc professional');
+
+                const hasSubPro = appEligLower.includes('sub professional') || appEligLower.includes('subprofessional') ||
+                    appEligLower.includes('barangay') || appEligLower.includes('health worker') || appEligLower.includes('nutrition scholar') ||
+                    appEligLower.includes('sanggunian') || appEligLower.includes('category ii') || appEligLower.includes('tesda') || appEligLower.includes('nc ii');
+
+                const acceptsSubPro = reqLower.includes('subprofessional') || reqLower.includes('sub professional') || reqLower.includes('sub-professional') || reqLower.includes('1st level') || reqLower.includes('first level') || reqLower.includes('or cs subprofessional');
 
                 if (reqLower.includes('bar') || reqLower.includes('ra 1080 (legal)')) {
                     if (hasBar) {
@@ -553,19 +642,27 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
                         status = 'NOT_MATCHED'; multiplier = 0.00;
                         explanation = `Applicant possesses ${fullEligText}, which does not satisfy Engineering Board / AMT License requirement.`;
                     }
-                } else if (reqLower.includes('professional')) {
-                    if (hasProCS || hasBar || hasEng || hasPilot) {
+                } else if (reqLower.includes('cpa') || reqLower.includes('accountant')) {
+                    if (hasCpa || hasProCS) {
+                        status = 'FULLY_MATCHED'; multiplier = 1.00;
+                        explanation = "Applicant possesses CPA Board License or CS Professional Eligibility.";
+                    } else {
+                        status = 'NOT_MATCHED'; multiplier = 0.00;
+                        explanation = `Applicant possesses ${fullEligText}, which does not satisfy CPA / Financial Board requirement.`;
+                    }
+                } else if (reqLower.includes('professional') && !acceptsSubPro) {
+                    if (hasProCS || hasBar || hasEng || hasPilot || hasCpa || hasNurse) {
                         status = 'FULLY_MATCHED'; multiplier = 1.00;
                         explanation = "Applicant possesses 2nd level CS Professional / Board Rating / License.";
                     } else if (hasSubPro) {
                         status = 'NOT_MATCHED'; multiplier = 0.00;
-                        explanation = `Applicant possesses 1st level CS Subprofessional, which does not satisfy 2nd level CS Professional requirements.`;
+                        explanation = `Applicant possesses 1st level CS Subprofessional / Barangay eligibility, which does not satisfy 2nd level CS Professional requirements.`;
                     } else {
                         status = 'NOT_MATCHED'; multiplier = 0.00;
                         explanation = `Applicant possesses ${fullEligText}, which does not satisfy CS Professional requirement.`;
                     }
                 } else {
-                    if (hasProCS || hasSubPro || hasBar || hasEng || hasPilot) {
+                    if (hasProCS || hasSubPro || hasBar || hasEng || hasPilot || hasCpa || hasNurse) {
                         status = 'FULLY_MATCHED'; multiplier = 1.00;
                         explanation = "Applicant possesses Civil Service / Board eligibility.";
                     } else {
@@ -717,7 +814,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
         },
         alerts,
         analysis_summary: summaryText,
-        analysis_version: 'v2.0',
+        analysis_version: 'v2.1',
         is_fallback_requirements: !hasExplicitRequirements
     };
 }

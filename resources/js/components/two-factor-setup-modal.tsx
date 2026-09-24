@@ -2,6 +2,7 @@ import { Form } from '@inertiajs/react';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { Check, Copy, ScanLine } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -120,11 +121,20 @@ function TwoFactorSetupStep({
                                         type="text"
                                         readOnly
                                         value={manualSetupKey}
-                                        className="h-full w-full bg-background p-3 text-foreground outline-none"
+                                        onClick={(e) => {
+                                            (e.target as HTMLInputElement).select();
+                                            copy(manualSetupKey);
+                                            toast.success('Setup key copied to clipboard!');
+                                        }}
+                                        className="h-full w-full bg-background p-3 text-foreground outline-none cursor-pointer font-mono font-bold tracking-wider select-all"
                                     />
                                     <button
-                                        onClick={() => copy(manualSetupKey)}
-                                        className="border-l border-border px-3 hover:bg-muted"
+                                        onClick={() => {
+                                            copy(manualSetupKey);
+                                            toast.success('Setup key copied to clipboard!');
+                                        }}
+                                        className="border-l border-border px-3 hover:bg-muted cursor-pointer"
+                                        title="Copy setup key"
                                     >
                                         <IconComponent className="w-4" />
                                     </button>

@@ -101,6 +101,25 @@ class MessageController extends Controller
             abort(403, 'Unauthorized access to messages.');
         }
 
+        if (! $isAdmin) {
+            if (in_array($appModel->status, ['Hired', 'Rejected'])) {
+                return response()->json([
+                    'error' => 'Messaging is closed for this application because it has been marked as '.$appModel->status.'.',
+                ], 403);
+            }
+
+            $applicantAppIds = Application::where('email', $appModel->email)->pluck('id');
+            $adminSentMessage = Message::whereIn('application_id', $applicantAppIds)
+                ->where('sender_id', '!=', $user->id)
+                ->exists();
+
+            if (! $adminSentMessage) {
+                return response()->json([
+                    'error' => 'Messaging is unavailable until an Admin initiates communication for your application.',
+                ], 403);
+            }
+        }
+
         $applicantUser = \App\Models\User::where('email', $appModel->email)->first();
 
         try {

@@ -3,7 +3,7 @@ import { ChevronLeft, Calendar, User, Share2, Tag, Search, Menu, Facebook, Twitt
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { getHRNews, type HRNewsItem } from '@/data/mockData';
+import { getHRNews, defaultHRNews, type HRNewsItem } from '@/data/mockData';
 
 interface ArticleProps {
     id: string;
@@ -95,16 +95,58 @@ const HRNewsArticle = ({ id, auth }: ArticleProps) => {
         const loadArticle = async () => {
             setLoading(true);
             try {
-                const response = await axios.get('/cms-content/mock_hr_news');
-                const articles = response.data || getHRNews();
-                const articlesList = Array.isArray(articles) ? articles : Object.values(articles || {});
-                const found = articlesList.find((a: any) => a && String(a.id) === String(id));
+                let articlesList: HRNewsItem[] = [];
+                try {
+                    const response = await axios.get('/cms-content/mock_hr_news');
+                    if (response.data) {
+                        const raw = Array.isArray(response.data) ? response.data : Object.values(response.data || {});
+                        articlesList = raw.filter((a: any) => a && typeof a === 'object' && a.title);
+                    }
+                } catch (e) {
+                    console.warn("CMS database fetch failed, falling back to local news", e);
+                }
+
+                if (!articlesList || articlesList.length === 0) {
+                    articlesList = getHRNews();
+                }
+                if (!articlesList || articlesList.length === 0) {
+                    articlesList = defaultHRNews;
+                }
+
+                // 1. Direct ID match
+                let found = articlesList.find((a: any) => a && String(a.id) === String(id));
+
+                // 2. Numeric ID match
+                if (!found && typeof id !== 'undefined') {
+                    const numId = parseInt(String(id), 10);
+                    if (!isNaN(numId)) {
+                        found = articlesList.find((a: any) => a && parseInt(String(a.id), 10) === numId);
+                    }
+                }
+
+                // 3. Fallback to defaultHRNews directly
+                if (!found) {
+                    const defaults = defaultHRNews;
+                    found = defaults.find((a: any) => a && String(a.id) === String(id));
+                    if (!found && typeof id !== 'undefined') {
+                        const numId = parseInt(String(id), 10);
+                        if (!isNaN(numId)) {
+                            found = defaults.find((a: any) => a && parseInt(String(a.id), 10) === numId) || defaults[numId - 1];
+                        }
+                    }
+                }
+
                 setArticle(found || null);
             } catch (e) {
-                console.error("Failed to load news article from database", e);
-                const articles = getHRNews();
-                const articlesList = Array.isArray(articles) ? articles : Object.values(articles || {});
-                const found = articlesList.find((a: any) => a && String(a.id) === String(id));
+                console.error("Failed to load news article", e);
+                const defaults = defaultHRNews;
+                let found = defaults.find((a: any) => a && String(a.id) === String(id));
+                if (!found && typeof id !== 'undefined') {
+                    const numId = parseInt(String(id), 10);
+                    if (!isNaN(numId)) {
+                        found = defaults[numId - 1] || defaults[0];
+                    }
+                }
                 setArticle(found || null);
             } finally {
                 setLoading(false);
@@ -228,18 +270,18 @@ const HRNewsArticle = ({ id, auth }: ArticleProps) => {
 
                                     <button
                                         onClick={() => router.get('/settings/profile')}
-                                        className="p-2 hover:bg-white/10 rounded-full text-white transition-colors cursor-pointer"
+                                        className="w-9 h-9 rounded-full flex items-center justify-center p-0 transition-colors text-white hover:bg-white/10 hover:text-[#ffdd59] outline-none cursor-pointer border border-transparent hover:border-white/10 group"
                                         title="Settings"
                                     >
-                                        <Settings className="w-4 h-4" />
+                                        <Settings className="w-5 h-5 text-white group-hover:text-[#ffdd59]" />
                                     </button>
 
                                     <button
                                         onClick={() => router.post('/logout')}
-                                        className="p-2 hover:bg-white/10 rounded-full text-white transition-colors cursor-pointer"
+                                        className="w-9 h-9 rounded-full flex items-center justify-center p-0 transition-colors text-white hover:bg-white/10 hover:text-[#ffdd59] outline-none cursor-pointer border border-transparent hover:border-white/10 group"
                                         title="Logout"
                                     >
-                                        <LogOut className="w-4 h-4" />
+                                        <LogOut className="w-5 h-5 text-white group-hover:text-[#ffdd59]" />
                                     </button>
                                 </div>
                             </div>

@@ -55,6 +55,10 @@ class ProfileController extends Controller
             $profileData['avatar_url'] = null;
             $profileData['photo'] = null;
             $profileData['avatar'] = null;
+            $profileData['photo_removed'] = true;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'avatar_url')) {
+                $user->avatar_url = null;
+            }
         } elseif ($request->hasFile('avatar')) {
             $path = $request->file('avatar')->store('avatars', 'public');
             $url = '/storage/'.$path;

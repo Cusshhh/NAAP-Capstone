@@ -383,6 +383,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
     const getStatusColor = (status: string) => {
         if (!status) return 'bg-gray-100 text-gray-800';
+        if (status.includes('Withdrawn')) return 'bg-slate-200 text-slate-800 border border-slate-300';
         if (status.includes('Rejected')) return 'bg-red-100 text-red-800 border border-red-200';
         if (status.includes('Hired')) return 'bg-emerald-100 text-emerald-900 border border-emerald-200';
         if (status.includes('Under Review')) return 'bg-amber-100 text-amber-800 border border-amber-200';
@@ -391,7 +392,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
         return 'bg-gray-100 text-gray-800';
     };
 
-    const statuses = ['Submitted', 'Under Review', 'Rejected', 'Hired'];
+    const statuses = ['Submitted', 'Under Review', 'Rejected', 'Hired', 'Withdrawn'];
     const campuses = Array.from(new Set(applications.map(app => app.campus).filter(Boolean)));
     const positions = Array.from(new Set(applications.map(app => app.jobTitle).filter(Boolean))).sort();
 
@@ -535,7 +536,11 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
         filteredApplications.forEach(app => {
             const emailKey = (app.email || '').toLowerCase().trim() || (app.applicantName || '').toLowerCase().trim();
-            const isNew = (!viewedAppIds.has(String(app.id)) && !viewedAppIds.has(Number(app.id))) && ['Submitted', 'Pending Review', 'Pending'].includes(app.status);
+            const isUnviewedStatus = ['Submitted', 'Pending Review', 'Pending'].includes(app.status);
+            const isViewed = viewedAppIds.has(String(app.id)) || viewedAppIds.has(Number(app.id));
+            const isNew = isUnviewedStatus && !isViewed;
+            const isPending = isUnviewedStatus;
+
             if (!map.has(emailKey)) {
                 map.set(emailKey, {
                     email: app.email,
@@ -545,6 +550,8 @@ export default function Applicants({ auth, applications: serverApplications }: {
                     applications: [app],
                     appliedPositions: app.jobTitle ? [app.jobTitle] : [],
                     totalApplications: 1,
+                    pendingAppsCount: isPending ? 1 : 0,
+                    hasPendingApps: isPending,
                     topScore: app.aiScore || 0,
                     latestSubmittedDate: app.submittedDate,
                     latestStatus: getFormattedStatus(app),
@@ -558,6 +565,10 @@ export default function Applicants({ auth, applications: serverApplications }: {
                     existing.appliedPositions.push(app.jobTitle);
                 }
                 existing.totalApplications = existing.applications.length;
+                if (isPending) {
+                    existing.pendingAppsCount = (existing.pendingAppsCount || 0) + 1;
+                    existing.hasPendingApps = true;
+                }
                 if ((app.aiScore || 0) > existing.topScore) {
                     existing.topScore = app.aiScore || 0;
                 }
@@ -773,6 +784,10 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
     const handleStatusUpdate = (id: any, newStatus: string, reason?: string) => {
         const targetApp = applications.find(a => String(a.id) === String(id));
+        if (targetApp?.status === 'Withdrawn') {
+            toast.error("This application has been withdrawn by the applicant and cannot be modified.");
+            return;
+        }
         const currentStatus = targetApp ? targetApp.status : '';
         const currentPrevStatus = targetApp?.previous_status || targetApp?.dynamic_responses?.previous_status || '';
 
@@ -992,61 +1007,51 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                         </td>
                                     </tr>
                                 ) : (
-                                    groupedApplicants.map((applicant) => (
-                                        <tr
-                                            key={applicant.email || applicant.applicantName}
-                                            className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
-                                            onClick={() => {
-                                                setSelectedApplicantModal(applicant);
-                                                setViewingAppDetails(null);
-                                                if (applicant.applications && applicant.applications.length > 0) {
-                                                    applicant.applications.forEach((a: any) => markAsViewed(a.id));
-                                                }
-                                            }}
-                                        >
-                                            <td className="py-4 px-6 align-middle">
-                                                <div className="flex items-center gap-3">
-                                                    {applicant.hasNewSubmission && (
-                                                        <span className="relative flex h-2.5 w-2.5 shrink-0" title="New Application Submitted">
-                                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
-                                                        </span>
-                                                    )}
-                                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-[#193153] flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
-                                                        {applicant.avatarUrl ? (
-                                                            <img src={applicant.avatarUrl} alt={applicant.applicantName} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            (applicant.applicantName || 'A').charAt(0).toUpperCase()
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors flex items-center gap-2">
-                                                            {applicant.applicantName}
-                                                            {applicant.hasNewSubmission && (
-                                                                <Badge className="bg-red-500 hover:bg-red-600 text-white text-[10px] px-1.5 py-0 font-bold animate-pulse shadow-2xs">
-                                                                    NEW
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-xs text-gray-500">{applicant.email}</div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="py-4 px-6 text-center align-middle">
-                                                {applicant.hasNewSubmission ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200 shadow-2xs">
-                                                        <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-                                                        {applicant.totalApplications} Job Application{applicant.totalApplications === 1 ? '' : 's'}
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
-                                                        {applicant.totalApplications} Job Application{applicant.totalApplications === 1 ? '' : 's'}
-                                                    </span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
+                                     groupedApplicants.map((applicant) => (
+                                         <tr
+                                             key={applicant.email || applicant.applicantName}
+                                             className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
+                                             onClick={() => {
+                                                 setSelectedApplicantModal(applicant);
+                                                 setViewingAppDetails(null);
+                                             }}
+                                         >
+                                             <td className="py-4 px-6 align-middle">
+                                                 <div className="flex items-center gap-3">
+                                                     {applicant.hasNewSubmission && (
+                                                         <span className="relative flex h-2.5 w-2.5 shrink-0" title="New Application Submitted">
+                                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
+                                                         </span>
+                                                     )}
+                                                     <div className="w-10 h-10 rounded-full bg-blue-100 text-[#193153] flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
+                                                         {applicant.avatarUrl ? (
+                                                             <img src={applicant.avatarUrl} alt={applicant.applicantName} className="w-full h-full object-cover" />
+                                                         ) : (
+                                                             (applicant.applicantName || 'A').charAt(0).toUpperCase()
+                                                         )}
+                                                     </div>
+                                                     <div>
+                                                         <div className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors flex items-center gap-2">
+                                                             {applicant.applicantName}
+                                                             {applicant.hasNewSubmission && (
+                                                                 <Badge className="bg-red-500 hover:bg-red-600 text-white text-[10px] px-1.5 py-0 font-bold animate-pulse shadow-2xs">
+                                                                     NEW
+                                                                 </Badge>
+                                                             )}
+                                                         </div>
+                                                         <div className="text-xs text-gray-500">{applicant.email}</div>
+                                                     </div>
+                                                 </div>
+                                             </td>
+                                             <td className="py-4 px-6 text-center align-middle">
+                                                 <span className="inline-flex items-center px-3.5 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                                                     {applicant.totalApplications} Job Application{applicant.totalApplications === 1 ? '' : 's'}
+                                                 </span>
+                                             </td>
+                                         </tr>
+                                     ))
+                                 )}
                             </tbody>
                         </table>
                     </div>
@@ -1067,6 +1072,11 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
                                 // Level 1: Applied Jobs List view for this specific applicant
                                 if (!viewingAppDetails) {
+                                    const hasAnyUnreadInModal = selectedApplicantModal.applications.some((a: any) =>
+                                        ['Submitted', 'Pending Review', 'Pending'].includes(a.status) &&
+                                        (!viewedAppIds.has(String(a.id)) && !viewedAppIds.has(Number(a.id)))
+                                    );
+
                                     return (
                                         <>
                                             <DialogHeader className="border-b pb-3">
@@ -1095,6 +1105,11 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                         <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                                                             <Briefcase className="w-4.5 h-4.5 text-blue-600" />
                                                             Positions Applied ({selectedApplicantModal.totalApplications})
+                                                            {hasAnyUnreadInModal && (
+                                                                <Badge className="bg-red-500 text-white text-[10px] px-2 py-0.5 font-bold animate-pulse shadow-2xs">
+                                                                    NEW SUBMISSIONS
+                                                                </Badge>
+                                                            )}
                                                         </h3>
                                                         <p className="text-xs text-gray-500">
                                                             Click "View Application" on any position below to inspect complete details, qualifications, and manage application status.
@@ -1121,7 +1136,8 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                  const appMatch = aiData.match;
                                                                  const appStatus = getFormattedStatus(liveApp);
 
-                                                                 const isNewApp = (!viewedAppIds.has(String(liveApp.id)) && !viewedAppIds.has(Number(liveApp.id))) && ['Submitted', 'Pending Review', 'Pending'].includes(liveApp.status);
+                                                                 const isNewApp = ['Submitted', 'Pending Review', 'Pending'].includes(liveApp.status) &&
+                                                                     (!viewedAppIds.has(String(liveApp.id)) && !viewedAppIds.has(Number(liveApp.id)));
 
                                                                  return (
                                                                      <TableRow
@@ -1131,12 +1147,12 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                          <TableCell className="font-bold text-xs text-gray-900 text-left align-middle py-3.5 px-4">
                                                                              <div className="flex items-center gap-2">
                                                                                  {isNewApp && (
-                                                                                     <span className="relative flex h-2 w-2 shrink-0" title="New Application Submitted">
+                                                                                     <span className="relative flex h-2.5 w-2.5 shrink-0" title="New Application Submitted for this Position">
                                                                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                                                                         <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                                                                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
                                                                                      </span>
                                                                                  )}
-                                                                                 <span>{liveApp.jobTitle}</span>
+                                                                                 <span className="font-bold text-slate-900">{liveApp.jobTitle}</span>
                                                                                  {isNewApp && (
                                                                                      <Badge className="bg-red-500 text-white text-[9px] px-1.5 py-0 font-bold animate-pulse shadow-2xs">
                                                                                          NEW
@@ -1402,7 +1418,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                                     <span className="font-semibold text-slate-700">Required:</span> {item.required_value}
                                                                                 </div>
                                                                                 <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-100">
-                                                                                    <div><strong className="text-slate-800">Declared Evidence:</strong> {item.applicant_value}</div>
+                                                                                    <div><strong className="text-slate-800">Applicant:</strong> {item.applicant_value}</div>
                                                                                 </div>
                                                                             </div>
                                                                         ))}
@@ -1643,10 +1659,16 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                 const isHired = currentApp.status === 'Hired';
                                                 const isRejected = currentApp.status === 'Rejected';
                                                 const isArchived = currentApp.status === 'Archived';
-                                                const isTerminal = isHired || isRejected || isArchived;
+                                                const isWithdrawn = currentApp.status === 'Withdrawn';
+                                                const isTerminal = isHired || isRejected || isArchived || isWithdrawn;
 
                                                 return (
                                                     <>
+                                                        {isWithdrawn && (
+                                                            <div className="bg-slate-100 border border-slate-300 rounded-lg p-2.5 text-center text-xs font-semibold text-slate-800 flex items-center justify-center gap-1.5 mt-2">
+                                                                <span>⚠️</span> Application was Withdrawn by applicant. Actions locked for CSC audit compliance.
+                                                            </div>
+                                                        )}
                                                         {isHired && (
                                                             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-center text-xs font-semibold text-emerald-800 flex items-center justify-center gap-1.5 mt-2">
                                                                 <span>🎉</span> Applicant has been Hired for this position! Status actions locked.

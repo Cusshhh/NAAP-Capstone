@@ -24,10 +24,21 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
         ])->validate();
 
+        $cleanEmail = strtolower(trim($input['email']));
+        $nameParts = explode(' ', trim($input['name']));
+        $firstName = $nameParts[0] ?? '';
+        $lastName = count($nameParts) > 1 ? end($nameParts) : '';
+
         return User::create([
-            'name' => $input['name'],
-            'email' => $input['email'],
+            'name' => trim($input['name']),
+            'email' => $cleanEmail,
             'password' => $input['password'],
+            'profile_data' => [
+                'firstName' => $firstName,
+                'lastName' => $lastName,
+                'email' => $cleanEmail,
+                'fullName' => trim($input['name']),
+            ],
         ]);
     }
 }
