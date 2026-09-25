@@ -39,6 +39,7 @@ import {
     RotateCcw,
     Move,
     Upload,
+    Crop,
     CheckCheck
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -2345,14 +2346,24 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                             >
                                                 <Eye className="w-5 h-5" />
                                             </button>
-                                            <button 
-                                                type="button" 
-                                                title="Adjust Photo"
-                                                onClick={(e) => { e.stopPropagation(); openAdjustPhotoModal(profileImage); }} 
-                                                className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors"
+                                            <label 
+                                                htmlFor="avatar-file-upload-overlay" 
+                                                title="Upload Picture from Device"
+                                                onClick={(e) => e.stopPropagation()} 
+                                                className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors cursor-pointer"
                                             >
-                                                <Camera className="w-5 h-5" />
-                                            </button>
+                                                <Upload className="w-5 h-5" />
+                                                <input 
+                                                    id="avatar-file-upload-overlay" 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    className="hidden" 
+                                                    onChange={(e) => {
+                                                        handleSelectPhotoForAdjustment(e);
+                                                        e.target.value = '';
+                                                    }} 
+                                                />
+                                            </label>
                                         </div>
                                     </div>
                                     <div className="flex-1">
@@ -3492,7 +3503,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                 onClick={() => openAdjustPhotoModal(profileImage)}
                                 className="flex items-center gap-1.5 text-xs font-bold text-[#193153] border-blue-200 hover:bg-blue-50 cursor-pointer"
                             >
-                                <Camera className="w-4 h-4 text-blue-600" /> Adjust / Crop Photo
+                                <Crop className="w-4 h-4 text-blue-600" /> Adjust / Crop Photo
                             </Button>
                             <label htmlFor="view-modal-upload" className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-3 py-2 rounded-md cursor-pointer">
                                 <Upload className="w-4 h-4" /> Upload New Photo
@@ -3518,7 +3529,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                     <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-gray-100">
                         <DialogHeader className="pb-2 border-b border-gray-100">
                             <DialogTitle className="text-lg font-bold text-[#193153] flex items-center gap-2">
-                                <Camera className="w-5 h-5 text-blue-600" /> Adjust & Crop Profile Picture
+                                <Crop className="w-5 h-5 text-blue-600" /> Adjust & Crop Profile Picture
                             </DialogTitle>
                             <p className="text-xs text-gray-500">Zoom and position your photo so your face fits perfectly in the circular frame.</p>
                         </DialogHeader>

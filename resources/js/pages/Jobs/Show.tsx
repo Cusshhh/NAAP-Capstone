@@ -547,16 +547,16 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                     </Link>
 
                     {user && (
-                        <Link href="/dashboard" className="flex items-center gap-3 mb-4 text-white group hover:bg-white/10 rounded-full py-1 px-3 transition-all">
-                            <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden border border-white group-hover:scale-105 transition-transform">
+                        <div className="flex items-center gap-2.5 bg-[#244066]/80 border border-blue-300/30 rounded-full pl-1.5 pr-4 py-1 shadow-xs mb-4">
+                            <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden ring-2 ring-white/50 shrink-0">
                                 {profileImage || user.avatar_url || user.profile_data?.avatar_url || user.profile_data?.photo ? (
                                     <img src={profileImage || user.avatar_url || user.profile_data?.avatar_url || user.profile_data?.photo} alt="Profile" className="w-full h-full object-cover" />
                                 ) : (
                                     user.name.charAt(0).toUpperCase()
                                 )}
                             </div>
-                            <span className="text-sm font-medium group-hover:text-[#ffdd59] transition-colors max-w-xs truncate">{user.name}</span>
-                        </Link>
+                            <span className="text-sm font-bold text-[#ffdd59] max-w-xs truncate">{user.name}</span>
+                        </div>
                     )}
                 </div>
             </div>

@@ -124,19 +124,25 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                         {user ? (
                             <div className="flex items-center gap-4">
 
-                                <Link href="/dashboard" className="flex items-center gap-3 group hover:bg-white/10 rounded-full py-1 px-3 transition-all">
-                                    <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden border border-white group-hover:scale-105 transition-transform">
+                                <div className="flex items-center gap-2.5 bg-[#244066]/80 border border-blue-300/30 rounded-full pl-1.5 pr-4 py-1 shadow-xs">
+                                    <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden ring-2 ring-white/50 shrink-0">
                                         {profileImage || user.avatar_url || user.profile_data?.avatar_url || user.profile_data?.photo ? (
                                             <img src={profileImage || user.avatar_url || user.profile_data?.avatar_url || user.profile_data?.photo} alt="Profile" className="w-full h-full object-cover" />
                                         ) : (
                                             user.name.charAt(0).toUpperCase()
                                         )}
                                     </div>
-                                    <span className="text-sm font-medium hidden sm:block group-hover:text-[#ffdd59] transition-colors max-w-xs truncate">{user.name}</span>
-                                </Link>
-                                <button onClick={handleLogout} className="w-9 h-9 rounded-full flex items-center justify-center p-0 text-white hover:bg-white/10 hover:text-[#ffdd59] transition-colors outline-none cursor-pointer border border-transparent hover:border-white/10" title="Logout">
-                                    <LogOut className="w-5 h-5 text-white" />
-                                </button>
+                                    <span className="text-sm font-bold hidden sm:block text-[#ffdd59] max-w-xs truncate">{user.name}</span>
+                                </div>
+                                <CustomTooltip content="Logout" side="bottom" align="right">
+                                    <button 
+                                        onClick={handleLogout} 
+                                        className="w-9 h-9 rounded-full flex items-center justify-center p-0 transition-colors relative text-white hover:bg-white/10 hover:text-[#ffdd59] outline-none cursor-pointer border border-transparent hover:border-white/10 group" 
+                                        title="Logout"
+                                    >
+                                        <LogOut className="w-5 h-5 text-white group-hover:text-[#ffdd59]" />
+                                    </button>
+                                </CustomTooltip>
                             </div>
                         ) : (
                             <div className="flex gap-3">

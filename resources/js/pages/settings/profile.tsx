@@ -406,21 +406,20 @@ export default function Profile({ mustVerifyEmail, status }: any) {
 
                         <div className="flex items-center space-x-4">
                             <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => window.location.href = '/dashboard'}
-                                    className="flex items-center gap-2.5 bg-[#244066]/80 hover:bg-[#2e4f7e] border border-blue-300/30 rounded-full pl-1.5 pr-4 py-1 transition-all duration-200 group shadow-xs cursor-pointer"
+                                <div
+                                    className="flex items-center gap-2.5 bg-[#244066]/80 border border-blue-300/30 rounded-full pl-1.5 pr-4 py-1 shadow-xs"
                                 >
-                                    <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden ring-2 ring-white/50 group-hover:ring-[#ffdd59] transition-all shrink-0">
+                                    <div className="w-8 h-8 rounded-full bg-[#ffdd59] flex items-center justify-center text-[#193153] font-bold text-xs overflow-hidden ring-2 ring-white/50 shrink-0">
                                         {!profileForm.data.remove_avatar && (avatarPreview || (!user?.profile_data?.photo_removed && (user?.avatar_url || user?.profile_data?.avatar_url || user?.profile_data?.photo))) ? (
                                             <img src={avatarPreview || user?.avatar_url || user?.profile_data?.avatar_url || user?.profile_data?.photo || ''} alt="Profile" className="w-full h-full object-cover" />
                                         ) : (
                                             (user?.name || 'A').charAt(0).toUpperCase()
                                         )}
                                     </div>
-                                    <span className="text-sm font-bold hidden sm:block text-[#ffdd59] group-hover:text-white transition-colors max-w-xs truncate">
+                                    <span className="text-sm font-bold hidden sm:block text-[#ffdd59] max-w-xs truncate">
                                         {formattedInitialName || user?.name || 'Applicant'}
                                     </span>
-                                </button>
+                                </div>
 
                                 <Button 
                                     onClick={() => window.location.href = '/dashboard'} 

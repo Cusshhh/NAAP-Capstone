@@ -165,15 +165,17 @@ export function detectDisciplineCluster(text: string): DisciplineCluster {
     }
 
     // 5. Education & Teacher Training
-    if (t.includes('education') || t.includes('teaching') || t.includes('academics') || t.includes('pedagogy') ||
-        t.includes('secondary ed') || t.includes('elementary ed') || t.match(/\b(maed|bed|bsed|beed|lpt)\b/)) {
+    if ((t.includes('teacher') || t.includes('teaching') || t.includes('pedagogy') ||
+        t.includes('secondary ed') || t.includes('elementary ed') || t.includes('bachelor of education') ||
+        t.includes('master of education') || t.match(/\b(maed|bed|bsed|beed|lpt)\b/)) &&
+        !t.includes('educational degree') && !t.includes('educational background') && !t.includes('educational requirement')) {
         return 'EDUCATION_TEACHER_TRAINING';
     }
 
     // 6. Business Administration, Accountancy & Office Management
     if (t.includes('business') || t.includes('accountancy') || t.includes('finance') || t.includes('marketing') ||
         t.includes('human resource') || t.includes('management') || t.includes('cpa') || t.includes('office administration') ||
-        t.match(/\b(bsba|mba|bsa|bsoa|hr|hrdm)\b/)) {
+        t.includes('administrative') || t.includes('administration') || t.match(/\b(bsba|mba|bsa|bsoa|hr|hrmo|hrdm)\b/)) {
         return 'BUSINESS_ADMINISTRATION';
     }
 
@@ -504,7 +506,35 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
                 if (req.mandatory) hasUnmatchedMandatory = true;
             } else {
                 applicantValue = fullEduText;
-                const reqDiscipline = detectDisciplineCluster(req.required_value + ' ' + jobTitle);
+                const reqValClean = req.required_value.toLowerCase().trim();
+                const specifiesSpecificMajor = reqValClean.includes('engineering') || 
+                    reqValClean.includes('nursing') || 
+                    reqValClean.includes('law') || 
+                    reqValClean.includes('juris') || 
+                    reqValClean.includes('aviation') || 
+                    reqValClean.includes('pilot') || 
+                    reqValClean.includes('flying') || 
+                    reqValClean.includes('computer') || 
+                    reqValClean.includes('information tech') || 
+                    reqValClean.includes('software') || 
+                    reqValClean.includes('accountancy') ||
+                    reqValClean.includes('architecture') ||
+                    reqValClean.includes('psychology') ||
+                    reqValClean.includes('criminology') ||
+                    reqValClean.includes('cpa');
+
+                const isGenericBachelorReq = !specifiesSpecificMajor && (
+                    reqValClean === "bachelor's degree" || 
+                    reqValClean === "bachelor degree" || 
+                    reqValClean === "bachelor's" ||
+                    reqValClean === "bachelor" ||
+                    reqValClean === "college graduate" || 
+                    reqValClean.includes('bachelor') ||
+                    reqValClean.includes('degree') ||
+                    reqValClean.includes('college')
+                );
+
+                const reqDiscipline = isGenericBachelorReq ? 'GENERAL_OTHER' : detectDisciplineCluster(req.required_value + ' ' + jobTitle);
                 const appDiscipline = detectDisciplineCluster(fullEduText);
                 const appSecondaryDiscipline = detectSecondaryDisciplineCluster(fullEduText);
                 const reqLevel = detectDegreeLevel(req.required_value);
@@ -514,11 +544,13 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
 
                 // Flexible discipline matching (Primary Cluster, Secondary Cluster, or General Degree acceptance)
                 const isDisciplineMatched = reqDiscipline === 'GENERAL_OTHER' ||
+                    isGenericBachelorReq ||
                     reqLowerText.includes('any bachelor') || reqLowerText.includes('bachelor\'s degree in any') ||
                     reqDiscipline === appDiscipline ||
                     (appSecondaryDiscipline !== null && reqDiscipline === appSecondaryDiscipline) ||
                     (reqDiscipline === 'IT_COMPUTER_STUDIES' && (appLower.includes('information technology') || appLower.includes('computer science') || appLower.includes('software') || appLower.includes('it'))) ||
-                    (reqDiscipline === 'AVIATION_AERONAUTICS' && (appLower.includes('aviation') || appLower.includes('aeronautical') || appLower.includes('flight')));
+                    (reqDiscipline === 'AVIATION_AERONAUTICS' && (appLower.includes('aviation') || appLower.includes('aeronautical') || appLower.includes('flight'))) ||
+                    (reqDiscipline === 'BUSINESS_ADMINISTRATION' && (appLower.includes('business') || appLower.includes('administration') || appLower.includes('management') || appLower.includes('commerce') || appLower.includes('finance')));
 
                 const acceptsBachelor = reqLowerText.includes('bachelor') || reqLevel === 'bachelor';
 

@@ -53,6 +53,11 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
             } catch (e) {}
         }
 
+        const sourceApps = (Array.isArray(inertiaApps) && inertiaApps.length > 0) ? inertiaApps : cachedDbApps;
+        
+        // Real database applications must come first to take precedence over mock data
+        const combined: any[] = Array.isArray(sourceApps) ? [...sourceApps] : [];
+
         let localApps: any[] = [];
         if (typeof window !== 'undefined') {
             try {
@@ -60,12 +65,13 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
             } catch (e) {}
         }
 
-        const combined = Array.isArray(localApps) ? [...localApps] : [];
-        const sourceApps = (Array.isArray(inertiaApps) && inertiaApps.length > 0) ? inertiaApps : cachedDbApps;
-
-        (Array.isArray(sourceApps) ? sourceApps : []).forEach((ia: any) => {
-            if (!combined.some((ca: any) => String(ca.id) === String(ia.id))) {
-                combined.push(ia);
+        (Array.isArray(localApps) ? localApps : []).forEach((la: any) => {
+            const existsInDb = combined.some((dbApp: any) => 
+                String(dbApp.id) === String(la.id) || 
+                (dbApp.email && la.applicantEmail && dbApp.email.toLowerCase() === la.applicantEmail.toLowerCase())
+            );
+            if (!existsInDb) {
+                combined.push(la);
             }
         });
 
@@ -88,16 +94,24 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
             }
 
             const apps = getAllActiveApps();
+            let countFromApps = 0;
             if (Array.isArray(apps) && apps.length > 0) {
-                return apps.filter((a: any) => {
+                countFromApps = apps.filter((a: any) => {
                     const status = a.status || '';
                     const isUnviewedStatus = ['Submitted', 'Pending Review', 'Pending'].includes(status);
                     const isViewed = viewedIdsSet.has(String(a.id)) || (typeof a.id === 'number' && viewedIdsSet.has(String(a.id)));
                     return isUnviewedStatus && !isViewed;
                 }).length;
             }
+
+            if (serverPendingApplicantsCount > 0) {
+                const unviewedServerCount = Math.max(0, serverPendingApplicantsCount - viewedIdsSet.size);
+                return Math.max(countFromApps, unviewedServerCount);
+            }
+
+            return countFromApps;
         } catch (e) {}
-        return 0;
+        return serverPendingApplicantsCount;
     };
 
     const [clientPendingCount, setClientPendingCount] = React.useState<number>(() => getPendingReviewCount());
