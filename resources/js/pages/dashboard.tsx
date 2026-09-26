@@ -44,7 +44,9 @@ import {
     Heart,
     BookOpen,
     Star,
-    Shield
+    Shield,
+    CheckCircle2,
+    MessageSquare
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -72,10 +74,63 @@ const safeFormatDate = (dateStr?: any) => {
     if (!dateStr) return '';
     try {
         const d = new Date(dateStr);
-        return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+        return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch {
         return '';
     }
+};
+
+const formatTime = (timeStr?: string | null) => {
+    if (!timeStr) return 'TBA';
+    const str = String(timeStr).trim();
+    if (/am|pm/i.test(str)) return str;
+    const match = str.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (!match) return str;
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    return `${hours}:${minutes} ${ampm}`;
+};
+
+const formatNotifDisplayTime = (timestamp?: number, dateOrTimeStr?: string) => {
+    let ts = timestamp;
+    if (!ts && dateOrTimeStr) {
+        const parsed = new Date(dateOrTimeStr).getTime();
+        if (!isNaN(parsed)) ts = parsed;
+    }
+    if (!ts) return dateOrTimeStr || 'Recent';
+
+    const now = Date.now();
+    const diffMs = now - ts;
+    const date = new Date(ts);
+    const today = new Date();
+    const isToday = date.toDateString() === today.toDateString();
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    const timeFormatted = `${hours}:${minutes} ${ampm}`;
+
+    if (diffMs >= 0 && diffMs < 60000) {
+        return 'Just now';
+    }
+    if (isToday) {
+        return timeFormatted;
+    }
+    if (isYesterday) {
+        return `Yesterday at ${timeFormatted}`;
+    }
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const day = date.getDate();
+    const year = date.getFullYear() !== today.getFullYear() ? `, ${date.getFullYear()}` : '';
+    return `${month} ${day}${year} at ${timeFormatted}`;
 };
 
 // --- CUSTOM TOOLTIP COMPONENT (Navy background with gold text) ---
@@ -693,9 +748,35 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         return () => window.removeEventListener('storage', handleStorage);
     }, []);
 
+    const calculateAge = (dobStr?: string) => {
+        if (!dobStr) return '';
+        try {
+            const birthDate = new Date(dobStr);
+            if (isNaN(birthDate.getTime())) return '';
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            return age >= 0 ? String(age) : '';
+        } catch {
+            return '';
+        }
+    };
+
     const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setProfileData((prev: any) => ({ ...prev, [name]: value }));
+        setProfileData((prev: any) => {
+            const updated = { ...prev, [name]: value };
+            if (name === 'dob') {
+                const computedAge = calculateAge(value);
+                if (computedAge) {
+                    updated.age = computedAge;
+                }
+            }
+            return updated;
+        });
     };
 
     const [customEligText, setCustomEligText] = useState('');
@@ -1318,38 +1399,47 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         (appsToUse || []).forEach((app: any) => {
             const isMock = String(app.id).startsWith('mock_');
             const prefix = isMock ? 'mock' : 'db';
+            const subTimestamp = app.created_at ? new Date(app.created_at).getTime() : (app.submittedDate ? new Date(app.submittedDate).getTime() : Date.now() - 86400000);
             
             // Application Submitted
             notifications.push({
                 id: `${prefix}_sub_${app.id}`,
                 text: `Your application for ${app.jobTitle} was successfully submitted.`,
                 time: app.submittedDate || new Date().toISOString(),
+                timestamp: subTimestamp,
                 isRead: readNotifications.includes(`${prefix}_sub_${app.id}`),
                 type: 'success',
-                jobId: app.jobId
+                jobId: app.jobId,
+                appId: app.id
             });
 
             // Application Status Changes
             if (app.status !== 'Submitted') {
+                const statusTimestamp = app.updatedAt ? new Date(app.updatedAt).getTime() : (app.updated_at ? new Date(app.updated_at).getTime() : subTimestamp + 3600000);
                 notifications.push({
                     id: `${prefix}_status_${app.id}_${app.status}`,
                     text: `Update: Your application for ${app.jobTitle} is now "${app.status}".`,
                     time: app.updatedAt || app.submittedDate || new Date().toISOString(),
+                    timestamp: statusTimestamp,
                     isRead: readNotifications.includes(`${prefix}_status_${app.id}_${app.status}`),
                     type: 'info',
-                    jobId: app.jobId
+                    jobId: app.jobId,
+                    appId: app.id
                 });
             }
 
-            // Unread messages notification (only for database applications)
-            if (!isMock && app.hasUnreadMessages) {
+            // Unread messages notification
+            if (app.hasUnreadMessages) {
+                const msgTimestamp = app.latest_message_time ? new Date(app.latest_message_time).getTime() : Date.now();
                 notifications.push({
                     id: `db_message_${app.id}`,
                     text: `New message from NAAP HR Admin regarding your application for ${app.jobTitle}.`,
-                    time: new Date().toISOString().split('T')[0],
-                    isRead: false,
+                    time: new Date().toISOString(),
+                    timestamp: msgTimestamp,
+                    isRead: readNotifications.includes(`db_message_${app.id}`),
                     type: 'message',
-                    jobId: app.jobId
+                    jobId: app.jobId,
+                    appId: app.id
                 });
             }
         });
@@ -1358,10 +1448,12 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         const allJobs = [...jobs, ...getJobs()];
         const uniqueJobs = Array.from(new Map(allJobs.map(item => [String(item.id), item])).values());
         uniqueJobs.slice(0, 3).forEach((job: any) => {
+            const jobTs = job.created_at ? new Date(job.created_at).getTime() : (job.postedDate ? new Date(job.postedDate).getTime() : Date.now() - 172800000);
             notifications.push({
                 id: `job_${job.id}`,
-                text: `New career opportunity: ${job.title} in ${job.department}.`,
-                time: job.postedDate,
+                text: `New career opportunity: ${job.title} in ${job.department || 'NAAP'}.`,
+                time: job.postedDate || new Date().toISOString(),
+                timestamp: jobTs,
                 isRead: readNotifications.includes(`job_${job.id}`),
                 type: 'new',
                 jobId: job.id
@@ -1373,15 +1465,22 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             const savedInterviews = getCombinedInterviews();
             savedInterviews.forEach((interview: any) => {
                 if (checkInterviewMatch(interview)) {
-                    const notifyId = `interview_notify_${interview.date}_${interview.time}`;
+                    const notifyId = `interview_notify_${interview.id || (interview.date + '_' + interview.time)}`;
                     const matchingApp = (appsToUse || []).find((a: any) => (a.jobTitle || '').toLowerCase() === (interview.position || '').toLowerCase());
+                    const intDateObj = interview.date ? new Date(interview.date) : new Date();
+                    const intTs = interview.updated_at ? new Date(interview.updated_at).getTime() : (interview.created_at ? new Date(interview.created_at).getTime() : intDateObj.getTime());
+                    const formattedDateStr = safeFormatDate(interview.date);
+                    const formattedTimeStr = formatTime(interview.time);
+                    
                     notifications.push({
                         id: notifyId,
-                        text: `Interview Scheduled: For ${interview.position || 'School Nurse'} on ${safeFormatDate(interview.date)} at ${interview.time}. Venue: ${interview.venue}.`,
-                        time: new Date().toISOString().split('T')[0],
+                        text: `Interview Scheduled: For ${interview.position || 'Position'} on ${formattedDateStr} at ${formattedTimeStr}. Venue: ${interview.venue || 'NAAP Main Campus'}.`,
+                        time: interview.updated_at || interview.created_at || interview.date || new Date().toISOString(),
+                        timestamp: intTs,
                         isRead: readNotifications.includes(notifyId),
-                        type: 'info',
-                        jobId: matchingApp ? matchingApp.jobId : null
+                        type: 'interview',
+                        jobId: matchingApp ? matchingApp.jobId : null,
+                        appId: matchingApp ? matchingApp.id : null
                     });
                 }
             });
@@ -1390,25 +1489,20 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         // 5. HR News announcements
         (hrNews || []).slice(0, 2).forEach((newsItem: any) => {
             const newsNotifyId = `news_notify_${newsItem.id}`;
+            const newsTs = newsItem.created_at ? new Date(newsItem.created_at).getTime() : (newsItem.date ? new Date(newsItem.date).getTime() : Date.now() - 259200000);
             notifications.push({
                 id: newsNotifyId,
                 text: `Latest NAAP HR News: "${newsItem.title}"`,
-                time: newsItem.date || new Date().toISOString().split('T')[0],
+                time: newsItem.date || new Date().toISOString(),
+                timestamp: newsTs,
                 isRead: readNotifications.includes(newsNotifyId),
                 type: 'news',
                 newsId: newsItem.id
             });
         });
 
-        // Sort by date (newest first), then by id as tie-breaker
-        return notifications.sort((a, b) => {
-            const timeA = a.time ? new Date(a.time).getTime() : 0;
-            const timeB = b.time ? new Date(b.time).getTime() : 0;
-            if (timeA !== timeB) {
-                return timeB - timeA;
-            }
-            return b.id.localeCompare(a.id);
-        });
+        // Sort strictly by timestamp descending (newest first)
+        return notifications.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     };
 
     const [notifications, setNotifications] = useState(() => buildNotifications());
@@ -1893,29 +1987,40 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                     </CustomTooltip>
 
                                     {notificationsOpen && (
-                                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 text-gray-800 animate-in fade-in zoom-in-95 duration-200">
-                                            <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-                                                <span className="font-bold text-xs uppercase tracking-wider text-[#193153]">Notifications</span>
+                                        <div className="absolute right-0 mt-2 w-88 bg-white rounded-2xl shadow-2xl border border-gray-100 py-3 z-50 text-gray-800 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="px-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-xs uppercase tracking-wider text-[#193153]">Notifications</span>
+                                                    {notifications.filter(n => !n.isRead).length > 0 && (
+                                                        <span className="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-200/50">
+                                                            {notifications.filter(n => !n.isRead).length} unread
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 {notifications.some(n => !n.isRead) && (
                                                     <button 
                                                         onClick={handleMarkAllRead} 
-                                                        className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer"
+                                                        className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer hover:underline transition-colors"
                                                     >
-                                                        <CheckCheck className="w-3.5 h-3.5" /> Mark read
+                                                        <CheckCheck className="w-3.5 h-3.5" /> Mark all read
                                                     </button>
                                                 )}
                                             </div>
-                                            <div className="max-h-72 overflow-y-auto">
+                                            <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
                                                 {notifications.length === 0 ? (
-                                                    <div className="px-4 py-6 text-center text-gray-400 text-xs">No notifications yet</div>
+                                                    <div className="px-4 py-8 text-center text-gray-400 text-xs flex flex-col items-center gap-2">
+                                                        <Bell className="w-8 h-8 text-gray-300 stroke-[1.5]" />
+                                                        <span>No notifications yet</span>
+                                                    </div>
                                                 ) : (
                                                     notifications.map(n => (
                                                         <div
                                                             key={n.id}
                                                             onClick={() => {
                                                                 handleMarkAsRead(n.id);
+                                                                setNotificationsOpen(false);
                                                                 if (n.type === 'message') {
-                                                                    const matchingApp = (myApplications || []).find((a: any) => String(a.jobId) === String(n.jobId) || String(a.id) === String(n.jobId));
+                                                                    const matchingApp = (myApplications || []).find((a: any) => String(a.id) === String(n.appId) || String(a.jobId) === String(n.jobId));
                                                                     if (matchingApp) {
                                                                         openMessages(matchingApp.id, matchingApp.jobTitle || 'Job Position');
                                                                     } else if ((myApplications || []).length > 0) {
@@ -1925,24 +2030,62 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                     }
                                                                 } else if (n.type === 'news' || n.newsId) {
                                                                     router.visit(n.newsId ? `/hr-news/${n.newsId}` : '/hr-news');
+                                                                } else if (n.type === 'interview') {
+                                                                    setActiveTab('applications');
                                                                 } else if (n.jobId) {
                                                                     router.visit(`/jobs/${n.jobId}`);
                                                                 } else {
-                                                                    router.visit(`/jobs`);
+                                                                    setActiveTab('applications');
                                                                 }
                                                             }}
-                                                            className={`px-4 py-3 border-b border-gray-50 last:border-0 cursor-pointer transition-colors ${
-                                                                n.isRead ? 'bg-gray-50/70 hover:bg-gray-100/60' : 'bg-blue-50/40 hover:bg-blue-50/80'
+                                                            className={`px-4 py-3 cursor-pointer transition-all duration-150 flex items-start gap-3 ${
+                                                                n.isRead ? 'bg-white hover:bg-gray-50/80' : 'bg-blue-50/40 hover:bg-blue-50/80 border-l-4 border-l-blue-600'
                                                             }`}
                                                         >
-                                                            <div className="flex gap-2.5 items-start">
-                                                                {!n.isRead && <div className="mt-1.5 w-2 h-2 bg-red-500 rounded-full shrink-0 animate-pulse"></div>}
-                                                                <div className="flex-1">
-                                                                    <p className={`text-xs leading-snug ${n.isRead ? 'text-gray-500 font-normal' : 'text-gray-900 font-semibold'}`}>
-                                                                        {n.text}
-                                                                    </p>
-                                                                    <span className="text-[10px] text-blue-600 font-medium mt-1 flex items-center gap-1">
-                                                                        <Clock className="w-3 h-3" /> {safeFormatDate(n.time)} &bull; Click to open
+                                                            <div className="shrink-0 mt-0.5">
+                                                                {n.type === 'success' && (
+                                                                    <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                                        <CheckCircle2 className="w-4 h-4" />
+                                                                    </div>
+                                                                )}
+                                                                {n.type === 'info' && (
+                                                                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                                                                        <FileText className="w-4 h-4" />
+                                                                    </div>
+                                                                )}
+                                                                {n.type === 'interview' && (
+                                                                    <div className="w-7 h-7 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">
+                                                                        <Calendar className="w-4 h-4" />
+                                                                    </div>
+                                                                )}
+                                                                {n.type === 'message' && (
+                                                                    <div className="w-7 h-7 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+                                                                        <MessageSquare className="w-4 h-4" />
+                                                                    </div>
+                                                                )}
+                                                                {n.type === 'new' && (
+                                                                    <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+                                                                        <Briefcase className="w-4 h-4" />
+                                                                    </div>
+                                                                )}
+                                                                {n.type === 'news' && (
+                                                                    <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center">
+                                                                        <Newspaper className="w-4 h-4" />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className={`text-xs leading-snug ${n.isRead ? 'text-gray-600 font-normal' : 'text-gray-900 font-semibold'}`}>
+                                                                    {n.text}
+                                                                </p>
+                                                                <div className="text-[10px] text-gray-400 font-medium mt-1 flex items-center justify-between">
+                                                                    <span className="flex items-center gap-1 text-blue-600 font-medium">
+                                                                        <Clock className="w-3 h-3 text-blue-500" />
+                                                                        {formatNotifDisplayTime(n.timestamp, n.time)}
+                                                                    </span>
+                                                                    <span className="text-gray-400 hover:text-blue-600 flex items-center gap-0.5">
+                                                                        View <ChevronRight className="w-3 h-3 inline" />
                                                                     </span>
                                                                 </div>
                                                             </div>
@@ -2416,7 +2559,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                              <div>
                                                                  <h4 className="text-sm font-bold text-gray-900 leading-tight">{event.title}</h4>
                                                                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                                                     <Clock className="w-3 h-3" /> {event.time}
+                                                                     <Clock className="w-3 h-3" /> {formatTime(event.time)}
                                                                  </p>
                                                                  {isInterview && event.venue && (
                                                                      <p className="text-[10px] text-purple-600 font-semibold mt-1">
@@ -2840,6 +2983,12 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                               <input type="date" name="dob" value={profileData.dob || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
                                                           ) : <p className="font-medium text-gray-900">{profileData.dob || '-'}</p>}
                                                       </div>
+                                                       <div>
+                                                           <label className="text-xs font-bold text-gray-400 uppercase">Age</label>
+                                                           {isEditingProfile ? (
+                                                               <input type="text" name="age" placeholder="e.g. 23" value={profileData.age || calculateAge(profileData.dob) || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                           ) : <p className="font-medium text-gray-900">{profileData.age || calculateAge(profileData.dob) || '-'}</p>}
+                                                       </div>
                                                       <div>
                                                           <label className="text-xs font-bold text-gray-400 uppercase">Place of Birth</label>
                                                           {isEditingProfile ? (
@@ -4232,7 +4381,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                 </div>
                                 <div className="grid grid-cols-3 gap-2">
                                     <span className="text-sm font-semibold text-gray-500">Time:</span>
-                                    <span className="text-sm text-gray-900 col-span-2">{selectedEventDetails.time}</span>
+                                    <span className="text-sm text-gray-900 col-span-2">{formatTime(selectedEventDetails.time)}</span>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2">
                                     <span className="text-sm font-semibold text-gray-500">Venue:</span>

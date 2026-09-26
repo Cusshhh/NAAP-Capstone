@@ -59,6 +59,20 @@ const parseArrayField = (field: any): any[] => {
     return [];
 };
 
+const formatTime = (timeStr?: string | null) => {
+    if (!timeStr) return 'TBA';
+    const str = String(timeStr).trim();
+    if (/am|pm/i.test(str)) return str;
+    const match = str.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (!match) return str;
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    return `${hours}:${minutes} ${ampm}`;
+};
+
 export default function JobDetails({ id, auth, job: serverJob, application, interview, restriction }: JobDetailsProps) {
     const user = auth?.user;
     const isAdmin = !!(user && (user.is_admin || user.role === 'super_admin' || user.role === 'hr_admin' || user.role === 'hr_staff' || user.email === 'admin@naap.edu.ph'));
@@ -1538,7 +1552,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-blue-200 text-xs font-medium">Time</span>
-                                            <span className="font-bold text-white mt-0.5">{interview.time}</span>
+                                            <span className="font-bold text-white mt-0.5">{formatTime(interview.time)}</span>
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-blue-200 text-xs font-medium">Venue / Platform</span>

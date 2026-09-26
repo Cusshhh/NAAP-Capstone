@@ -15,6 +15,37 @@ import { mockApplications, mockInterviews, getApplications, getJobs } from '@/da
 import { evaluateQualificationMatch, evaluateJobQualificationMatch, type QualificationAnalysisOutput } from '@/utils/aiScoring';
 import AdminLayout from '@/layouts/AdminLayout';
 
+const formatTime = (timeStr?: string | null) => {
+    if (!timeStr) return 'TBA';
+    const str = String(timeStr).trim();
+    if (/am|pm/i.test(str)) return str;
+    const match = str.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (!match) return str;
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    return `${hours}:${minutes} ${ampm}`;
+};
+
+const calculateAge = (dobStr?: string) => {
+    if (!dobStr) return '';
+    try {
+        const birthDate = new Date(dobStr);
+        if (isNaN(birthDate.getTime())) return '';
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age >= 0 ? String(age) : '';
+    } catch {
+        return '';
+    }
+};
+
 export default function Applicants({ auth, applications: serverApplications }: { auth: any, applications: any[] }) {
     const admin = auth?.user || { name: 'Admin' };
     const [searchTerm, setSearchTerm] = useState('');
@@ -118,8 +149,8 @@ export default function Applicants({ auth, applications: serverApplications }: {
                 // Merge/fallback with custom localstorage if needed
                 const localSaved = JSON.parse(localStorage.getItem('scheduled_interviews_custom') || '[]');
                 const combined = [...dbInterviews, ...localSaved].reduce((acc: any[], item: any) => {
-                    const idKey = item.applicationId || item.application_id || item.id;
-                    if (!acc.some(x => (x.applicationId || x.application_id || x.id) === idKey)) {
+                    const idKey = String(item.applicationId || item.application_id || item.applicantEmail || item.applicant_email || item.id);
+                    if (!acc.some(x => String(x.applicationId || x.application_id || x.applicantEmail || x.applicant_email || x.id) === idKey)) {
                         acc.push(item);
                     }
                     return acc;
@@ -699,16 +730,27 @@ export default function Applicants({ auth, applications: serverApplications }: {
             const updated = [...scheduledInterviews];
             updated[editingInterviewIndex] = interviewData;
             setScheduledInterviews(updated);
-            toast.success("Interview updated!");
+            toast.success(notifyApplicant ? "Interview updated & applicant notified via Email & Portal!" : "Interview schedule updated!");
         } else {
-            // Create new
-            setScheduledInterviews([...scheduledInterviews, interviewData]);
-            toast.success("Interview scheduled successfully!");
+            // Create new or update existing if matching entry found
+            const existingIdx = scheduledInterviews.findIndex(i => 
+                (i.applicationId || i.application_id || i.id) === (interviewData.applicationId || interviewData.application_id || interviewData.id) ||
+                ((i.applicantEmail || i.applicant_email) && (interviewData.applicantEmail || interviewData.applicant_email) && 
+                 String(i.applicantEmail || i.applicant_email).toLowerCase() === String(interviewData.applicantEmail || interviewData.applicant_email).toLowerCase())
+            );
+            if (existingIdx !== -1) {
+                const updated = [...scheduledInterviews];
+                updated[existingIdx] = interviewData;
+                setScheduledInterviews(updated);
+            } else {
+                setScheduledInterviews([...scheduledInterviews, interviewData]);
+            }
+            toast.success(notifyApplicant ? "Interview scheduled & notification sent to applicant!" : "Interview scheduled successfully!");
         }
 
         // Automatically update applicant status to 'Interview Scheduled'
         if (selectedAppId) {
-            handleStatusUpdate(selectedAppId, 'Interview Scheduled');
+            handleStatusUpdate(selectedAppId, 'Interview Scheduled', undefined, true);
         }
 
         // Reset and Close
@@ -732,21 +774,18 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
     const handleEditInterview = (index: number) => {
         const interview = scheduledInterviews[index];
+        if (!interview) return;
         let formattedDate = '';
         if (interview.date) {
-            try {
-                formattedDate = new Date(interview.date).toISOString().split('T')[0];
-            } catch (e) {
-                formattedDate = interview.date;
-            }
+            formattedDate = String(interview.date).split('T')[0];
         }
         setInterviewDate(formattedDate);
-        setInterviewTime(interview.time);
-        setPanelMembers(interview.panelMembers || '');
-        setVenue(interview.venue);
-        setNotifyApplicant(!!interview.notifyApplicant);
-        setResultNotes(interview.resultNotes || '');
-        setCandidateName(interview.candidateName || '');
+        setInterviewTime(interview.time || '');
+        setPanelMembers(interview.panelMembers || interview.panel_members || '');
+        setVenue(interview.venue || '');
+        setNotifyApplicant(!!(interview.notifyApplicant || interview.notify_applicant));
+        setResultNotes(interview.resultNotes || interview.result_notes || '');
+        setCandidateName(interview.candidateName || interview.candidate_name || '');
         setPosition(interview.position || '');
         setSelectedAppId(interview.applicationId || interview.application_id || null);
         setSelectedAppEmail(interview.applicantEmail || interview.applicant_email || '');
@@ -796,7 +835,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
         toast.success("Interview cancelled.");
     };
 
-    const handleStatusUpdate = (id: any, newStatus: string, reason?: string) => {
+    const handleStatusUpdate = (id: any, newStatus: string, reason?: string, suppressToast: boolean = false) => {
         const targetApp = applications.find(a => String(a.id) === String(id));
         if (targetApp?.status === 'Withdrawn') {
             toast.error("This application has been withdrawn by the applicant and cannot be modified.");
@@ -862,8 +901,10 @@ export default function Applicants({ auth, applications: serverApplications }: {
             }
         }
 
-        // Only hit backend router for real DB applications
         const isDbApp = serverApplications && serverApplications.some((sa: any) => String(sa.id) === String(id));
+        const toastMsg = newStatus === 'RESTORE' 
+            ? `Applicant status restored to: ${nextStatus}` 
+            : `Applicant status updated to: ${nextStatus}`;
 
         if (isDbApp) {
             // Actual backend call
@@ -872,7 +913,9 @@ export default function Applicants({ auth, applications: serverApplications }: {
                 rejection_reason: reason
             }, {
                 onSuccess: () => {
-                    toast.success(`Applicant status restored to: ${nextStatus}`);
+                    if (!suppressToast) {
+                        toast.success(toastMsg);
+                    }
                 },
                 onError: (errors) => {
                     toast.error(`Failed to update status: ${Object.values(errors)[0]}`);
@@ -881,7 +924,9 @@ export default function Applicants({ auth, applications: serverApplications }: {
                 }
             });
         } else {
-            toast.success(`Applicant status restored to: ${nextStatus}`);
+            if (!suppressToast) {
+                toast.success(toastMsg);
+            }
         }
     };
 
@@ -1446,17 +1491,29 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
                                                         <div>
                                                             <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Identity & Personal Information</h3>
-                                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                                                                <div className="flex flex-col"><span className="text-gray-500">First Name</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.firstName || currentApp.applicantName.split(' ')[0]}</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">Middle Name</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.middleName || 'N/A'}</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">Last Name</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.lastName || currentApp.applicantName.split(' ').pop()}</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">Extension Name</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.extensionName || 'N/A'}</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">Age</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.age || 'N/A'}</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">Sex / Gender</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{currentApp.dynamic_responses?.sex || 'N/A'}</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">Civil Status</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{currentApp.dynamic_responses?.civilStatus || 'N/A'}</span></div>
-                                                                <div className="flex flex-col"><span className="text-gray-500">Religion</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{currentApp.dynamic_responses?.religion || 'N/A'}</span></div>
+                                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 text-xs">
+                                                                 <div className="flex flex-col"><span className="text-gray-500">First Name</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.firstName || currentApp.applicantName.split(' ')[0]}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Middle Name</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.middleName || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Last Name</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.lastName || currentApp.applicantName.split(' ').pop()}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Extension Name</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.extensionName || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Date of Birth</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.dob || currentApp.dob || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Age</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.age || calculateAge(currentApp.dynamic_responses?.dob || currentApp.dob) || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Place of Birth</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.pob || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Sex / Gender</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{currentApp.dynamic_responses?.sex || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Civil Status</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{currentApp.dynamic_responses?.civilStatus || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Religion</span><span className="font-semibold text-gray-900 mt-0.5 capitalize">{currentApp.dynamic_responses?.religion || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Height (m)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.height || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Weight (kg)</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.weight || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Blood Type</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.bloodType || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Citizenship</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.citizenship || 'Filipino'}{currentApp.dynamic_responses?.citizenshipType ? ` (${currentApp.dynamic_responses.citizenshipType})` : ''}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">GSIS ID No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.gsisNo || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">PAG-IBIG ID No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.pagibigNo || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">PHILHEALTH No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.philhealthNo || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">SSS No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.sssNo || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">TIN No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.tinNo || 'N/A'}</span></div>
+                                                                 <div className="flex flex-col"><span className="text-gray-500">Agency Employee No.</span><span className="font-semibold text-gray-900 mt-0.5">{currentApp.dynamic_responses?.agencyEmpNo || 'N/A'}</span></div>
+                                                             </div>
                                                             </div>
-                                                        </div>
                                                         <div>
                                                             <h3 className="font-semibold text-gray-900 text-sm border-b pb-1.5 mb-3">Demographics & Special Groups (PDS Sec I)</h3>
                                                             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
@@ -1766,11 +1823,23 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                             : 'bg-purple-600 hover:bg-purple-700 text-white'
                                                                     }`}
                                                                     onClick={() => {
-                                                                        setCandidateName(currentApp.applicantName);
-                                                                        setPosition(currentApp.jobTitle);
-                                                                        setSelectedAppId(currentApp.id);
-                                                                        setSelectedAppEmail(currentApp.email || currentApp.applicantEmail || '');
-                                                                        setIsInterviewModalOpen(true);
+                                                                        const existingIdx = scheduledInterviews.findIndex((inv: any) => {
+                                                                            const invAppId = inv.applicationId || inv.application_id;
+                                                                            const invEmail = (inv.applicantEmail || inv.applicant_email || '').toLowerCase();
+                                                                            const appEmail = (currentApp.email || currentApp.applicantEmail || '').toLowerCase();
+                                                                            return (invAppId && String(invAppId) === String(currentApp.id)) || (appEmail && invEmail === appEmail);
+                                                                        });
+
+                                                                        if (existingIdx !== -1) {
+                                                                            handleEditInterview(existingIdx);
+                                                                        } else {
+                                                                            resetInterviewForm();
+                                                                            setCandidateName(currentApp.applicantName);
+                                                                            setPosition(currentApp.jobTitle);
+                                                                            setSelectedAppId(currentApp.id);
+                                                                            setSelectedAppEmail(currentApp.email || currentApp.applicantEmail || '');
+                                                                            setIsInterviewModalOpen(true);
+                                                                        }
                                                                     }}
                                                                 >
                                                                     <Calendar className="mr-2 h-4 w-4" />
@@ -1891,73 +1960,133 @@ export default function Applicants({ auth, applications: serverApplications }: {
                             Schedule Interview
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-lg">
-                        <DialogHeader>
-                            <DialogTitle>{editingInterviewIndex !== null ? "Edit Interview" : "Schedule Interview"}</DialogTitle>
+                    <DialogContent className="max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-100 p-6">
+                        <DialogHeader className="border-b border-slate-100 pb-3">
+                            <DialogTitle className="text-lg font-bold text-[#193153] flex items-center gap-2">
+                                <Calendar className="h-5 w-5 text-blue-600" />
+                                {editingInterviewIndex !== null ? "Edit Interview Schedule" : "Schedule Candidate Interview"}
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-slate-500">
+                                Set the interview date, venue, and optional notes for candidate screening and assessment.
+                            </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+
+                        <div className="space-y-4 py-2 text-xs">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-slate-700 font-semibold mb-1">Candidate Name</label>
+                                    <Input
+                                        placeholder="Full Candidate Name"
+                                        value={candidateName}
+                                        onChange={(e) => setCandidateName(e.target.value)}
+                                        className="h-9 text-xs"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-slate-700 font-semibold mb-1">Applied Position</label>
+                                    <Input
+                                        placeholder="Position Title"
+                                        value={position}
+                                        onChange={(e) => setPosition(e.target.value)}
+                                        className="h-9 text-xs"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-slate-700 font-semibold mb-1">Interview Date</label>
+                                    <Input
+                                        type="date"
+                                        value={interviewDate}
+                                        onChange={(e) => setInterviewDate(e.target.value)}
+                                        className="h-9 text-xs"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-slate-700 font-semibold mb-1">Interview Time</label>
+                                    <Input
+                                        type="time"
+                                        value={interviewTime}
+                                        onChange={(e) => setInterviewTime(e.target.value)}
+                                        className="h-9 text-xs"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-slate-700 font-semibold mb-1">Interview Panel Members (Optional)</label>
                                 <Input
-                                    placeholder="Candidate Name"
-                                    value={candidateName}
-                                    onChange={(e) => setCandidateName(e.target.value)}
-                                />
-                                <Input
-                                    placeholder="Position"
-                                    value={position}
-                                    onChange={(e) => setPosition(e.target.value)}
+                                    placeholder="e.g. HR Officer, Division Chief, Department Head"
+                                    value={panelMembers}
+                                    onChange={(e) => setPanelMembers(e.target.value)}
+                                    className="h-9 text-xs"
                                 />
                             </div>
-                            <Input
-                                type="date"
-                                placeholder="Interview Date"
-                                value={interviewDate}
-                                onChange={(e) => setInterviewDate(e.target.value)}
-                            />
-                            <Input
-                                type="time"
-                                placeholder="Interview Time"
-                                value={interviewTime}
-                                onChange={(e) => setInterviewTime(e.target.value)}
-                            />
-                            <Input
-                                placeholder="Panel Members"
-                                value={panelMembers}
-                                onChange={(e) => setPanelMembers(e.target.value)}
-                            />
-                            <Input
-                                placeholder="Venue / Online Link"
-                                value={venue}
-                                onChange={(e) => setVenue(e.target.value)}
-                            />
+
                             <div>
-                                <label className="flex items-center">
-                                    <input
-                                        type="checkbox"
-                                        checked={notifyApplicant}
-                                        onChange={() => setNotifyApplicant(!notifyApplicant)}
-                                        className="mr-2"
-                                    />
-                                    Notify Applicant
+                                <label className="block text-slate-700 font-semibold mb-1">Venue / Online Meeting Link</label>
+                                <Input
+                                    placeholder="e.g. HR Office, Room 201 (Villamor Campus) / https://zoom.us/j/..."
+                                    value={venue}
+                                    onChange={(e) => setVenue(e.target.value)}
+                                    className="h-9 text-xs"
+                                />
+                            </div>
+
+                            {/* Notification Checkbox Box */}
+                            <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-3 flex items-start gap-3">
+                                <input
+                                    type="checkbox"
+                                    id="notifyApplicantCheck"
+                                    checked={notifyApplicant}
+                                    onChange={() => setNotifyApplicant(!notifyApplicant)}
+                                    className="mt-0.5 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <label htmlFor="notifyApplicantCheck" className="cursor-pointer select-none">
+                                    <span className="font-bold text-slate-900 text-xs block">Notify Applicant via Email & Portal</span>
+                                    <span className="text-[11px] text-slate-600 block mt-0.5 leading-snug">
+                                        Sends an official email invitation & live portal dashboard alert containing the schedule, venue, and notes to the applicant.
+                                    </span>
                                 </label>
                             </div>
-                            <Input
-                                placeholder="Interview Result Notes"
-                                value={resultNotes}
-                                onChange={(e) => setResultNotes(e.target.value)}
-                            />
 
-                            <div className="flex justify-end">
+                            {/* Notes Field */}
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="text-slate-700 font-semibold">Notes (Visible to Applicant)</label>
+                                    <span className="text-[10px] text-blue-600 font-medium">Optional</span>
+                                </div>
+                                <textarea
+                                    className="w-full min-h-[75px] p-2.5 border border-slate-200 rounded-lg text-xs focus:ring-[#193153] focus:border-[#193153] bg-white leading-relaxed"
+                                    placeholder="e.g. Please bring 2 valid photo IDs, original TOR & Diploma, and arrive 15 minutes prior to your scheduled time."
+                                    value={resultNotes}
+                                    onChange={(e) => setResultNotes(e.target.value)}
+                                />
+                                <p className="text-[10px] text-slate-500 mt-1">
+                                    💡 Notes will be included in the email notice and shown under "Additional Notes" on the applicant's portal.
+                                </p>
+                            </div>
+
+                            <DialogFooter className="border-t border-slate-100 pt-3 flex gap-2 justify-end">
                                 <Button
-                                    className="bg-blue-600 hover:bg-blue-700"
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsInterviewModalOpen(false)}
+                                    className="text-xs h-9"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="button"
+                                    className="bg-[#193153] hover:bg-[#193153]/90 text-white font-bold h-9 text-xs px-5 shadow-sm"
                                     onClick={handleScheduleInterview}
                                 >
-                                    {editingInterviewIndex !== null ? "Update Schedule" : "Schedule"}
+                                    {editingInterviewIndex !== null ? "Update Schedule" : "Schedule Interview"}
                                 </Button>
-                            </div>
+                            </DialogFooter>
                         </div>
                     </DialogContent>
-
                 </Dialog>
 
                 {/* View Interview Details Dialog */}
@@ -1980,7 +2109,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                     </div>
                                     <div>
                                         <p className="text-sm text-gray-500">Time</p>
-                                        <p className="font-medium">{viewingInterview.time}</p>
+                                        <p className="font-medium">{formatTime(viewingInterview.time)}</p>
                                     </div>
                                 </div>
                                 <div>
@@ -2030,7 +2159,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                 )}
                                                 <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
                                                     <p><strong className="font-medium">Date:</strong> {new Date(interview.date).toLocaleDateString()}</p>
-                                                    <p><strong className="font-medium">Time:</strong> {interview.time}</p>
+                                                    <p><strong className="font-medium">Time:</strong> {formatTime(interview.time)}</p>
                                                     <p><strong className="font-medium">Panel:</strong> {interview.panelMembers}</p>
                                                     <p><strong className="font-medium">Venue:</strong> {interview.venue}</p>
                                                 </div>

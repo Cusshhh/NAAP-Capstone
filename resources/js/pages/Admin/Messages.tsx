@@ -11,6 +11,24 @@ import { Input } from '@/components/ui/input';
 import CustomTooltip from '@/components/ui/custom-tooltip';
 import AdminLayout from '@/layouts/AdminLayout';
 
+
+const calculateAge = (dobStr?: string) => {
+    if (!dobStr) return '';
+    try {
+        const birthDate = new Date(dobStr);
+        if (isNaN(birthDate.getTime())) return '';
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age >= 0 ? String(age) : '';
+    } catch {
+        return '';
+    }
+};
+
 interface Application {
     id: number;
     applicantName: string;
@@ -632,14 +650,28 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
                                         const lastName = prof.lastName || (nameParts.length > 1 ? nameParts[nameParts.length - 1] : '-') || '-';
                                         const middleName = prof.middleName || '-';
                                         const extensionName = prof.extensionName || '-';
-                                        const age = prof.age || '-';
+                                        const dob = prof.dob || selectedApp.dob || '-';
+                                        const age = prof.age || calculateAge(prof.dob || selectedApp.dob) || '-';
+                                        const pob = prof.pob || '-';
                                         const sex = prof.sex || '-';
                                         const civilStatus = prof.civilStatus || '-';
                                         const religion = prof.religion || '-';
+                                        const height = prof.height || '-';
+                                        const weight = prof.weight || '-';
+                                        const bloodType = prof.bloodType || '-';
+                                        const citizenship = prof.citizenship || 'Filipino';
+                                        const citizenshipType = prof.citizenshipType ? ` (${prof.citizenshipType})` : '';
                                         const phone = prof.phone || selectedApp.phone || '-';
                                         const address = prof.address || selectedApp.address || '-';
                                         const isIP = prof.isIP || 'No';
                                         const isPWD = prof.isPWD || 'No';
+
+                                        const gsisNo = prof.gsisNo || '-';
+                                        const pagibigNo = prof.pagibigNo || '-';
+                                        const philhealthNo = prof.philhealthNo || '-';
+                                        const sssNo = prof.sssNo || '-';
+                                        const tinNo = prof.tinNo || '-';
+                                        const agencyEmpNo = prof.agencyEmpNo || '-';
 
                                         return (
                                             <div className="space-y-3">
@@ -664,23 +696,38 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
                                                         <p className="font-semibold text-gray-800 mt-0.5">{extensionName}</p>
                                                     </div>
                                                     <div>
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Age</span>
-                                                        <p className="font-semibold text-gray-800 mt-0.5">{age}</p>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Date of Birth</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{dob}</p>
                                                     </div>
                                                     <div>
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Sex</span>
-                                                        <p className="font-semibold text-gray-800 mt-0.5">{sex}</p>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Age</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{age}</p>
                                                     </div>
                                                 </div>
 
                                                 <div className="grid grid-cols-3 gap-3">
                                                     <div>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Place of Birth</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{pob}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Sex</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{sex}</p>
+                                                    </div>
+                                                    <div>
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase">Civil Status</span>
                                                         <p className="font-semibold text-gray-800 mt-0.5">{civilStatus}</p>
                                                     </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-3 gap-3">
                                                     <div>
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase">Religion</span>
                                                         <p className="font-semibold text-gray-800 mt-0.5">{religion}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Citizenship</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{citizenship}{citizenshipType}</p>
                                                     </div>
                                                     <div>
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase">Phone</span>
@@ -688,9 +735,54 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
                                                     </div>
                                                 </div>
 
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Height (m)</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{height}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Weight (kg)</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{weight}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Blood Type</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{bloodType}</p>
+                                                    </div>
+                                                </div>
+
                                                 <div>
                                                     <span className="text-[10px] font-bold text-gray-400 uppercase">Residential Address</span>
                                                     <p className="font-semibold text-gray-800 mt-0.5 leading-relaxed">{address}</p>
+                                                </div>
+
+                                                <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-100">
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">GSIS ID No.</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{gsisNo}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">PAG-IBIG ID</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{pagibigNo}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">PHILHEALTH</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{philhealthNo}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">SSS NO.</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{sssNo}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">TIN NO.</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{tinNo}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Agency Emp No</span>
+                                                        <p className="font-semibold text-gray-800 mt-0.5">{agencyEmpNo}</p>
+                                                    </div>
                                                 </div>
 
                                                 <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-100">
@@ -705,8 +797,7 @@ function MessagesContent({ auth, applications: initialApplications }: { auth: an
                                                 </div>
                                             </div>
                                         );
-                                    })()}
-                                </div>
+                                    })()}                                </div>
 
                                 {/* Modal Actions */}
                                 <div className="pt-2 flex gap-3">

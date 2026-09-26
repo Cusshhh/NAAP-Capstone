@@ -1,5 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { Users, Briefcase, Shield, LogOut, Menu, Layout, Clock, FileText, Calendar, ChevronRight, Key, MessageSquare, ChevronDown, User, Settings, ShieldCheck, Bell, CheckCheck, Building2 } from 'lucide-react';
+import { Users, Briefcase, Shield, LogOut, Menu, Layout, Clock, FileText, Calendar, ChevronRight, Key, MessageSquare, ChevronDown, User, Settings, ShieldCheck, Bell, CheckCheck, Building2, Activity } from 'lucide-react';
 import type { ReactNode } from 'react';
 import React from 'react';
 import { Button } from '@/components/ui/button';
@@ -229,6 +229,46 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
         return timeStr;
     };
 
+    const formatNotifDisplayTime = (timestamp?: number, timeStr?: string) => {
+        if (timeStr === 'Live Alert') return 'Live Alert';
+        let ts = timestamp;
+        if (!ts && timeStr) {
+            const parsed = new Date(timeStr).getTime();
+            if (!isNaN(parsed)) ts = parsed;
+        }
+        if (!ts) return timeStr || 'Recent';
+
+        const now = Date.now();
+        const diffMs = now - ts;
+        const date = new Date(ts);
+        const today = new Date();
+        const isToday = date.toDateString() === today.toDateString();
+
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const isYesterday = date.toDateString() === yesterday.toDateString();
+
+        let hours = date.getHours();
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        const timeFormatted = `${hours}:${minutes} ${ampm}`;
+
+        if (diffMs >= 0 && diffMs < 60000) {
+            return 'Just now';
+        }
+        if (isToday) {
+            return timeFormatted;
+        }
+        if (isYesterday) {
+            return `Yesterday at ${timeFormatted}`;
+        }
+        const month = date.toLocaleDateString('en-US', { month: 'short' });
+        const day = date.getDate();
+        const year = date.getFullYear() !== today.getFullYear() ? `, ${date.getFullYear()}` : '';
+        return `${month} ${day}${year} at ${timeFormatted}`;
+    };
+
     const buildAdminNotifs = () => {
         const list: any[] = [];
         if (pendingApplicantsCount > 0) {
@@ -236,6 +276,7 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
                 id: `pending_apps_${pendingApplicantsCount}`,
                 text: `${pendingApplicantsCount} job application(s) pending HR review & screening.`,
                 time: 'Live Alert',
+                timestamp: Number.MAX_SAFE_INTEGER,
                 isRead: readNotifIds.includes(`pending_apps_${pendingApplicantsCount}`),
                 href: '/admin/applicants',
                 type: 'applicant'
@@ -246,6 +287,7 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
                 id: `unread_msgs_${unreadMessagesCount}`,
                 text: `${unreadMessagesCount} unread message(s) received from applicants.`,
                 time: 'Live Alert',
+                timestamp: Number.MAX_SAFE_INTEGER - 1,
                 isRead: readNotifIds.includes(`unread_msgs_${unreadMessagesCount}`),
                 href: '/admin/messages',
                 type: 'message'
@@ -271,6 +313,8 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
                         date: dbi.date,
                         time: dbi.time,
                         venue: dbi.venue,
+                        created_at: dbi.created_at,
+                        updated_at: dbi.updated_at
                     });
                 }
             });
@@ -288,10 +332,12 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
                 } catch (err) {}
             }
             const formattedTime = formatTime(latest.time);
+            const intTime = latest.updated_at ? new Date(latest.updated_at).getTime() : (latest.created_at ? new Date(latest.created_at).getTime() : (latest.date ? new Date(latest.date).getTime() : 0));
             list.push({
                 id: `interview_${latest.id || latest.date}`,
                 text: `Upcoming interview scheduled for ${latest.candidateName || 'Applicant'} (${latest.position || 'Vacancy'}) on ${formattedDate}.`,
                 time: formattedTime,
+                timestamp: intTime,
                 isRead: readNotifIds.includes(`interview_${latest.id || latest.date}`),
                 href: '/admin/calendar',
                 type: 'interview'
@@ -308,7 +354,8 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
                 id: `db_act_${log.id}`,
                 action: log.action || 'Activity Logged',
                 details: log.details || '',
-                time: log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+                time: log.created_at ? formatTime(new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : 'Recent',
+                timestamp: log.created_at ? new Date(log.created_at).getTime() : Date.now(),
                 href: '/admin/activity-log',
                 type: 'activity'
             }));
@@ -322,7 +369,8 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
                 return {
                     id: act.id,
                     text: `${act.action}: ${act.details}`,
-                    time: act.time || 'Recent',
+                    time: formatTime(act.time) || 'Recent',
+                    timestamp: act.timestamp || (act.date ? new Date(act.date).getTime() : Date.now()),
                     isRead: readNotifIds.includes(String(act.id)),
                     href: destHref,
                     type: 'activity'
@@ -333,13 +381,17 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
                 id: l.id,
                 text: `${l.action}: ${l.details}`,
                 time: l.time,
+                timestamp: l.timestamp,
                 isRead: readNotifIds.includes(String(l.id)),
                 href: l.href,
                 type: 'activity'
             })), ...formattedDynActivities];
 
-            // Add top 3 recent system activities to the notification dropdown
-            combinedActs.slice(0, 3).forEach((act) => {
+            // Sort combined activities newest first
+            combinedActs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            // Add top 5 recent system activities to the notification dropdown
+            combinedActs.slice(0, 5).forEach((act) => {
                 if (!list.some(existing => existing.id === act.id)) {
                     list.push(act);
                 }
@@ -351,13 +403,14 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
                 id: `activity_system_log`,
                 text: `System Activity Audit Logs are active & recording user events.`,
                 time: 'Active System',
+                timestamp: 0,
                 isRead: readNotifIds.includes(`activity_system_log`),
                 href: '/admin/activity-log',
                 type: 'system'
             });
         }
 
-        return list;
+        return list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     };
 
     const adminNotifications = buildAdminNotifs();
@@ -463,21 +516,31 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
                                 </button>
 
                                 {notificationsOpen && (
-                                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 text-gray-800 animate-in fade-in zoom-in-95 duration-200">
-                                        <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-                                            <span className="font-bold text-xs uppercase tracking-wider text-[#193153]">System Alerts</span>
+                                    <div className="absolute right-0 mt-2 w-88 bg-white rounded-2xl shadow-2xl border border-gray-100 py-3 z-50 text-gray-800 animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="px-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-xs uppercase tracking-wider text-[#193153]">System Alerts</span>
+                                                {adminNotifications.filter(n => !n.isRead).length > 0 && (
+                                                    <span className="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-200/50">
+                                                        {adminNotifications.filter(n => !n.isRead).length} unread
+                                                    </span>
+                                                )}
+                                            </div>
                                             {hasUnreadAdminNotif && (
                                                 <button 
                                                     onClick={handleMarkAllRead} 
-                                                    className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer"
+                                                    className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer hover:underline transition-colors"
                                                 >
-                                                    <CheckCheck className="w-3.5 h-3.5" /> Mark read
+                                                    <CheckCheck className="w-3.5 h-3.5" /> Mark all read
                                                 </button>
                                             )}
                                         </div>
-                                        <div className="max-h-72 overflow-y-auto">
+                                        <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
                                             {adminNotifications.length === 0 ? (
-                                                <div className="px-4 py-6 text-center text-gray-400 text-xs">No notifications yet</div>
+                                                <div className="px-4 py-8 text-center text-gray-400 text-xs flex flex-col items-center gap-2">
+                                                    <Bell className="w-8 h-8 text-gray-300 stroke-[1.5]" />
+                                                    <span>No notifications yet</span>
+                                                </div>
                                             ) : (
                                                 adminNotifications.map(n => (
                                                     <div
@@ -486,18 +549,49 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
                                                             setNotificationsOpen(false);
                                                             handleMarkSingleRead(n.id, n.href);
                                                         }}
-                                                        className={`px-4 py-3 border-b border-gray-50 last:border-0 cursor-pointer transition-colors ${
-                                                            n.isRead ? 'bg-gray-50/70 hover:bg-gray-100/60' : 'bg-blue-50/40 hover:bg-blue-50/80'
+                                                        className={`px-4 py-3 cursor-pointer transition-all duration-150 flex items-start gap-3 ${
+                                                            n.isRead ? 'bg-white hover:bg-gray-50/80' : 'bg-blue-50/40 hover:bg-blue-50/80 border-l-4 border-l-blue-600'
                                                         }`}
                                                     >
-                                                        <div className="flex gap-2.5 items-start">
-                                                            {!n.isRead && <div className="mt-1.5 w-2 h-2 bg-red-500 rounded-full shrink-0 animate-pulse"></div>}
-                                                            <div className="flex-1">
-                                                                <p className={`text-xs leading-snug ${n.isRead ? 'text-gray-500 font-normal' : 'text-gray-900 font-semibold'}`}>
-                                                                    {n.text}
-                                                                </p>
-                                                                <span className="text-[10px] text-blue-600 font-medium mt-1 inline-block">
-                                                                    {n.time} &bull; Click to open
+                                                        <div className="shrink-0 mt-0.5">
+                                                            {n.type === 'applicant' && (
+                                                                <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                                                                    <Users className="w-4 h-4" />
+                                                                </div>
+                                                            )}
+                                                            {n.type === 'message' && (
+                                                                <div className="w-7 h-7 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+                                                                    <MessageSquare className="w-4 h-4" />
+                                                                </div>
+                                                            )}
+                                                            {n.type === 'interview' && (
+                                                                <div className="w-7 h-7 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">
+                                                                    <Calendar className="w-4 h-4" />
+                                                                </div>
+                                                            )}
+                                                            {n.type === 'activity' && (
+                                                                <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                                    <Activity className="w-4 h-4" />
+                                                                </div>
+                                                            )}
+                                                            {!['applicant', 'message', 'interview', 'activity'].includes(n.type) && (
+                                                                <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+                                                                    <Bell className="w-4 h-4" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`text-xs leading-snug ${n.isRead ? 'text-gray-600 font-normal' : 'text-gray-900 font-semibold'}`}>
+                                                                {n.text}
+                                                            </p>
+                                                            <div className="text-[10px] text-gray-400 font-medium mt-1 flex items-center justify-between">
+                                                                <span className="flex items-center gap-1 text-blue-600 font-medium">
+                                                                    <Clock className="w-3 h-3 text-blue-500" />
+                                                                    {formatNotifDisplayTime(n.timestamp, n.time)}
+                                                                </span>
+                                                                <span className="text-gray-400 hover:text-blue-600 flex items-center gap-0.5">
+                                                                    View <ChevronRight className="w-3 h-3 inline" />
                                                                 </span>
                                                             </div>
                                                         </div>

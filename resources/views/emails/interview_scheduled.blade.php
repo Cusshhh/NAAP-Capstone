@@ -53,7 +53,7 @@
                     </tr>
                     <tr>
                         <td style="padding: 6px 0; font-weight: 600; color: #475569;">Scheduled Time:</td>
-                        <td style="padding: 6px 0; color: #2563eb; font-weight: 700;">{{ $interview->time }}</td>
+                        <td style="padding: 6px 0; color: #2563eb; font-weight: 700;">{{ \Carbon\Carbon::parse($interview->time)->format('g:i A') }}</td>
                     </tr>
                     <tr>
                         <td style="padding: 6px 0; font-weight: 600; color: #475569;">Venue / Platform:</td>

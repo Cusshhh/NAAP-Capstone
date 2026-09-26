@@ -25,6 +25,20 @@ import { getAnalyticsData, mockInterviews, getActivities, getStaffingData, getJo
 import axios from 'axios';
 import AdminLayout from '@/layouts/AdminLayout';
 
+const formatTime = (timeStr?: string | null) => {
+    if (!timeStr) return 'TBA';
+    const str = String(timeStr).trim();
+    if (/am|pm/i.test(str)) return str;
+    const match = str.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (!match) return str;
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    return `${hours}:${minutes} ${ampm}`;
+};
+
 export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [], unfilledStaffingCount = 16 }: { auth: any, dbApplications?: any[], dbJobs?: any[], unfilledStaffingCount?: number }) {
     const admin = auth?.user || { name: 'Admin' };
     const [analytics, setAnalytics] = useState(() => getAnalyticsData(undefined, dbApplications, dbJobs, unfilledStaffingCount));
@@ -624,7 +638,7 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                                 <div>
                                                     <h4 className="text-sm font-bold text-gray-900 leading-tight">{event.title}</h4>
                                                     <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                                        <Clock className="w-3 h-3" /> {event.time}
+                                                        <Clock className="w-3 h-3" /> {formatTime(event.time)}
                                                     </p>
                                                 </div>
                                             </Link>
@@ -651,7 +665,7 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                                     </div>
                                                     <div className="text-right ml-2 bg-gray-50/80 px-2 py-1 rounded border border-gray-100">
                                                         <p className="text-xs font-bold text-gray-700">{interview.date ? new Date(interview.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</p>
-                                                        <p className="text-[10px] text-gray-400">{interview.time}</p>
+                                                        <p className="text-[10px] text-gray-400">{formatTime(interview.time)}</p>
                                                     </div>
                                                 </Link>
                                             ))

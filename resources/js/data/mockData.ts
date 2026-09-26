@@ -477,21 +477,25 @@ export const getDynamicNotifications = (userEmail?: string) => {
 
     // 1. Application-based notifications
     allApps.forEach((app: any) => {
+        const subTs = app.created_at ? new Date(app.created_at).getTime() : (app.submittedDate ? new Date(app.submittedDate).getTime() : Date.now() - 86400000);
         // Application Submitted
         notifications.push({
             id: `sub_${app.id}`,
             text: `Your application for ${app.jobTitle} was successfully submitted.`,
-            time: app.submittedDate,
+            time: app.submittedDate || new Date().toISOString(),
+            timestamp: subTs,
             isRead: readNotifications.includes(`sub_${app.id}`),
             type: 'success'
         });
 
         // Application Status Changes
         if (app.status !== 'Submitted') {
+            const statusTs = app.updatedAt ? new Date(app.updatedAt).getTime() : (app.updated_at ? new Date(app.updated_at).getTime() : subTs + 3600000);
             notifications.push({
                 id: `status_${app.id}_${app.status}`,
                 text: `Update: Your application for ${app.jobTitle} is now "${app.status}".`,
-                time: new Date().toISOString().split('T')[0], // Simulate recent update
+                time: app.updatedAt || app.submittedDate || new Date().toISOString(),
+                timestamp: statusTs,
                 isRead: readNotifications.includes(`status_${app.id}_${app.status}`),
                 type: 'info'
             });
@@ -500,17 +504,19 @@ export const getDynamicNotifications = (userEmail?: string) => {
 
     // 2. New Job Openings (Mocking recent ones)
     allJobs.slice(0, 2).forEach((job: any) => {
+        const jobTs = job.created_at ? new Date(job.created_at).getTime() : (job.postedDate ? new Date(job.postedDate).getTime() : Date.now() - 172800000);
         notifications.push({
             id: `job_${job.id}`,
             text: `New career opportunity: ${job.title} in ${job.department}.`,
-            time: job.postedDate,
+            time: job.postedDate || new Date().toISOString(),
+            timestamp: jobTs,
             isRead: readNotifications.includes(`job_${job.id}`),
             type: 'new'
         });
     });
 
-    // Sort by id (newer first usually for this demo)
-    return notifications.sort((a, b) => b.id.localeCompare(a.id));
+    // Sort by timestamp descending (newest first)
+    return notifications.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 };
 
 export const getAnalyticsData = (campus?: string, dbApps?: any[], dbJobs?: any[], unfilledCount?: number) => {

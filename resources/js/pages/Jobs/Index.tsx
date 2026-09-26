@@ -20,9 +20,7 @@ interface JobIndexProps {
 export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
     const user = auth?.user;
 
-    const handleLogout = () => {
-        router.post('/logout');
-    };
+
 
     const [jobs, setJobs] = useState<any[]>(serverJobs || []);
     const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -134,15 +132,6 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
                                     </div>
                                     <span className="text-sm font-bold hidden sm:block text-[#ffdd59] max-w-xs truncate">{user.name}</span>
                                 </div>
-                                <CustomTooltip content="Logout" side="bottom" align="right">
-                                    <button 
-                                        onClick={handleLogout} 
-                                        className="w-9 h-9 rounded-full flex items-center justify-center p-0 transition-colors relative text-white hover:bg-white/10 hover:text-[#ffdd59] outline-none cursor-pointer border border-transparent hover:border-white/10 group" 
-                                        title="Logout"
-                                    >
-                                        <LogOut className="w-5 h-5 text-white group-hover:text-[#ffdd59]" />
-                                    </button>
-                                </CustomTooltip>
                             </div>
                         ) : (
                             <div className="flex gap-3">

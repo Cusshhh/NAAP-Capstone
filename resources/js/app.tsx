@@ -19,7 +19,7 @@ createInertiaApp({
         root.render(
             <ErrorBoundary>
                 <App {...props} />
-                <Toaster position="top-right" richColors />
+                <Toaster position="top-right" richColors expand visibleToasts={3} closeButton />
             </ErrorBoundary>
         );
     },
