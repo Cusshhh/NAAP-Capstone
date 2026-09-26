@@ -40,7 +40,11 @@ import {
     Move,
     Upload,
     Crop,
-    CheckCheck
+    CheckCheck,
+    Heart,
+    BookOpen,
+    Star,
+    Shield
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -476,29 +480,172 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                 alternateContact: '',
                 address: '',
                 email: auth.user.email,
-                // CS Form No. 212 (Revised 2026 PDS) Additional Fields
+                // CS Form No. 212 (Revised 2017 PDS) Comprehensive Fields
+                dob: '',
+                pob: '',
+                citizenship: 'Filipino',
+                citizenshipType: 'By Birth',
+                citizenshipCountry: '',
+                height: '',
+                weight: '',
+                bloodType: '',
+                agencyEmpNo: '',
                 gsisNo: '',
                 sssNo: '',
                 tinNo: '',
                 pagibigNo: '',
                 philhealthNo: '',
+                // Contact & Address
+                resHouseNo: '',
+                resStreet: '',
+                resSubdivision: '',
+                resBarangay: '',
+                resCity: '',
+                resProvince: '',
+                resZip: '',
+                permHouseNo: '',
+                permStreet: '',
+                permSubdivision: '',
+                permBarangay: '',
+                permCity: '',
+                permProvince: '',
+                permZip: '',
+                sameAsResidential: false,
+                telephone: '',
+                // Family Background
+                spouseLastName: '',
+                spouseFirstName: '',
+                spouseMiddleName: '',
+                spouseExtension: '',
+                spouseOccupation: '',
+                spouseEmployer: '',
+                spouseBusinessAddress: '',
+                spouseTelephone: '',
+                fatherLastName: '',
+                fatherFirstName: '',
+                fatherMiddleName: '',
+                fatherExtension: '',
+                motherLastName: '',
+                motherFirstName: '',
+                motherMiddleName: '',
+                children: [],
+                // Educational Background
                 educationLevel: '',
                 schoolName: '',
                 degreeCourse: '',
                 yearGraduated: '',
+                honorsReceived: '',
+                educationHistory: [],
+                // Civil Service Eligibility
                 eligibilities: [],
                 licenseNo: '',
+                eligibilityHistory: [],
+                // Work Experience
                 yearsOfExperience: '0',
                 recentPositionTitle: '',
                 recentEmployer: '',
+                workExperiences: [],
+                // Voluntary Work
+                voluntaryWorks: [],
+                // Training / L&D
                 trainingHours: '0',
                 recentTrainingTitle: '',
+                trainings: [],
+                // Other Information
                 skills: [],
-                awards: []
+                awards: [],
+                memberships: [],
+                // References & CSC Statutory Details
+                references: [
+                    { name: '', address: '', phone: '' },
+                    { name: '', address: '', phone: '' },
+                    { name: '', address: '', phone: '' }
+                ],
+                cscQ34a: 'No',
+                cscQ34b: 'No',
+                cscQ35a: 'No',
+                cscQ35b: 'No',
+                cscQ36: 'No',
+                cscQ37: 'No',
+                cscQ38a: 'No',
+                cscQ38b: 'No',
+                cscQ39: 'No',
+                cscQ40a: 'No',
+                cscQ40b: 'No',
+                cscQ40c: 'No'
             };
         }
 
         return {
+            dob: initial.dob || '',
+            pob: initial.pob || '',
+            citizenship: initial.citizenship || 'Filipino',
+            citizenshipType: initial.citizenshipType || 'By Birth',
+            citizenshipCountry: initial.citizenshipCountry || '',
+            height: initial.height || '',
+            weight: initial.weight || '',
+            bloodType: initial.bloodType || '',
+            agencyEmpNo: initial.agencyEmpNo || '',
+            gsisNo: initial.gsisNo || '',
+            sssNo: initial.sssNo || '',
+            tinNo: initial.tinNo || '',
+            pagibigNo: initial.pagibigNo || '',
+            philhealthNo: initial.philhealthNo || '',
+            resHouseNo: initial.resHouseNo || '',
+            resStreet: initial.resStreet || '',
+            resSubdivision: initial.resSubdivision || '',
+            resBarangay: initial.resBarangay || '',
+            resCity: initial.resCity || '',
+            resProvince: initial.resProvince || '',
+            resZip: initial.resZip || '',
+            permHouseNo: initial.permHouseNo || '',
+            permStreet: initial.permStreet || '',
+            permSubdivision: initial.permSubdivision || '',
+            permBarangay: initial.permBarangay || '',
+            permCity: initial.permCity || '',
+            permProvince: initial.permProvince || '',
+            permZip: initial.permZip || '',
+            sameAsResidential: initial.sameAsResidential || false,
+            telephone: initial.telephone || '',
+            spouseLastName: initial.spouseLastName || '',
+            spouseFirstName: initial.spouseFirstName || '',
+            spouseMiddleName: initial.spouseMiddleName || '',
+            spouseExtension: initial.spouseExtension || '',
+            spouseOccupation: initial.spouseOccupation || '',
+            spouseEmployer: initial.spouseEmployer || '',
+            spouseBusinessAddress: initial.spouseBusinessAddress || '',
+            spouseTelephone: initial.spouseTelephone || '',
+            fatherLastName: initial.fatherLastName || '',
+            fatherFirstName: initial.fatherFirstName || '',
+            fatherMiddleName: initial.fatherMiddleName || '',
+            fatherExtension: initial.fatherExtension || '',
+            motherLastName: initial.motherLastName || '',
+            motherFirstName: initial.motherFirstName || '',
+            motherMiddleName: initial.motherMiddleName || '',
+            children: Array.isArray(initial.children) ? initial.children : [],
+            educationHistory: Array.isArray(initial.educationHistory) ? initial.educationHistory : [],
+            eligibilityHistory: Array.isArray(initial.eligibilityHistory) ? initial.eligibilityHistory : [],
+            workExperiences: Array.isArray(initial.workExperiences) ? initial.workExperiences : [],
+            voluntaryWorks: Array.isArray(initial.voluntaryWorks) ? initial.voluntaryWorks : [],
+            trainings: Array.isArray(initial.trainings) ? initial.trainings : [],
+            memberships: Array.isArray(initial.memberships) ? initial.memberships : [],
+            references: Array.isArray(initial.references) && initial.references.length === 3 ? initial.references : [
+                { name: initial.references?.[0]?.name || '', address: initial.references?.[0]?.address || '', phone: initial.references?.[0]?.phone || '' },
+                { name: initial.references?.[1]?.name || '', address: initial.references?.[1]?.address || '', phone: initial.references?.[1]?.phone || '' },
+                { name: initial.references?.[2]?.name || '', address: initial.references?.[2]?.address || '', phone: initial.references?.[2]?.phone || '' }
+            ],
+            cscQ34a: initial.cscQ34a || 'No',
+            cscQ34b: initial.cscQ34b || 'No',
+            cscQ35a: initial.cscQ35a || 'No',
+            cscQ35b: initial.cscQ35b || 'No',
+            cscQ36: initial.cscQ36 || 'No',
+            cscQ37: initial.cscQ37 || 'No',
+            cscQ38a: initial.cscQ38a || 'No',
+            cscQ38b: initial.cscQ38b || 'No',
+            cscQ39: initial.cscQ39 || 'No',
+            cscQ40a: initial.cscQ40a || 'No',
+            cscQ40b: initial.cscQ40b || 'No',
+            cscQ40c: initial.cscQ40c || 'No',
             ...initial,
             email: auth.user.email,
             fullName: computeFullName(initial)
@@ -617,13 +764,156 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         });
     };
 
+    const [pdsActiveSection, setPdsActiveSection] = useState<string | number>('all');
+
+    // CS Form 212 PDS Array Row Handlers
+    const addChildRow = () => {
+        setProfileData((prev: any) => ({
+            ...prev,
+            children: [...(prev.children || []), { name: '', birthdate: '' }]
+        }));
+    };
+    const updateChildRow = (idx: number, field: string, value: string) => {
+        setProfileData((prev: any) => {
+            const list = [...(prev.children || [])];
+            list[idx] = { ...list[idx], [field]: value };
+            return { ...prev, children: list };
+        });
+    };
+    const removeChildRow = (idx: number) => {
+        setProfileData((prev: any) => ({
+            ...prev,
+            children: (prev.children || []).filter((_: any, i: number) => i !== idx)
+        }));
+    };
+
+    const addWorkExpRow = () => {
+        setProfileData((prev: any) => ({
+            ...prev,
+            workExperiences: [...(prev.workExperiences || []), { dateFrom: '', dateTo: '', position: '', company: '', monthlySalary: '', salaryGrade: '', status: 'Permanent', isGovt: 'Yes' }]
+        }));
+    };
+    const updateWorkExpRow = (idx: number, field: string, value: string) => {
+        setProfileData((prev: any) => {
+            const list = [...(prev.workExperiences || [])];
+            list[idx] = { ...list[idx], [field]: value };
+            return { ...prev, workExperiences: list };
+        });
+    };
+    const removeWorkExpRow = (idx: number) => {
+        setProfileData((prev: any) => ({
+            ...prev,
+            workExperiences: (prev.workExperiences || []).filter((_: any, i: number) => i !== idx)
+        }));
+    };
+
+    const addTrainingRow = () => {
+        setProfileData((prev: any) => ({
+            ...prev,
+            trainings: [...(prev.trainings || []), { title: '', dateFrom: '', dateTo: '', hours: '8', type: 'Technical', conductedBy: '' }]
+        }));
+    };
+    const updateTrainingRow = (idx: number, field: string, value: string) => {
+        setProfileData((prev: any) => {
+            const list = [...(prev.trainings || [])];
+            list[idx] = { ...list[idx], [field]: value };
+            return { ...prev, trainings: list };
+        });
+    };
+    const removeTrainingRow = (idx: number) => {
+        setProfileData((prev: any) => ({
+            ...prev,
+            trainings: (prev.trainings || []).filter((_: any, i: number) => i !== idx)
+        }));
+    };
+
+    const addVoluntaryRow = () => {
+        setProfileData((prev: any) => ({
+            ...prev,
+            voluntaryWorks: [...(prev.voluntaryWorks || []), { organization: '', dateFrom: '', dateTo: '', hours: '', position: '' }]
+        }));
+    };
+    const updateVoluntaryRow = (idx: number, field: string, value: string) => {
+        setProfileData((prev: any) => {
+            const list = [...(prev.voluntaryWorks || [])];
+            list[idx] = { ...list[idx], [field]: value };
+            return { ...prev, voluntaryWorks: list };
+        });
+    };
+    const removeVoluntaryRow = (idx: number) => {
+        setProfileData((prev: any) => ({
+            ...prev,
+            voluntaryWorks: (prev.voluntaryWorks || []).filter((_: any, i: number) => i !== idx)
+        }));
+    };
+
+    const updateReferenceRow = (idx: number, field: string, value: string) => {
+        setProfileData((prev: any) => {
+            const refs = [...(Array.isArray(prev.references) && prev.references.length === 3 ? prev.references : [{ name: '', address: '', phone: '' }, { name: '', address: '', phone: '' }, { name: '', address: '', phone: '' }])];
+            refs[idx] = { ...refs[idx], [field]: value };
+            return { ...prev, references: refs };
+        });
+    };
+
     const saveProfile = () => {
         const hasNoPhoto = profileImage === null;
         const currentPhoto = hasNoPhoto ? null : (profileImage || localStorage.getItem(`user_profile_image_${auth.user.id}`));
         const computedFullName = computeFullName(profileData);
 
+        // Auto format address if components provided
+        let formattedAddress = profileData.address;
+        if (profileData.resBarangay || profileData.resCity || profileData.resProvince) {
+            const parts = [
+                profileData.resHouseNo,
+                profileData.resStreet,
+                profileData.resSubdivision,
+                profileData.resBarangay ? `Brgy. ${profileData.resBarangay}` : '',
+                profileData.resCity,
+                profileData.resProvince,
+                profileData.resZip
+            ].filter(Boolean);
+            if (parts.length > 0) {
+                formattedAddress = parts.join(', ');
+            }
+        }
+
+        // Auto sync summary work experience fields for scoring engine
+        let computedWorkYears = profileData.yearsOfExperience;
+        let computedRecentPos = profileData.recentPositionTitle;
+        let computedRecentEmp = profileData.recentEmployer;
+        if (Array.isArray(profileData.workExperiences) && profileData.workExperiences.length > 0) {
+            if (!computedRecentPos && profileData.workExperiences[0].position) {
+                computedRecentPos = profileData.workExperiences[0].position;
+            }
+            if (!computedRecentEmp && profileData.workExperiences[0].company) {
+                computedRecentEmp = profileData.workExperiences[0].company;
+            }
+            if (!computedWorkYears || computedWorkYears === '0') {
+                computedWorkYears = String(Math.max(1, profileData.workExperiences.length * 2));
+            }
+        }
+
+        // Auto sync summary training fields for scoring engine
+        let computedTrnHrs = profileData.trainingHours;
+        let computedRecentTrn = profileData.recentTrainingTitle;
+        if (Array.isArray(profileData.trainings) && profileData.trainings.length > 0) {
+            if (!computedRecentTrn && profileData.trainings[0].title) {
+                computedRecentTrn = profileData.trainings[0].title;
+            }
+            const totalHrs = profileData.trainings.reduce((sum: number, t: any) => sum + (parseFloat(t.hours) || 0), 0);
+            if (totalHrs > 0) {
+                computedTrnHrs = String(totalHrs);
+            }
+        }
+
         const updatedProfile = {
             ...profileData,
+            address: formattedAddress || profileData.address,
+            yearsOfExperience: computedWorkYears,
+            recentPositionTitle: computedRecentPos,
+            recentEmployer: computedRecentEmp,
+            trainingHours: computedTrnHrs,
+            recentTrainingTitle: computedRecentTrn,
             email: auth.user.email,
             fullName: computedFullName || profileData.fullName || auth.user.name,
             photo: currentPhoto,
@@ -2408,689 +2698,1305 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                     </div>
                                 </div>
 
-                                 <div className="grid md:grid-cols-2 gap-8">
-                                    {/* CS Form No. 212 (Revised 2026 PDS) Section I: Personal Information */}
-                                    <Card className="md:col-span-2">
-                                        <CardHeader className="border-b border-gray-100 pb-3">
-                                            <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                <User className="w-5 h-5 text-blue-600" /> CS Form 212 - Sec I: Personal Information
-                                            </h3>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4 pt-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                {/* Name Fields */}
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Last Name</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="text" name="lastName" value={profileData.lastName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.lastName || '-'}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">First Name</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="text" name="firstName" value={profileData.firstName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.firstName || '-'}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Middle Name</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="text" name="middleName" value={profileData.middleName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.middleName || '-'}</p>}
-                                                </div>
+                                 <div className="grid md:grid-cols-2 gap-6">
+                                     {/* PDS Header Progress Bar & Section Navigator */}
+                                     <div className="md:col-span-2 space-y-4">
+                                         <div className="bg-gradient-to-r from-[#193153] to-[#254677] p-5 rounded-xl text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                             <div>
+                                                 <div className="flex items-center gap-2">
+                                                     <span className="bg-[#ffdd59] text-[#193153] text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                                                         CS Form No. 212 (Revised 2026)
+                                                     </span>
+                                                     <span className="text-xs text-blue-200">Official Civil Service Personal Data Sheet</span>
+                                                 </div>
+                                                 <h3 className="text-lg font-bold mt-1">Applicant Master Profile & PDS Record</h3>
+                                                 <p className="text-xs text-blue-100 mt-0.5">
+                                                     Keep your PDS complete. Every job application automatically snapshots your master profile.
+                                                 </p>
+                                             </div>
+                                             <div className="w-full md:w-56 bg-white/10 p-3 rounded-lg border border-white/10 backdrop-blur-xs">
+                                                 <div className="flex justify-between items-center text-xs font-bold mb-1">
+                                                     <span>PDS Completion</span>
+                                                     <span className="text-[#ffdd59]">
+                                                         {(() => {
+                                                             let score = 0;
+                                                             if (profileData.lastName && profileData.firstName) score += 15;
+                                                             if (profileData.dob || profileData.sex || profileData.civilStatus) score += 10;
+                                                             if (profileData.phone || profileData.email) score += 10;
+                                                             if (profileData.address || profileData.resCity) score += 10;
+                                                             if (profileData.fatherLastName || profileData.motherLastName || profileData.spouseLastName) score += 10;
+                                                             if (profileData.educationLevel || profileData.schoolName) score += 15;
+                                                             if ((profileData.eligibilities && profileData.eligibilities.length > 0) || profileData.licenseNo) score += 10;
+                                                             if (profileData.recentPositionTitle || (profileData.workExperiences && profileData.workExperiences.length > 0)) score += 10;
+                                                             if (profileData.trainingHours > 0 || (profileData.skills && profileData.skills.length > 0)) score += 10;
+                                                             return Math.min(100, score);
+                                                         })()}%
+                                                     </span>
+                                                 </div>
+                                                 <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
+                                                     <div 
+                                                         className="bg-[#ffdd59] h-full transition-all duration-500" 
+                                                         style={{ 
+                                                             width: `${(() => {
+                                                                 let score = 0;
+                                                                 if (profileData.lastName && profileData.firstName) score += 15;
+                                                                 if (profileData.dob || profileData.sex || profileData.civilStatus) score += 10;
+                                                                 if (profileData.phone || profileData.email) score += 10;
+                                                                 if (profileData.address || profileData.resCity) score += 10;
+                                                                 if (profileData.fatherLastName || profileData.motherLastName || profileData.spouseLastName) score += 10;
+                                                                 if (profileData.educationLevel || profileData.schoolName) score += 15;
+                                                                 if ((profileData.eligibilities && profileData.eligibilities.length > 0) || profileData.licenseNo) score += 10;
+                                                                 if (profileData.recentPositionTitle || (profileData.workExperiences && profileData.workExperiences.length > 0)) score += 10;
+                                                                 if (profileData.trainingHours > 0 || (profileData.skills && profileData.skills.length > 0)) score += 10;
+                                                                 return Math.min(100, score);
+                                                             })()}%` 
+                                                         }}
+                                                     ></div>
+                                                 </div>
+                                             </div>
+                                         </div>
 
-                                                {/* Demographics Row 1 */}
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Extension Name</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="text" name="extensionName" placeholder="e.g. Jr., III" value={profileData.extensionName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.extensionName || '-'}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Age</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="number" name="age" value={profileData.age || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.age || '-'}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Sex</label>
-                                                    {isEditingProfile ? (
-                                                        <select name="sex" value={profileData.sex || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
-                                                            <option value="">Select</option>
-                                                            <option value="Male">Male</option>
-                                                            <option value="Female">Female</option>
-                                                        </select>
-                                                    ) : <p className="font-medium text-gray-900">{profileData.sex || '-'}</p>}
-                                                </div>
+                                         {/* Section Selector Tabs */}
+                                         <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-gray-200 no-scrollbar">
+                                             <button
+                                                 type="button"
+                                                 onClick={() => setPdsActiveSection('all')}
+                                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                                                     pdsActiveSection === 'all'
+                                                         ? 'bg-[#193153] text-white shadow-sm'
+                                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                 }`}
+                                             >
+                                                 View All Sections
+                                             </button>
+                                             {[
+                                                 { id: 1, label: 'Sec I: Personal Info', icon: User },
+                                                 { id: 2, label: 'Sec II: Contact & Address', icon: MapPin },
+                                                 { id: 3, label: 'Sec III: Family Background', icon: Users },
+                                                 { id: 4, label: 'Sec IV: Educational Background', icon: GraduationCap },
+                                                 { id: 5, label: 'Sec V: Eligibility & Licenses', icon: Award },
+                                                 { id: 6, label: 'Sec VI: Work Experience', icon: Briefcase },
+                                                 { id: 7, label: 'Sec VII: Voluntary Work', icon: Heart },
+                                                 { id: 8, label: 'Sec VIII: Training / L&D', icon: BookOpen },
+                                                 { id: 9, label: 'Sec IX: Other Info', icon: Star },
+                                                 { id: 10, label: 'Sec X: References', icon: Shield },
+                                                 { id: 11, label: 'Sec XI: Documents Vault', icon: FileText },
+                                             ].map((sec) => (
+                                                 <button
+                                                     key={sec.id}
+                                                     type="button"
+                                                     onClick={() => setPdsActiveSection(sec.id)}
+                                                     className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1 transition-all ${
+                                                         pdsActiveSection === sec.id
+                                                             ? 'bg-[#193153] text-white shadow-sm font-bold'
+                                                             : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                                                     }`}
+                                                 >
+                                                     <sec.icon className="w-3.5 h-3.5" />
+                                                     {sec.label}
+                                                 </button>
+                                             ))}
+                                         </div>
+                                     </div>
 
-                                                {/* Demographics Row 2 */}
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Civil Status</label>
-                                                    {isEditingProfile ? (
-                                                        <select name="civilStatus" value={profileData.civilStatus || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
-                                                            <option value="">Select</option>
-                                                            <option value="Single">Single</option>
-                                                            <option value="Married">Married</option>
-                                                            <option value="Widowed">Widowed</option>
-                                                            <option value="Separated">Separated</option>
-                                                            <option value="Other">Other</option>
-                                                        </select>
-                                                    ) : <p className="font-medium text-gray-900">{profileData.civilStatus || '-'}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Religion</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="text" name="religion" value={profileData.religion || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.religion || '-'}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Phone Number</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="tel" name="phone" value={profileData.phone || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.phone || '-'}</p>}
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Alternate Contact No.</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="tel" name="alternateContact" placeholder="e.g. 09181234567" value={profileData.alternateContact || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.alternateContact || '-'}</p>}
-                                                </div>
+                                      {/* CS Form No. 212 Section I: Personal Information */}
+                                      {(pdsActiveSection === 'all' || pdsActiveSection === 1) && (
+                                          <Card className="md:col-span-2 shadow-sm">
+                                              <CardHeader className="border-b border-gray-100 pb-3">
+                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                      <User className="w-5 h-5 text-blue-600" /> CS Form 212 - Section I: Personal Information
+                                                  </h3>
+                                              </CardHeader>
+                                              <CardContent className="space-y-4 pt-4">
+                                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Last Name</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="lastName" value={profileData.lastName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.lastName || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">First Name</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="firstName" value={profileData.firstName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.firstName || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Middle Name</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="middleName" value={profileData.middleName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.middleName || '-'}</p>}
+                                                      </div>
 
-                                                {/* Address */}
-                                                <div className="md:col-span-3">
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Residential Address</label>
-                                                    {isEditingProfile ? (
-                                                        <textarea name="address" value={profileData.address || ''} onChange={handleProfileChange} rows={2} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.address}</p>}
-                                                </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Extension Name</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="extensionName" placeholder="e.g. Jr., III" value={profileData.extensionName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.extensionName || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Date of Birth</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="date" name="dob" value={profileData.dob || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.dob || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Place of Birth</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="pob" placeholder="e.g. Pasay City, Metro Manila" value={profileData.pob || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.pob || '-'}</p>}
+                                                      </div>
 
-                                                {/* Additional Demographics */}
-                                                <div className="md:col-span-3 grid grid-cols-2 gap-4 border-t pt-3 mt-1">
-                                                    <div>
-                                                        <label className="text-xs font-bold text-gray-400 uppercase">IP Member (Indigenous People)</label>
-                                                        {isEditingProfile ? (
-                                                            <select name="ipGroup" value={profileData.ipGroup || 'No'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
-                                                                <option value="No">No</option>
-                                                                <option value="Yes">Yes</option>
-                                                            </select>
-                                                        ) : <p className="font-medium text-gray-900">{profileData.ipGroup || 'No'}</p>}
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-xs font-bold text-gray-400 uppercase">PWD Member (Person with Disability)</label>
-                                                        {isEditingProfile ? (
-                                                            <select name="pwd" value={profileData.pwd || 'No'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
-                                                                <option value="No">No</option>
-                                                                <option value="Yes">Yes</option>
-                                                            </select>
-                                                        ) : <p className="font-medium text-gray-900">{profileData.pwd || 'No'}</p>}
-                                                    </div>
-                                                </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Sex</label>
+                                                          {isEditingProfile ? (
+                                                              <select name="sex" value={profileData.sex || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                                                                  <option value="">Select</option>
+                                                                  <option value="Male">Male</option>
+                                                                  <option value="Female">Female</option>
+                                                              </select>
+                                                          ) : <p className="font-medium text-gray-900">{profileData.sex || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Civil Status</label>
+                                                          {isEditingProfile ? (
+                                                              <select name="civilStatus" value={profileData.civilStatus || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                                                                  <option value="">Select</option>
+                                                                  <option value="Single">Single</option>
+                                                                  <option value="Married">Married</option>
+                                                                  <option value="Widowed">Widowed</option>
+                                                                  <option value="Separated">Separated</option>
+                                                                  <option value="Other">Other</option>
+                                                              </select>
+                                                          ) : <p className="font-medium text-gray-900">{profileData.civilStatus || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Religion</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="religion" value={profileData.religion || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.religion || '-'}</p>}
+                                                      </div>
 
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Height (m)</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="height" placeholder="e.g. 1.75" value={profileData.height || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.height || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Weight (kg)</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="weight" placeholder="e.g. 68" value={profileData.weight || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.weight || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Blood Type</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="bloodType" placeholder="e.g. O+" value={profileData.bloodType || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.bloodType || '-'}</p>}
+                                                      </div>
 
-                                    {/* CS Form No. 212 Section II & III: Education & Eligibilities */}
-                                    <Card className="md:col-span-2">
-                                        <CardHeader className="border-b border-gray-100 pb-3">
-                                            <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                <GraduationCap className="w-5 h-5 text-purple-600" /> CS Form 212 - Sec II & III: Education & Civil Service Eligibilities
-                                            </h3>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4 pt-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Highest Education Attained</label>
-                                                    {isEditingProfile ? (
-                                                        <select name="educationLevel" value={profileData.educationLevel || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
-                                                            <option value="">-- Select Highest Education Attained --</option>
-                                                            <option value="bachelor">Bachelor's Degree</option>
-                                                            <option value="masters">Master's Degree</option>
-                                                            <option value="doctoral_9-15">Doctoral (9-15 units)</option>
-                                                            <option value="doctoral_15-18">Doctoral (15-18 units)</option>
-                                                            <option value="doctoral_18-24">Doctoral (18-24 units)</option>
-                                                            <option value="doctoral_27+">Doctoral (27+ units)</option>
-                                                            <option value="doctoral_graduate">Doctoral Graduate</option>
-                                                        </select>
-                                                    ) : (
-                                                        <p className="font-semibold text-purple-900 bg-purple-50 px-2.5 py-1 rounded inline-block text-xs mt-1 border border-purple-100">
-                                                            {
-                                                                !profileData.educationLevel ? "-- Not Selected --" :
-                                                                profileData.educationLevel === 'bachelor' ? "Bachelor's Degree" :
-                                                                profileData.educationLevel === 'masters' ? "Master's Degree" :
-                                                                profileData.educationLevel === 'doctoral_9-15' ? "Doctoral (9-15 units)" :
-                                                                profileData.educationLevel === 'doctoral_15-18' ? "Doctoral (15-18 units)" :
-                                                                profileData.educationLevel === 'doctoral_18-24' ? "Doctoral (18-24 units)" :
-                                                                profileData.educationLevel === 'doctoral_27+' ? "Doctoral (27+ units)" :
-                                                                profileData.educationLevel === 'doctoral_graduate' ? "Doctoral Graduate" :
-                                                                profileData.educationLevel
-                                                            }
-                                                        </p>
-                                                    )}
-                                                </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">GSIS ID No.</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="gsisNo" value={profileData.gsisNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.gsisNo || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">PAG-IBIG ID No.</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="pagibigNo" value={profileData.pagibigNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.pagibigNo || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">PHILHEALTH No.</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="philhealthNo" value={profileData.philhealthNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.philhealthNo || '-'}</p>}
+                                                      </div>
 
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">School / College / University</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="text" name="schoolName" placeholder="e.g. NAAP Pasay Campus / PUP" value={profileData.schoolName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.schoolName || '-'}</p>}
-                                                </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">SSS No.</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="sssNo" value={profileData.sssNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.sssNo || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">TIN No.</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="tinNo" value={profileData.tinNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.tinNo || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Agency Employee No.</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="agencyEmpNo" value={profileData.agencyEmpNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.agencyEmpNo || '-'}</p>}
+                                                      </div>
 
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Degree / Course Title</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="text" name="degreeCourse" placeholder="e.g. BS Aeronautical Engineering" value={profileData.degreeCourse || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.degreeCourse || '-'}</p>}
-                                                </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Citizenship</label>
+                                                          {isEditingProfile ? (
+                                                              <select name="citizenship" value={profileData.citizenship || 'Filipino'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                                                                  <option value="Filipino">Filipino</option>
+                                                                  <option value="Dual Citizenship">Dual Citizenship</option>
+                                                              </select>
+                                                          ) : <p className="font-medium text-gray-900">{profileData.citizenship || 'Filipino'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">IP Member (Indigenous People)</label>
+                                                          {isEditingProfile ? (
+                                                              <select name="ipGroup" value={profileData.ipGroup || 'No'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                                                                  <option value="No">No</option>
+                                                                  <option value="Yes">Yes</option>
+                                                              </select>
+                                                          ) : <p className="font-medium text-gray-900">{profileData.ipGroup || 'No'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">PWD Member (Person with Disability)</label>
+                                                          {isEditingProfile ? (
+                                                              <select name="pwd" value={profileData.pwd || 'No'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                                                                  <option value="No">No</option>
+                                                                  <option value="Yes">Yes</option>
+                                                              </select>
+                                                          ) : <p className="font-medium text-gray-900">{profileData.pwd || 'No'}</p>}
+                                                      </div>
+                                                  </div>
+                                              </CardContent>
+                                          </Card>
+                                      )}
 
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Year Graduated (PDS Sec II)</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="text" name="yearGraduated" placeholder="e.g. 2020" value={profileData.yearGraduated || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.yearGraduated || '-'}</p>}
-                                                </div>
+                                      {/* CS Form No. 212 Section II: Contact & Address Information */}
+                                      {(pdsActiveSection === 'all' || pdsActiveSection === 2) && (
+                                          <Card className="md:col-span-2 shadow-sm">
+                                              <CardHeader className="border-b border-gray-100 pb-3">
+                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                      <MapPin className="w-5 h-5 text-indigo-600" /> CS Form 212 - Section II: Contact & Address Information
+                                                  </h3>
+                                              </CardHeader>
+                                              <CardContent className="space-y-4 pt-4">
+                                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                      <div className="md:col-span-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100 space-y-2">
+                                                          <h4 className="text-xs font-bold text-[#193153] uppercase tracking-wider">Residential Address</h4>
+                                                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                              <div>
+                                                                  <label className="text-[11px] font-bold text-gray-500 uppercase">House / Lot / Block No.</label>
+                                                                  {isEditingProfile ? (
+                                                                      <input type="text" name="resHouseNo" placeholder="e.g. Blk 5 Lot 12" value={profileData.resHouseNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                                  ) : <p className="font-medium text-gray-900 text-sm">{profileData.resHouseNo || '-'}</p>}
+                                                              </div>
+                                                              <div>
+                                                                  <label className="text-[11px] font-bold text-gray-500 uppercase">Street</label>
+                                                                  {isEditingProfile ? (
+                                                                      <input type="text" name="resStreet" placeholder="e.g. Domestic Road" value={profileData.resStreet || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                                  ) : <p className="font-medium text-gray-900 text-sm">{profileData.resStreet || '-'}</p>}
+                                                              </div>
+                                                              <div>
+                                                                  <label className="text-[11px] font-bold text-gray-500 uppercase">Subdivision / Village</label>
+                                                                  {isEditingProfile ? (
+                                                                      <input type="text" name="resSubdivision" placeholder="e.g. Villamor Air Base" value={profileData.resSubdivision || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                                  ) : <p className="font-medium text-gray-900 text-sm">{profileData.resSubdivision || '-'}</p>}
+                                                              </div>
+                                                              <div>
+                                                                  <label className="text-[11px] font-bold text-gray-500 uppercase">Barangay</label>
+                                                                  {isEditingProfile ? (
+                                                                      <input type="text" name="resBarangay" placeholder="e.g. Barangay 183" value={profileData.resBarangay || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                                  ) : <p className="font-medium text-gray-900 text-sm">{profileData.resBarangay || '-'}</p>}
+                                                              </div>
+                                                              <div>
+                                                                  <label className="text-[11px] font-bold text-gray-500 uppercase">City / Municipality</label>
+                                                                  {isEditingProfile ? (
+                                                                      <input type="text" name="resCity" placeholder="e.g. Pasay City" value={profileData.resCity || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                                  ) : <p className="font-medium text-gray-900 text-sm">{profileData.resCity || '-'}</p>}
+                                                              </div>
+                                                              <div>
+                                                                  <label className="text-[11px] font-bold text-gray-500 uppercase">Province & Zip Code</label>
+                                                                  {isEditingProfile ? (
+                                                                      <div className="flex gap-2 mt-1">
+                                                                          <input type="text" name="resProvince" placeholder="Metro Manila" value={profileData.resProvince || ''} onChange={handleProfileChange} className="w-2/3 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                                          <input type="text" name="resZip" placeholder="1300" value={profileData.resZip || ''} onChange={handleProfileChange} className="w-1/3 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                                      </div>
+                                                                  ) : <p className="font-medium text-gray-900 text-sm">{profileData.resProvince} {profileData.resZip ? `(${profileData.resZip})` : ''}</p>}
+                                                              </div>
+                                                          </div>
+                                                          <div className="pt-2 border-t border-blue-100">
+                                                              <label className="text-xs font-bold text-gray-500 uppercase">Complete Address Summary</label>
+                                                              {isEditingProfile ? (
+                                                                  <textarea name="address" value={profileData.address || ''} onChange={handleProfileChange} rows={2} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" placeholder="Auto-syncs or enter manually..." />
+                                                              ) : <p className="font-semibold text-gray-900 text-sm">{profileData.address || '-'}</p>}
+                                                          </div>
+                                                      </div>
 
-                                                {/* License / Registration No. */}
-                                                <div className="md:col-span-2 lg:col-span-4 border-t pt-3">
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">License / Registration No. (PRC / CAAP / CSC)</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="text" name="licenseNo" placeholder="e.g. PRC License No. 0123456" value={profileData.licenseNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.licenseNo || '-'}</p>}
-                                                </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Telephone No.</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="tel" name="telephone" placeholder="e.g. (02) 8832-0000" value={profileData.telephone || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.telephone || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Mobile Phone No.</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="tel" name="phone" value={profileData.phone || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.phone || '-'}</p>}
+                                                      </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Alternate Contact No.</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="tel" name="alternateContact" value={profileData.alternateContact || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.alternateContact || '-'}</p>}
+                                                      </div>
+                                                  </div>
+                                              </CardContent>
+                                          </Card>
+                                      )}
 
-                                                {/* Eligibilities */}
-                                                <div className="md:col-span-3 border-t pt-3">
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Civil Service & Professional Eligibilities (PDS Sec III)</label>
-                                                    {isEditingProfile ? (
-                                                        <div className="mt-2 space-y-3">
-                                                            <p className="text-xs text-gray-500 font-medium">Select all Civil Service & Professional Eligibilities that apply to you:</p>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1.5 border border-gray-200 rounded-md bg-gray-50/50">
-                                                                {[
-                                                                    "Career Service (CS) Professional",
-                                                                    "Career Service (CS) Sub Professional",
-                                                                    "Bar/Board Eligibility (RA1080)",
-                                                                    "PRC Board Rating / Professional License",
-                                                                    "CAAP CPL / FI Pilot Rating License",
-                                                                    "CAAP AMT / Aircraft Maintenance License",
-                                                                    "Honor Graduate Eligibility (PD 907)",
-                                                                    "Barangay Official Eligibility (RA 7160)",
-                                                                    "Barangay Health Worker (RA 7883)",
-                                                                    "Barangay Nutrition Scholar Eligibility (PD 1569)",
-                                                                    "Electronic Data Processing Specialist Eligibility (CSC Res. 90-083)",
-                                                                    "Foreign School Honor Graduate Eligibility (CSC Res. 90-083)",
-                                                                    "Sanggunian Member Eligibility (RA 10156)",
-                                                                    "Scientific and Technological Specialist Eligibility (PD 997)",
-                                                                    "Skills Eligibility Category II (CSC MC 11, s. 1996, as Amended)",
-                                                                    "Veteran Preference Rating (EO 132/790)"
-                                                                ].map((elig, idx) => {
-                                                                    const currentEligList = Array.isArray(profileData.eligibilities) ? profileData.eligibilities : [];
-                                                                    const isSelected = currentEligList.some((e: string) => 
-                                                                        e === elig ||
-                                                                        (elig.includes('Professional') && !elig.includes('Sub') && (e.includes('CS Prof') || e.includes('CS Professional'))) ||
-                                                                        (elig.includes('Sub Professional') && (e.includes('CS Subprof') || e.includes('CS Sub Professional')))
-                                                                    );
-                                                                    return (
-                                                                        <label key={idx} className={`flex items-start gap-2.5 p-2 rounded-md border text-xs cursor-pointer transition-all ${
-                                                                            isSelected 
-                                                                                ? 'bg-blue-50 border-blue-300 text-blue-900 font-bold shadow-sm ring-1 ring-blue-200' 
-                                                                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100'
-                                                                        }`}>
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={isSelected}
-                                                                                onChange={() => toggleEligibility(elig)}
-                                                                                className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
-                                                                            />
-                                                                            <span>{elig}</span>
-                                                                        </label>
-                                                                    );
-                                                                })}
-                                                            </div>
+                                      {/* CS Form No. 212 Section III: Family Background */}
+                                      {(pdsActiveSection === 'all' || pdsActiveSection === 3) && (
+                                          <Card className="md:col-span-2 shadow-sm">
+                                              <CardHeader className="border-b border-gray-100 pb-3">
+                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                      <Users className="w-5 h-5 text-emerald-600" /> CS Form 212 - Section III: Family Background
+                                                  </h3>
+                                              </CardHeader>
+                                              <CardContent className="space-y-4 pt-4">
+                                                  {/* Spouse Info */}
+                                                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2">
+                                                      <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wider">Spouse Details (If Applicable)</h4>
+                                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                          <div>
+                                                              <label className="text-[11px] font-bold text-gray-400 uppercase">Spouse Last Name</label>
+                                                              {isEditingProfile ? (
+                                                                  <input type="text" name="spouseLastName" value={profileData.spouseLastName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                              ) : <p className="font-medium text-gray-900 text-sm">{profileData.spouseLastName || '-'}</p>}
+                                                          </div>
+                                                          <div>
+                                                              <label className="text-[11px] font-bold text-gray-400 uppercase">Spouse First Name</label>
+                                                              {isEditingProfile ? (
+                                                                  <input type="text" name="spouseFirstName" value={profileData.spouseFirstName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                              ) : <p className="font-medium text-gray-900 text-sm">{profileData.spouseFirstName || '-'}</p>}
+                                                          </div>
+                                                          <div>
+                                                              <label className="text-[11px] font-bold text-gray-400 uppercase">Spouse Middle Name</label>
+                                                              {isEditingProfile ? (
+                                                                  <input type="text" name="spouseMiddleName" value={profileData.spouseMiddleName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                              ) : <p className="font-medium text-gray-900 text-sm">{profileData.spouseMiddleName || '-'}</p>}
+                                                          </div>
+                                                          <div>
+                                                              <label className="text-[11px] font-bold text-gray-400 uppercase">Occupation</label>
+                                                              {isEditingProfile ? (
+                                                                  <input type="text" name="spouseOccupation" value={profileData.spouseOccupation || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                              ) : <p className="font-medium text-gray-900 text-sm">{profileData.spouseOccupation || '-'}</p>}
+                                                          </div>
+                                                          <div>
+                                                              <label className="text-[11px] font-bold text-gray-400 uppercase">Employer / Business</label>
+                                                              {isEditingProfile ? (
+                                                                  <input type="text" name="spouseEmployer" value={profileData.spouseEmployer || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                              ) : <p className="font-medium text-gray-900 text-sm">{profileData.spouseEmployer || '-'}</p>}
+                                                          </div>
+                                                          <div>
+                                                              <label className="text-[11px] font-bold text-gray-400 uppercase">Telephone No.</label>
+                                                              {isEditingProfile ? (
+                                                                  <input type="text" name="spouseTelephone" value={profileData.spouseTelephone || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
+                                                              ) : <p className="font-medium text-gray-900 text-sm">{profileData.spouseTelephone || '-'}</p>}
+                                                          </div>
+                                                      </div>
+                                                  </div>
 
-                                                            {/* Custom write-in eligibility */}
-                                                            <div className="pt-2 border-t border-gray-100">
-                                                                <label className="text-[11px] font-bold text-gray-500 block mb-1">Other / Custom Eligibility or License:</label>
-                                                                <div className="flex gap-2">
-                                                                    <input
-                                                                        type="text"
-                                                                        placeholder="e.g. Master Electrician, Certified Public Accountant (CPA)"
-                                                                        value={customEligText}
-                                                                        onChange={(e) => setCustomEligText(e.target.value)}
-                                                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomEligibility(); } }}
-                                                                        className="flex-1 p-2 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                                    />
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={addCustomEligibility}
-                                                                        className="px-3 py-1.5 bg-[#193153] hover:bg-blue-900 text-white text-xs font-bold rounded-md transition-colors"
-                                                                    >
-                                                                        + Add Eligibility
-                                                                    </button>
-                                                                </div>
-                                                            </div>
+                                                  {/* Parents Info */}
+                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2">
+                                                          <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wider">Father Name</h4>
+                                                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                              <div>
+                                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">Last Name</label>
+                                                                  {isEditingProfile ? <input type="text" name="fatherLastName" value={profileData.fatherLastName || ''} onChange={handleProfileChange} className="w-full mt-0.5 p-1.5 border border-gray-300 rounded text-xs bg-white" /> : <p className="text-xs font-medium">{profileData.fatherLastName || '-'}</p>}
+                                                              </div>
+                                                              <div>
+                                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">First Name</label>
+                                                                  {isEditingProfile ? <input type="text" name="fatherFirstName" value={profileData.fatherFirstName || ''} onChange={handleProfileChange} className="w-full mt-0.5 p-1.5 border border-gray-300 rounded text-xs bg-white" /> : <p className="text-xs font-medium">{profileData.fatherFirstName || '-'}</p>}
+                                                              </div>
+                                                              <div>
+                                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">Middle Name</label>
+                                                                  {isEditingProfile ? <input type="text" name="fatherMiddleName" value={profileData.fatherMiddleName || ''} onChange={handleProfileChange} className="w-full mt-0.5 p-1.5 border border-gray-300 rounded text-xs bg-white" /> : <p className="text-xs font-medium">{profileData.fatherMiddleName || '-'}</p>}
+                                                              </div>
+                                                          </div>
+                                                      </div>
 
-                                                            {/* Active Eligibilities List badges in Edit Mode */}
-                                                            {Array.isArray(profileData.eligibilities) && profileData.eligibilities.length > 0 && (
-                                                                <div className="pt-2 border-t border-gray-100">
-                                                                    <p className="text-[11px] font-bold text-gray-500 mb-1.5">Currently Selected Eligibilities ({profileData.eligibilities.length}):</p>
-                                                                    <div className="flex flex-wrap gap-1.5">
-                                                                        {profileData.eligibilities.map((elig: string, idx: number) => (
-                                                                            <span key={idx} className="text-xs font-semibold bg-green-50 text-green-800 border border-green-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
-                                                                                <CheckCircle className="w-3 h-3 text-green-600" />
-                                                                                {elig}
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => toggleEligibility(elig)}
-                                                                                    className="text-gray-400 hover:text-red-600 font-bold ml-1 text-sm leading-none"
-                                                                                    title="Remove eligibility"
-                                                                                >
-                                                                                    &times;
-                                                                                </button>
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-wrap gap-2 mt-2">
-                                                            {(!profileData.eligibilities || (Array.isArray(profileData.eligibilities) && profileData.eligibilities.length === 0)) ? (
-                                                                <span className="text-xs text-gray-400 italic">No eligibilities declared</span>
-                                                            ) : (
-                                                                (Array.isArray(profileData.eligibilities) ? profileData.eligibilities : [profileData.eligibilities]).map((elig: string, idx: number) => (
-                                                                    <span key={idx} className="text-xs font-bold bg-green-50 text-green-800 px-3 py-1 rounded-full border border-green-200 flex items-center gap-1 shadow-sm">
-                                                                        <CheckCircle className="w-3.5 h-3.5 text-green-600" /> {elig}
-                                                                    </span>
-                                                                ))
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2">
+                                                          <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wider">Mother Maiden Name</h4>
+                                                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                              <div>
+                                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">Maiden Last Name</label>
+                                                                  {isEditingProfile ? <input type="text" name="motherLastName" value={profileData.motherLastName || ''} onChange={handleProfileChange} className="w-full mt-0.5 p-1.5 border border-gray-300 rounded text-xs bg-white" /> : <p className="text-xs font-medium">{profileData.motherLastName || '-'}</p>}
+                                                              </div>
+                                                              <div>
+                                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">First Name</label>
+                                                                  {isEditingProfile ? <input type="text" name="motherFirstName" value={profileData.motherFirstName || ''} onChange={handleProfileChange} className="w-full mt-0.5 p-1.5 border border-gray-300 rounded text-xs bg-white" /> : <p className="text-xs font-medium">{profileData.motherFirstName || '-'}</p>}
+                                                              </div>
+                                                              <div>
+                                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">Middle Name</label>
+                                                                  {isEditingProfile ? <input type="text" name="motherMiddleName" value={profileData.motherMiddleName || ''} onChange={handleProfileChange} className="w-full mt-0.5 p-1.5 border border-gray-300 rounded text-xs bg-white" /> : <p className="text-xs font-medium">{profileData.motherMiddleName || '-'}</p>}
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
 
-                                    {/* CS Form No. 212 Section IV, VI & VII: Experience, Training, Skills & Awards */}
-                                    <Card className="md:col-span-2">
-                                        <CardHeader className="border-b border-gray-100 pb-3">
-                                            <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                <Briefcase className="w-5 h-5 text-orange-600" /> CS Form 212 - Sec IV, VI & VII: Experience, Training, Skills & Awards
-                                            </h3>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4 pt-4">
-                                            {/* Work Experience */}
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Years of Relevant Work Experience</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="number" name="yearsOfExperience" min="0" value={profileData.yearsOfExperience || '0'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-bold text-gray-900">{profileData.yearsOfExperience || '0'} years</p>}
-                                                </div>
+                                                  {/* Children Section */}
+                                                  <div className="border-t pt-3 space-y-2">
+                                                      <div className="flex items-center justify-between">
+                                                          <h4 className="text-xs font-bold text-gray-700 uppercase">Children (Name & Date of Birth)</h4>
+                                                          {isEditingProfile && (
+                                                              <button type="button" onClick={addChildRow} className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                                                  <Plus className="w-3.5 h-3.5" /> Add Child
+                                                              </button>
+                                                          )}
+                                                      </div>
+                                                      {Array.isArray(profileData.children) && profileData.children.length > 0 ? (
+                                                          <div className="space-y-2">
+                                                              {profileData.children.map((child: any, idx: number) => (
+                                                                  <div key={idx} className="flex items-center gap-2 bg-gray-50 p-2 rounded-md border border-gray-200 text-xs">
+                                                                      {isEditingProfile ? (
+                                                                          <>
+                                                                              <input type="text" placeholder="Full Name of Child" value={child.name || ''} onChange={(e) => updateChildRow(idx, 'name', e.target.value)} className="flex-1 p-1.5 border border-gray-300 rounded bg-white" />
+                                                                              <input type="date" value={child.birthdate || ''} onChange={(e) => updateChildRow(idx, 'birthdate', e.target.value)} className="w-36 p-1.5 border border-gray-300 rounded bg-white" />
+                                                                              <button type="button" onClick={() => removeChildRow(idx)} className="text-red-500 hover:text-red-700 p-1">
+                                                                                  <Trash2 className="w-4 h-4" />
+                                                                              </button>
+                                                                          </>
+                                                                      ) : (
+                                                                          <div className="flex justify-between w-full font-medium">
+                                                                              <span>{child.name || 'Unnamed Child'}</span>
+                                                                              <span className="text-gray-500">{child.birthdate ? `Born: ${child.birthdate}` : ''}</span>
+                                                                          </div>
+                                                                      )}
+                                                                  </div>
+                                                              ))}
+                                                          </div>
+                                                      ) : (
+                                                          <p className="text-xs text-gray-400 italic">No children listed.</p>
+                                                      )}
+                                                  </div>
+                                              </CardContent>
+                                          </Card>
+                                      )}
 
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Most Recent Position / Job Title</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="text" name="recentPositionTitle" placeholder="e.g. Administrative Assistant II" value={profileData.recentPositionTitle || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.recentPositionTitle || '-'}</p>}
-                                                </div>
+                                      {/* CS Form No. 212 Section IV: Educational Background */}
+                                      {(pdsActiveSection === 'all' || pdsActiveSection === 4) && (
+                                          <Card className="md:col-span-2 shadow-sm">
+                                              <CardHeader className="border-b border-gray-100 pb-3">
+                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                      <GraduationCap className="w-5 h-5 text-purple-600" /> CS Form 212 - Section IV: Educational Background
+                                                  </h3>
+                                              </CardHeader>
+                                              <CardContent className="space-y-4 pt-4">
+                                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Highest Education Attained</label>
+                                                          {isEditingProfile ? (
+                                                              <select name="educationLevel" value={profileData.educationLevel || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                                                                  <option value="">-- Select Highest Education --</option>
+                                                                  <option value="bachelor">Bachelor's Degree</option>
+                                                                  <option value="masters">Master's Degree</option>
+                                                                  <option value="doctoral_9-15">Doctoral (9-15 units)</option>
+                                                                  <option value="doctoral_15-18">Doctoral (15-18 units)</option>
+                                                                  <option value="doctoral_18-24">Doctoral (18-24 units)</option>
+                                                                  <option value="doctoral_27+">Doctoral (27+ units)</option>
+                                                                  <option value="doctoral_graduate">Doctoral Graduate</option>
+                                                              </select>
+                                                          ) : (
+                                                              <p className="font-semibold text-purple-900 bg-purple-50 px-2.5 py-1 rounded inline-block text-xs mt-1 border border-purple-100">
+                                                                  {
+                                                                      !profileData.educationLevel ? "-- Not Selected --" :
+                                                                      profileData.educationLevel === 'bachelor' ? "Bachelor's Degree" :
+                                                                      profileData.educationLevel === 'masters' ? "Master's Degree" :
+                                                                      profileData.educationLevel === 'doctoral_9-15' ? "Doctoral (9-15 units)" :
+                                                                      profileData.educationLevel === 'doctoral_15-18' ? "Doctoral (15-18 units)" :
+                                                                      profileData.educationLevel === 'doctoral_18-24' ? "Doctoral (18-24 units)" :
+                                                                      profileData.educationLevel === 'doctoral_27+' ? "Doctoral (27+ units)" :
+                                                                      profileData.educationLevel === 'doctoral_graduate' ? "Doctoral Graduate" :
+                                                                      profileData.educationLevel
+                                                                  }
+                                                              </p>
+                                                          )}
+                                                      </div>
 
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Most Recent Employer / Agency</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="text" name="recentEmployer" placeholder="e.g. Civil Aviation Authority of the Phils" value={profileData.recentEmployer || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.recentEmployer || '-'}</p>}
-                                                </div>
-                                            </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">School / College / University</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="schoolName" placeholder="e.g. NAAP Pasay Campus / PUP" value={profileData.schoolName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.schoolName || '-'}</p>}
+                                                      </div>
 
-                                            {/* Training */}
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-3">
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Total Training / Seminar Hours</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="number" name="trainingHours" min="0" value={profileData.trainingHours || '0'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-bold text-gray-900">{profileData.trainingHours || '0'} hours</p>}
-                                                </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Degree / Course Title</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="degreeCourse" placeholder="e.g. BS Aeronautical Engineering" value={profileData.degreeCourse || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.degreeCourse || '-'}</p>}
+                                                      </div>
 
-                                                <div className="md:col-span-2">
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Most Recent Training / Seminar Title</label>
-                                                    {isEditingProfile ? (
-                                                        <input type="text" name="recentTrainingTitle" placeholder="e.g. Seminar on Public Records & Aviation Security" value={profileData.recentTrainingTitle || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                    ) : <p className="font-medium text-gray-900">{profileData.recentTrainingTitle || '-'}</p>}
-                                                </div>
-                                            </div>
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Year Graduated</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="yearGraduated" placeholder="e.g. 2020" value={profileData.yearGraduated || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.yearGraduated || '-'}</p>}
+                                                      </div>
+                                                  </div>
+                                              </CardContent>
+                                          </Card>
+                                      )}
 
-                                            {/* Skills & Competencies (PDS Sec VII) */}
-                                            <div className="border-t pt-3">
-                                                <label className="text-xs font-bold text-gray-400 uppercase">Skills & Special Competencies (PDS Sec VII)</label>
-                                                {isEditingProfile ? (
-                                                    <div className="mt-2 space-y-3">
-                                                        <p className="text-xs text-gray-500 font-medium">Add key technical, managerial, or specialized skills:</p>
-                                                        <div className="flex gap-2">
-                                                            <input
-                                                                type="text"
-                                                                placeholder="e.g. Data Analysis, Flight Operations, Customer Support"
-                                                                value={customSkillText}
-                                                                onChange={(e) => setCustomSkillText(e.target.value)}
-                                                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
-                                                                className="flex-1 p-2 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                onClick={addSkill}
-                                                                className="px-3 py-1.5 bg-[#193153] hover:bg-blue-900 text-white text-xs font-bold rounded-md transition-colors"
-                                                            >
-                                                                + Add Skill
-                                                            </button>
-                                                        </div>
+                                      {/* CS Form No. 212 Section V: Civil Service & Professional Eligibility */}
+                                      {(pdsActiveSection === 'all' || pdsActiveSection === 5) && (
+                                          <Card className="md:col-span-2 shadow-sm">
+                                              <CardHeader className="border-b border-gray-100 pb-3">
+                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                      <Award className="w-5 h-5 text-amber-600" /> CS Form 212 - Section V: Civil Service & Professional Eligibilities
+                                                  </h3>
+                                              </CardHeader>
+                                              <CardContent className="space-y-4 pt-4">
+                                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                      <div className="md:col-span-2 lg:col-span-4">
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">License / Registration No. (PRC / CAAP / CSC)</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="licenseNo" placeholder="e.g. PRC License No. 0123456" value={profileData.licenseNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.licenseNo || '-'}</p>}
+                                                      </div>
 
-                                                        {Array.isArray(profileData.skills) && profileData.skills.length > 0 && (
-                                                            <div className="flex flex-wrap gap-1.5 pt-1">
-                                                                {profileData.skills.map((skill: string, idx: number) => (
-                                                                    <span key={idx} className="text-xs font-semibold bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
-                                                                        {skill}
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => removeSkill(skill)}
-                                                                            className="text-gray-400 hover:text-red-600 font-bold ml-1 text-sm leading-none"
-                                                                            title="Remove skill"
-                                                                        >
-                                                                            &times;
-                                                                        </button>
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex flex-wrap gap-1.5 mt-2">
-                                                        {(!profileData.skills || (Array.isArray(profileData.skills) && profileData.skills.length === 0)) ? (
-                                                            <span className="text-xs text-gray-400 italic">No skills declared</span>
-                                                        ) : (
-                                                            (Array.isArray(profileData.skills) ? profileData.skills : [profileData.skills]).map((skill: string, idx: number) => (
-                                                                <span key={idx} className="text-xs font-bold bg-blue-50 text-blue-900 px-3 py-1 rounded-full border border-blue-200 flex items-center gap-1 shadow-sm">
-                                                                    {skill}
-                                                                </span>
-                                                            ))
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
+                                                      <div className="md:col-span-2 lg:col-span-4 border-t pt-3">
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Civil Service & Professional Eligibilities</label>
+                                                          {isEditingProfile ? (
+                                                              <div className="mt-2 space-y-3">
+                                                                  <p className="text-xs text-gray-500 font-medium">Select all Civil Service & Professional Eligibilities that apply to you:</p>
+                                                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1.5 border border-gray-200 rounded-md bg-gray-50/50">
+                                                                      {[
+                                                                          "Career Service (CS) Professional",
+                                                                          "Career Service (CS) Sub Professional",
+                                                                          "Bar/Board Eligibility (RA1080)",
+                                                                          "PRC Board Rating / Professional License",
+                                                                          "CAAP CPL / FI Pilot Rating License",
+                                                                          "CAAP AMT / Aircraft Maintenance License",
+                                                                          "Honor Graduate Eligibility (PD 907)",
+                                                                          "Barangay Official Eligibility (RA 7160)",
+                                                                          "Barangay Health Worker (RA 7883)",
+                                                                          "Barangay Nutrition Scholar Eligibility (PD 1569)",
+                                                                          "Electronic Data Processing Specialist Eligibility (CSC Res. 90-083)",
+                                                                          "Foreign School Honor Graduate Eligibility (CSC Res. 90-083)",
+                                                                          "Sanggunian Member Eligibility (RA 10156)",
+                                                                          "Scientific and Technological Specialist Eligibility (PD 997)",
+                                                                          "Skills Eligibility Category II (CSC MC 11, s. 1996, as Amended)",
+                                                                          "Veteran Preference Rating (EO 132/790)"
+                                                                      ].map((elig, idx) => {
+                                                                          const currentEligList = Array.isArray(profileData.eligibilities) ? profileData.eligibilities : [];
+                                                                          const isSelected = currentEligList.some((e: string) => 
+                                                                              e === elig ||
+                                                                              (elig.includes('Professional') && !elig.includes('Sub') && (e.includes('CS Prof') || e.includes('CS Professional'))) ||
+                                                                              (elig.includes('Sub Professional') && (e.includes('CS Subprof') || e.includes('CS Sub Professional')))
+                                                                          );
+                                                                          return (
+                                                                              <label key={idx} className={`flex items-start gap-2.5 p-2 rounded-md border text-xs cursor-pointer transition-all ${
+                                                                                  isSelected 
+                                                                                      ? 'bg-blue-50 border-blue-300 text-blue-900 font-bold shadow-sm ring-1 ring-blue-200' 
+                                                                                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100'
+                                                                              }`}>
+                                                                                  <input
+                                                                                      type="checkbox"
+                                                                                      checked={isSelected}
+                                                                                      onChange={() => toggleEligibility(elig)}
+                                                                                      className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                                                                                  />
+                                                                                  <span>{elig}</span>
+                                                                              </label>
+                                                                          );
+                                                                      })}
+                                                                  </div>
 
-                                                <div className="md:col-span-3 border-t pt-3">
-                                                    <label className="text-xs font-bold text-gray-400 uppercase">Non-Academic Distinctions / Awards (PDS Sec VII)</label>
-                                                    {isEditingProfile ? (
-                                                        <div className="mt-2 space-y-2">
-                                                            <p className="text-xs text-gray-500 font-medium">Select all non-academic distinctions or awards received (optional):</p>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1.5 border border-gray-200 rounded-md bg-gray-50/50">
-                                                                {[
-                                                                    { key: 'national', label: 'National Honor / Award' },
-                                                                    { key: 'csc', label: 'Civil Service Commission (CSC) Award' },
-                                                                    { key: 'president', label: "Presidential Award / Citation" },
-                                                                    { key: 'ngo', label: 'Non-Government / Institutional Award' }
-                                                                ].map((item) => {
-                                                                    const currentAwards = Array.isArray(profileData.awards) ? profileData.awards : [];
-                                                                    const isChecked = currentAwards.includes(item.key);
-                                                                    return (
-                                                                        <label key={item.key} className={`flex items-center gap-2.5 p-2 rounded-md border text-xs cursor-pointer transition-all ${
-                                                                            isChecked
-                                                                                ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold shadow-sm ring-1 ring-amber-200'
-                                                                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100'
-                                                                        }`}>
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={isChecked}
-                                                                                onChange={() => toggleAward(item.key)}
-                                                                                className="rounded text-amber-600 focus:ring-amber-500 w-3.5 h-3.5"
-                                                                            />
-                                                                            <span>{item.label}</span>
-                                                                        </label>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-wrap gap-1.5 mt-2">
-                                                            {(!profileData.awards || (Array.isArray(profileData.awards) && profileData.awards.length === 0)) ? (
-                                                                <span className="text-xs text-gray-400 italic">None declared</span>
-                                                            ) : (
-                                                                (Array.isArray(profileData.awards) ? profileData.awards : [profileData.awards]).map((award: string, idx: number) => (
-                                                                    <span key={idx} className="text-xs font-bold bg-amber-50 text-amber-800 px-3 py-1 rounded-full border border-amber-200 capitalize flex items-center gap-1 shadow-sm">
-                                                                        <Award className="w-3.5 h-3.5 text-amber-600" />
-                                                                        {award === 'national' ? 'National Award' : award === 'csc' ? 'CSC Award' : award === 'president' ? "President's Award" : award === 'ngo' ? 'NGO / Institutional Award' : award}
-                                                                    </span>
-                                                                ))
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                    </Card>
+                                                                  <div className="pt-2 border-t border-gray-100">
+                                                                      <label className="text-[11px] font-bold text-gray-500 block mb-1">Other / Custom Eligibility or License:</label>
+                                                                      <div className="flex gap-2">
+                                                                          <input
+                                                                              type="text"
+                                                                              placeholder="e.g. Master Electrician, Certified Public Accountant (CPA)"
+                                                                              value={customEligText}
+                                                                              onChange={(e) => setCustomEligText(e.target.value)}
+                                                                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomEligibility(); } }}
+                                                                              className="flex-1 p-2 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                                                          />
+                                                                          <button
+                                                                              type="button"
+                                                                              onClick={addCustomEligibility}
+                                                                              className="px-3 py-1.5 bg-[#193153] hover:bg-blue-900 text-white text-xs font-bold rounded-md transition-colors"
+                                                                          >
+                                                                              + Add Eligibility
+                                                                          </button>
+                                                                      </div>
+                                                                  </div>
 
-                                    <Card className="md:col-span-2">
-                                        <CardHeader className="flex flex-row items-center justify-between pb-3">
-                                            <h3 className="font-bold text-[#193153] flex items-center gap-2">
-                                                <FileText className="w-5 h-5 text-blue-600" /> Documents Vault
-                                            </h3>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => setIsAddDocModalOpen(true)}
-                                                className="text-xs border-[#193153] text-[#193153] hover:bg-blue-50 flex items-center gap-1.5 shadow-sm"
-                                            >
-                                                <Plus className="w-3.5 h-3.5 text-blue-600" /> Add Document
-                                            </Button>
-                                        </CardHeader>
-                                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-0">
-                                            {(() => {
-                                                const defaultDocsList = [
-                                                    { name: "Letter of Intent", icon: FileText, color: "text-blue-600", bg: "bg-blue-100", isDefault: true },
-                                                    { name: "Personal Data Sheet (PDS)", icon: User, color: "text-green-600", bg: "bg-green-100", isDefault: true },
-                                                    { name: "Work Experience Sheet", icon: Briefcase, color: "text-orange-600", bg: "bg-orange-100", isDefault: true },
-                                                    { name: "Certificate of Eligibility", icon: CheckCircle, color: "text-purple-600", bg: "bg-purple-100", isDefault: true },
-                                                    { name: "Transcript of Records (TOR)", icon: GraduationCap, color: "text-red-600", bg: "bg-red-100", isDefault: true },
-                                                    { name: "Training Certificates", icon: FileText, color: "text-teal-600", bg: "bg-teal-100", isDefault: true },
-                                                    { name: "Performance Rating", icon: FileText, color: "text-yellow-600", bg: "bg-yellow-100", isDefault: true },
-                                                ];
+                                                                  {Array.isArray(profileData.eligibilities) && profileData.eligibilities.length > 0 && (
+                                                                      <div className="pt-2 border-t border-gray-100">
+                                                                          <p className="text-[11px] font-bold text-gray-500 mb-1.5">Currently Selected Eligibilities ({profileData.eligibilities.length}):</p>
+                                                                          <div className="flex flex-wrap gap-1.5">
+                                                                              {profileData.eligibilities.map((elig: string, idx: number) => (
+                                                                                  <span key={idx} className="text-xs font-semibold bg-green-50 text-green-800 border border-green-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                                                                                      <CheckCircle className="w-3 h-3 text-green-600" />
+                                                                                      {elig}
+                                                                                      <button
+                                                                                          type="button"
+                                                                                          onClick={() => toggleEligibility(elig)}
+                                                                                          className="text-gray-400 hover:text-red-600 font-bold ml-1 text-sm leading-none"
+                                                                                          title="Remove eligibility"
+                                                                                      >
+                                                                                          &times;
+                                                                                      </button>
+                                                                                  </span>
+                                                                              ))}
+                                                                          </div>
+                                                                      </div>
+                                                                  )}
+                                                              </div>
+                                                          ) : (
+                                                              <div className="flex flex-wrap gap-2 mt-2">
+                                                                  {(!profileData.eligibilities || (Array.isArray(profileData.eligibilities) && profileData.eligibilities.length === 0)) ? (
+                                                                      <span className="text-xs text-gray-400 italic">No eligibilities declared</span>
+                                                                  ) : (
+                                                                      (Array.isArray(profileData.eligibilities) ? profileData.eligibilities : [profileData.eligibilities]).map((elig: string, idx: number) => (
+                                                                          <span key={idx} className="text-xs font-bold bg-green-50 text-green-800 px-3 py-1 rounded-full border border-green-200 flex items-center gap-1 shadow-sm">
+                                                                              <CheckCircle className="w-3.5 h-3.5 text-green-600" /> {elig}
+                                                                          </span>
+                                                                      ))
+                                                                  )}
+                                                              </div>
+                                                          )}
+                                                      </div>
+                                                  </div>
+                                              </CardContent>
+                                          </Card>
+                                      )}
 
-                                                const customDocsList = (profileData.customDocuments || []).map((name: string) => ({
-                                                    name: name,
-                                                    icon: FileText,
-                                                    color: "text-indigo-600",
-                                                    bg: "bg-indigo-100",
-                                                    isDefault: false
-                                                }));
+                                      {/* CS Form No. 212 Section VI: Work Experience */}
+                                      {(pdsActiveSection === 'all' || pdsActiveSection === 6) && (
+                                          <Card className="md:col-span-2 shadow-sm">
+                                              <CardHeader className="border-b border-gray-100 pb-3">
+                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                      <Briefcase className="w-5 h-5 text-orange-600" /> CS Form 212 - Section VI: Work Experience
+                                                  </h3>
+                                              </CardHeader>
+                                              <CardContent className="space-y-4 pt-4">
+                                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Years of Relevant Work Experience</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="number" name="yearsOfExperience" min="0" value={profileData.yearsOfExperience || '0'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-bold text-gray-900">{profileData.yearsOfExperience || '0'} years</p>}
+                                                      </div>
 
-                                                const allDocs = [...defaultDocsList, ...customDocsList];
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Most Recent Position / Job Title</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="recentPositionTitle" placeholder="e.g. Administrative Assistant II" value={profileData.recentPositionTitle || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.recentPositionTitle || '-'}</p>}
+                                                      </div>
 
-                                                return allDocs.map((doc, i) => {
-                                                    const isUploadedLocally = localStorage.getItem(`profile_doc_${auth.user.id}_${doc.name}`) === 'uploaded';
-                                                    const isUploadedInDB = profileData.documents_meta?.[doc.name]?.status === 'uploaded';
-                                                    const isUploaded = isUploadedLocally || isUploadedInDB;
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Most Recent Employer / Agency</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="recentEmployer" placeholder="e.g. Civil Aviation Authority of the Phils" value={profileData.recentEmployer || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.recentEmployer || '-'}</p>}
+                                                      </div>
+                                                  </div>
 
-                                                    const fileName = localStorage.getItem(`profile_file_${auth.user.id}_${doc.name}`) || profileData.documents_meta?.[doc.name]?.fileName;
+                                                  {/* Detailed Work Experience Table */}
+                                                  <div className="border-t pt-3 space-y-2">
+                                                      <div className="flex items-center justify-between">
+                                                          <h4 className="text-xs font-bold text-gray-700 uppercase">Detailed Work History (PDS Sec VI Table)</h4>
+                                                          {isEditingProfile && (
+                                                              <button type="button" onClick={addWorkExpRow} className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                                                  <Plus className="w-3.5 h-3.5" /> Add Work Experience Row
+                                                              </button>
+                                                          )}
+                                                      </div>
+                                                      {Array.isArray(profileData.workExperiences) && profileData.workExperiences.length > 0 ? (
+                                                          <div className="space-y-3">
+                                                              {profileData.workExperiences.map((exp: any, idx: number) => (
+                                                                  <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs space-y-2">
+                                                                      {isEditingProfile ? (
+                                                                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                                                              <div>
+                                                                                  <label className="text-[10px] font-bold text-gray-400">Position Title</label>
+                                                                                  <input type="text" placeholder="e.g. Admin Officer" value={exp.position || ''} onChange={(e) => updateWorkExpRow(idx, 'position', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
+                                                                              </div>
+                                                                              <div>
+                                                                                  <label className="text-[10px] font-bold text-gray-400">Company / Agency</label>
+                                                                                  <input type="text" placeholder="e.g. NAAP" value={exp.company || ''} onChange={(e) => updateWorkExpRow(idx, 'company', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
+                                                                              </div>
+                                                                              <div>
+                                                                                  <label className="text-[10px] font-bold text-gray-400">Monthly Salary (PHP)</label>
+                                                                                  <input type="text" placeholder="e.g. 27000" value={exp.monthlySalary || ''} onChange={(e) => updateWorkExpRow(idx, 'monthlySalary', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
+                                                                              </div>
+                                                                              <div className="flex items-end justify-between gap-1">
+                                                                                  <div className="flex-1">
+                                                                                      <label className="text-[10px] font-bold text-gray-400">Government Service?</label>
+                                                                                      <select value={exp.isGovt || 'Yes'} onChange={(e) => updateWorkExpRow(idx, 'isGovt', e.target.value)} className="w-full p-1.5 border rounded bg-white">
+                                                                                          <option value="Yes">Yes</option>
+                                                                                          <option value="No">No</option>
+                                                                                      </select>
+                                                                                  </div>
+                                                                                  <button type="button" onClick={() => removeWorkExpRow(idx)} className="text-red-500 hover:text-red-700 p-1.5 mb-0.5">
+                                                                                      <Trash2 className="w-4 h-4" />
+                                                                                  </button>
+                                                                              </div>
+                                                                          </div>
+                                                                      ) : (
+                                                                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                                              <div>
+                                                                                  <p className="font-bold text-gray-900 text-sm">{exp.position || 'Position'}</p>
+                                                                                  <p className="text-gray-600">{exp.company || 'Agency'} {exp.monthlySalary ? `• PHP ${exp.monthlySalary}/mo` : ''}</p>
+                                                                              </div>
+                                                                              <span className="text-[11px] bg-blue-50 text-blue-800 font-semibold px-2 py-0.5 rounded border border-blue-200">
+                                                                                  Govt: {exp.isGovt || 'Yes'}
+                                                                              </span>
+                                                                          </div>
+                                                                      )}
+                                                                  </div>
+                                                              ))}
+                                                          </div>
+                                                      ) : (
+                                                          <p className="text-xs text-gray-400 italic">No work history rows declared.</p>
+                                                      )}
+                                                  </div>
+                                              </CardContent>
+                                          </Card>
+                                      )}
 
-                                                    return (
-                                                        <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-gray-200 transition-all">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={`${doc.bg} p-2 rounded ${doc.color}`}>
-                                                                    <doc.icon className="w-4 h-4" />
-                                                                </div>
-                                                                <div className="flex flex-col">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <span className="text-sm font-medium">{doc.name}</span>
-                                                                        {!doc.isDefault && (
-                                                                            <span className="text-[9px] bg-indigo-50 text-indigo-600 font-semibold px-1.5 py-0.5 rounded border border-indigo-200">Custom</span>
-                                                                        )}
-                                                                    </div>
-                                                                    {fileName && (
-                                                                        <span className="text-[10px] text-gray-500 truncate max-w-37.5">
-                                                                            {fileName}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                {/* Persistent Profile Storage Logic */}
-                                                                {isUploaded ? (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200">Saved</span>
-                                                                        <Eye
-                                                                            className="w-4 h-4 text-[#193153] hover:text-[#193153]/70 cursor-pointer transition-colors"
-                                                                            onClick={() => {
-                                                                                const content = localStorage.getItem(`profile_content_${auth.user.id}_${doc.name}`) || sessionStorage.getItem(`profile_content_${auth.user.id}_${doc.name}`);
-                                                                                if (content) {
-                                                                                    setViewingDocument({
-                                                                                        name: doc.name,
-                                                                                        url: content,
-                                                                                        fileName: fileName || doc.name
-                                                                                    });
-                                                                                } else {
-                                                                                    toast.error("File content missing on local device.");
-                                                                                }
-                                                                            }}
-                                                                        />
-                                                                        <Trash2
-                                                                            className="w-4 h-4 text-red-400 hover:text-red-600 cursor-pointer transition-colors"
-                                                                            onClick={() => {
-                                                                                localStorage.removeItem(`profile_doc_${auth.user.id}_${doc.name}`);
-                                                                                localStorage.removeItem(`profile_file_${auth.user.id}_${doc.name}`);
-                                                                                localStorage.removeItem(`profile_content_${auth.user.id}_${doc.name}`);
-                                                                                sessionStorage.removeItem(`profile_content_${auth.user.id}_${doc.name}`);
+                                      {/* CS Form No. 212 Section VII: Voluntary Work */}
+                                      {(pdsActiveSection === 'all' || pdsActiveSection === 7) && (
+                                          <Card className="md:col-span-2 shadow-sm">
+                                              <CardHeader className="border-b border-gray-100 pb-3">
+                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                      <Heart className="w-5 h-5 text-rose-600" /> CS Form 212 - Section VII: Voluntary Work or Involvement
+                                                  </h3>
+                                              </CardHeader>
+                                              <CardContent className="space-y-4 pt-4">
+                                                  <div className="flex items-center justify-between">
+                                                      <h4 className="text-xs font-bold text-gray-700 uppercase">Voluntary Work / Civic Organizations</h4>
+                                                      {isEditingProfile && (
+                                                          <button type="button" onClick={addVoluntaryRow} className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                                              <Plus className="w-3.5 h-3.5" /> Add Voluntary Work
+                                                          </button>
+                                                      )}
+                                                  </div>
+                                                  {Array.isArray(profileData.voluntaryWorks) && profileData.voluntaryWorks.length > 0 ? (
+                                                      <div className="space-y-3">
+                                                          {profileData.voluntaryWorks.map((vol: any, idx: number) => (
+                                                              <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs">
+                                                                  {isEditingProfile ? (
+                                                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                                                          <div>
+                                                                              <label className="text-[10px] font-bold text-gray-400">Organization Name & Address</label>
+                                                                              <input type="text" placeholder="e.g. Red Cross Phils" value={vol.organization || ''} onChange={(e) => updateVoluntaryRow(idx, 'organization', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
+                                                                          </div>
+                                                                          <div>
+                                                                              <label className="text-[10px] font-bold text-gray-400">No. of Hours</label>
+                                                                              <input type="text" placeholder="e.g. 40" value={vol.hours || ''} onChange={(e) => updateVoluntaryRow(idx, 'hours', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
+                                                                          </div>
+                                                                          <div>
+                                                                              <label className="text-[10px] font-bold text-gray-400">Position / Nature of Work</label>
+                                                                              <input type="text" placeholder="e.g. Volunteer Officer" value={vol.position || ''} onChange={(e) => updateVoluntaryRow(idx, 'position', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
+                                                                          </div>
+                                                                          <div className="flex items-end justify-end">
+                                                                              <button type="button" onClick={() => removeVoluntaryRow(idx)} className="text-red-500 hover:text-red-700 p-1.5">
+                                                                                  <Trash2 className="w-4 h-4" />
+                                                                              </button>
+                                                                          </div>
+                                                                      </div>
+                                                                  ) : (
+                                                                      <div className="flex justify-between items-center">
+                                                                          <div>
+                                                                              <p className="font-bold text-gray-900">{vol.organization || 'Organization'}</p>
+                                                                              <p className="text-gray-600">{vol.position ? `Role: ${vol.position}` : ''}</p>
+                                                                          </div>
+                                                                          <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">{vol.hours ? `${vol.hours} hrs` : ''}</span>
+                                                                      </div>
+                                                                  )}
+                                                              </div>
+                                                          ))}
+                                                      </div>
+                                                  ) : (
+                                                      <p className="text-xs text-gray-400 italic">No voluntary work declared.</p>
+                                                  )}
+                                              </CardContent>
+                                          </Card>
+                                      )}
 
-                                                                                let updatedProfile = { ...profileData };
-                                                                                if (!doc.isDefault) {
-                                                                                    const updatedCustoms = (profileData.customDocuments || []).filter((d: string) => d !== doc.name);
-                                                                                    const updatedMeta = { ...(profileData.documents_meta || {}) };
-                                                                                    delete updatedMeta[doc.name];
-                                                                                    updatedProfile = {
-                                                                                        ...profileData,
-                                                                                        customDocuments: updatedCustoms,
-                                                                                        documents_meta: updatedMeta
-                                                                                    };
-                                                                                } else {
-                                                                                    const updatedMeta = { ...(profileData.documents_meta || {}) };
-                                                                                    delete updatedMeta[doc.name];
-                                                                                    updatedProfile = {
-                                                                                        ...profileData,
-                                                                                        documents_meta: updatedMeta
-                                                                                    };
-                                                                                }
+                                      {/* CS Form No. 212 Section VIII: Training Programs / L&D */}
+                                      {(pdsActiveSection === 'all' || pdsActiveSection === 8) && (
+                                          <Card className="md:col-span-2 shadow-sm">
+                                              <CardHeader className="border-b border-gray-100 pb-3">
+                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                      <BookOpen className="w-5 h-5 text-teal-600" /> CS Form 212 - Section VIII: Learning & Development (L&D) / Training Programs
+                                                  </h3>
+                                              </CardHeader>
+                                              <CardContent className="space-y-4 pt-4">
+                                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                      <div>
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Total Training / Seminar Hours</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="number" name="trainingHours" min="0" value={profileData.trainingHours || '0'} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-bold text-gray-900">{profileData.trainingHours || '0'} hours</p>}
+                                                      </div>
 
-                                                                                setProfileData(updatedProfile);
-                                                                                try {
-                                                                                    localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(updatedProfile));
-                                                                                } catch (e) {}
+                                                      <div className="md:col-span-2">
+                                                          <label className="text-xs font-bold text-gray-400 uppercase">Most Recent Training / Seminar Title</label>
+                                                          {isEditingProfile ? (
+                                                              <input type="text" name="recentTrainingTitle" placeholder="e.g. Seminar on Public Records & Aviation Security" value={profileData.recentTrainingTitle || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
+                                                          ) : <p className="font-medium text-gray-900">{profileData.recentTrainingTitle || '-'}</p>}
+                                                      </div>
+                                                  </div>
 
-                                                                                router.post('/profile/save', { profile_data: updatedProfile });
-                                                                                toast.info(`${doc.name} removed from profile.`);
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <span className="text-xs text-gray-400 italic">Missing</span>
-                                                                        {!doc.isDefault && (
-                                                                            <Trash2
-                                                                                className="w-3.5 h-3.5 text-red-300 hover:text-red-500 cursor-pointer transition-colors ml-1"
-                                                                                onClick={() => {
-                                                                                    const updatedCustoms = (profileData.customDocuments || []).filter((d: string) => d !== doc.name);
-                                                                                    const updatedProfile = {
-                                                                                        ...profileData,
-                                                                                        customDocuments: updatedCustoms
-                                                                                    };
-                                                                                    setProfileData(updatedProfile);
-                                                                                    try {
-                                                                                        localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(updatedProfile));
-                                                                                    } catch (e) {}
-                                                                                    router.post('/profile/save', { profile_data: updatedProfile });
-                                                                                    toast.info(`"${doc.name}" slot removed.`);
-                                                                                }}
-                                                                            />
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                                <input
-                                                                    type="file"
-                                                                    id={`file-profile-${i}`}
-                                                                    className="hidden"
-                                                                    onChange={(e) => {
-                                                                        const file = e.target.files?.[0];
-                                                                        if (file) {
-                                                                            if (file.size > 2 * 1024 * 1024) {
-                                                                                toast.error("File too large (>2MB). Please upload a smaller file.");
-                                                                                return;
-                                                                            }
+                                                  {/* Detailed Training History Table */}
+                                                  <div className="border-t pt-3 space-y-2">
+                                                      <div className="flex items-center justify-between">
+                                                          <h4 className="text-xs font-bold text-gray-700 uppercase">Training & Seminar History (PDS Sec VIII Table)</h4>
+                                                          {isEditingProfile && (
+                                                              <button type="button" onClick={addTrainingRow} className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                                                  <Plus className="w-3.5 h-3.5" /> Add Training Row
+                                                              </button>
+                                                          )}
+                                                      </div>
+                                                      {Array.isArray(profileData.trainings) && profileData.trainings.length > 0 ? (
+                                                          <div className="space-y-3">
+                                                              {profileData.trainings.map((trn: any, idx: number) => (
+                                                                  <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs">
+                                                                      {isEditingProfile ? (
+                                                                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                                                              <div>
+                                                                                  <label className="text-[10px] font-bold text-gray-400">Training Title</label>
+                                                                                  <input type="text" placeholder="Seminar Title" value={trn.title || ''} onChange={(e) => updateTrainingRow(idx, 'title', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
+                                                                              </div>
+                                                                              <div>
+                                                                                  <label className="text-[10px] font-bold text-gray-400">No. of Hours</label>
+                                                                                  <input type="text" placeholder="e.g. 16" value={trn.hours || ''} onChange={(e) => updateTrainingRow(idx, 'hours', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
+                                                                              </div>
+                                                                              <div>
+                                                                                  <label className="text-[10px] font-bold text-gray-400">Conducted By</label>
+                                                                                  <input type="text" placeholder="e.g. CSC / CAAP" value={trn.conductedBy || ''} onChange={(e) => updateTrainingRow(idx, 'conductedBy', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
+                                                                              </div>
+                                                                              <div className="flex items-end justify-end">
+                                                                                  <button type="button" onClick={() => removeTrainingRow(idx)} className="text-red-500 hover:text-red-700 p-1.5">
+                                                                                      <Trash2 className="w-4 h-4" />
+                                                                                  </button>
+                                                                              </div>
+                                                                          </div>
+                                                                      ) : (
+                                                                          <div className="flex justify-between items-center">
+                                                                              <div>
+                                                                                  <p className="font-bold text-gray-900">{trn.title || 'Training Program'}</p>
+                                                                                  <p className="text-gray-600">{trn.conductedBy ? `Sponsor: ${trn.conductedBy}` : ''}</p>
+                                                                              </div>
+                                                                              <span className="font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">{trn.hours ? `${trn.hours} hrs` : ''}</span>
+                                                                          </div>
+                                                                      )}
+                                                                  </div>
+                                                              ))}
+                                                          </div>
+                                                      ) : (
+                                                          <p className="text-xs text-gray-400 italic">No training rows declared.</p>
+                                                      )}
+                                                  </div>
+                                              </CardContent>
+                                          </Card>
+                                      )}
 
-                                                                            const reader = new FileReader();
-                                                                            reader.onload = (ev) => {
-                                                                                try {
-                                                                                    const result = ev.target?.result as string;
-                                                                                    localStorage.setItem(`profile_doc_${auth.user.id}_${doc.name}`, 'uploaded');
-                                                                                    localStorage.setItem(`profile_file_${auth.user.id}_${doc.name}`, file.name);
+                                      {/* CS Form No. 212 Section IX: Other Information */}
+                                      {(pdsActiveSection === 'all' || pdsActiveSection === 9) && (
+                                          <Card className="md:col-span-2 shadow-sm">
+                                              <CardHeader className="border-b border-gray-100 pb-3">
+                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                      <Star className="w-5 h-5 text-amber-500" /> CS Form 212 - Section IX: Special Skills, Distinctions & Memberships
+                                                  </h3>
+                                              </CardHeader>
+                                              <CardContent className="space-y-4 pt-4">
+                                                  {/* Skills & Competencies */}
+                                                  <div>
+                                                      <label className="text-xs font-bold text-gray-400 uppercase">Special Skills & Competencies</label>
+                                                      {isEditingProfile ? (
+                                                          <div className="mt-2 space-y-3">
+                                                              <p className="text-xs text-gray-500 font-medium">Add key technical, managerial, or specialized skills:</p>
+                                                              <div className="flex gap-2">
+                                                                  <input
+                                                                      type="text"
+                                                                      placeholder="e.g. Data Analysis, Flight Operations, Customer Support"
+                                                                      value={customSkillText}
+                                                                      onChange={(e) => setCustomSkillText(e.target.value)}
+                                                                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
+                                                                      className="flex-1 p-2 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                                                  />
+                                                                  <button
+                                                                      type="button"
+                                                                      onClick={addSkill}
+                                                                      className="px-3 py-1.5 bg-[#193153] hover:bg-blue-900 text-white text-xs font-bold rounded-md transition-colors"
+                                                                  >
+                                                                      + Add Skill
+                                                                  </button>
+                                                              </div>
 
-                                                                                    try {
-                                                                                        localStorage.setItem(`profile_content_${auth.user.id}_${doc.name}`, result);
-                                                                                    } catch (storageErr) {
-                                                                                        try {
-                                                                                            sessionStorage.setItem(`profile_content_${auth.user.id}_${doc.name}`, result);
-                                                                                        } catch (sessionErr) {}
-                                                                                    }
+                                                              {Array.isArray(profileData.skills) && profileData.skills.length > 0 && (
+                                                                  <div className="flex flex-wrap gap-1.5 pt-1">
+                                                                      {profileData.skills.map((skill: string, idx: number) => (
+                                                                          <span key={idx} className="text-xs font-semibold bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                                                                              {skill}
+                                                                              <button
+                                                                                  type="button"
+                                                                                  onClick={() => removeSkill(skill)}
+                                                                                  className="text-gray-400 hover:text-red-600 font-bold ml-1 text-sm leading-none"
+                                                                                  title="Remove skill"
+                                                                              >
+                                                                                  &times;
+                                                                              </button>
+                                                                          </span>
+                                                                      ))}
+                                                                  </div>
+                                                              )}
+                                                          </div>
+                                                      ) : (
+                                                          <div className="flex flex-wrap gap-1.5 mt-2">
+                                                              {(!profileData.skills || (Array.isArray(profileData.skills) && profileData.skills.length === 0)) ? (
+                                                                  <span className="text-xs text-gray-400 italic">No skills declared</span>
+                                                              ) : (
+                                                                  (Array.isArray(profileData.skills) ? profileData.skills : [profileData.skills]).map((skill: string, idx: number) => (
+                                                                      <span key={idx} className="text-xs font-bold bg-blue-50 text-blue-900 px-3 py-1 rounded-full border border-blue-200 flex items-center gap-1 shadow-sm">
+                                                                          {skill}
+                                                                      </span>
+                                                                  ))
+                                                              )}
+                                                          </div>
+                                                      )}
+                                                  </div>
 
-                                                                                    // Sync metadata with MySQL database
-                                                                                    const updatedMeta = {
-                                                                                        ...(profileData.documents_meta || {}),
-                                                                                        [doc.name]: {
-                                                                                            status: 'uploaded',
-                                                                                            fileName: file.name,
-                                                                                            updatedAt: new Date().toISOString()
-                                                                                        }
-                                                                                    };
+                                                  {/* Non-Academic Distinctions / Awards */}
+                                                  <div className="border-t pt-3">
+                                                      <label className="text-xs font-bold text-gray-400 uppercase">Non-Academic Distinctions / Awards</label>
+                                                      {isEditingProfile ? (
+                                                          <div className="mt-2 space-y-2">
+                                                              <p className="text-xs text-gray-500 font-medium">Select all non-academic distinctions or awards received (optional):</p>
+                                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1.5 border border-gray-200 rounded-md bg-gray-50/50">
+                                                                  {[
+                                                                      { key: 'national', label: 'National Honor / Award' },
+                                                                      { key: 'csc', label: 'Civil Service Commission (CSC) Award' },
+                                                                      { key: 'president', label: 'Presidential Award / Citation' },
+                                                                      { key: 'ngo', label: 'Non-Government / Institutional Award' }
+                                                                  ].map((item) => {
+                                                                      const currentAwards = Array.isArray(profileData.awards) ? profileData.awards : [];
+                                                                      const isChecked = currentAwards.includes(item.key);
+                                                                      return (
+                                                                          <label key={item.key} className={`flex items-center gap-2.5 p-2 rounded-md border text-xs cursor-pointer transition-all ${
+                                                                              isChecked
+                                                                                  ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold shadow-sm ring-1 ring-amber-200'
+                                                                                  : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100'
+                                                                          }`}>
+                                                                              <input
+                                                                                  type="checkbox"
+                                                                                  checked={isChecked}
+                                                                                  onChange={() => toggleAward(item.key)}
+                                                                                  className="rounded text-amber-600 focus:ring-amber-500 w-3.5 h-3.5"
+                                                                              />
+                                                                              <span>{item.label}</span>
+                                                                          </label>
+                                                                      );
+                                                                  })}
+                                                              </div>
+                                                          </div>
+                                                      ) : (
+                                                          <div className="flex flex-wrap gap-1.5 mt-2">
+                                                              {(!profileData.awards || (Array.isArray(profileData.awards) && profileData.awards.length === 0)) ? (
+                                                                  <span className="text-xs text-gray-400 italic">None declared</span>
+                                                              ) : (
+                                                                  (Array.isArray(profileData.awards) ? profileData.awards : [profileData.awards]).map((award: string, idx: number) => (
+                                                                      <span key={idx} className="text-xs font-bold bg-amber-50 text-amber-800 px-3 py-1 rounded-full border border-amber-200 capitalize flex items-center gap-1 shadow-sm">
+                                                                          <Award className="w-3.5 h-3.5 text-amber-600" />
+                                                                          {award === 'national' ? 'National Award' : award === 'csc' ? 'CSC Award' : award === 'president' ? 'Presidential Award' : award === 'ngo' ? 'NGO / Institutional Award' : award}
+                                                                      </span>
+                                                                  ))
+                                                              )}
+                                                          </div>
+                                                      )}
+                                                  </div>
+                                              </CardContent>
+                                          </Card>
+                                      )}
 
-                                                                                    const updatedProfile = {
-                                                                                        ...profileData,
-                                                                                        documents_meta: updatedMeta
-                                                                                    };
+                                      {/* CS Form No. 212 Section X: References & Statutory Details */}
+                                      {(pdsActiveSection === 'all' || pdsActiveSection === 10) && (
+                                          <Card className="md:col-span-2 shadow-sm">
+                                              <CardHeader className="border-b border-gray-100 pb-3">
+                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
+                                                      <Shield className="w-5 h-5 text-blue-700" /> CS Form 212 - Section X: Character References & Statutory Background
+                                                  </h3>
+                                              </CardHeader>
+                                              <CardContent className="space-y-4 pt-4">
+                                                  <div className="space-y-3">
+                                                      <h4 className="text-xs font-bold text-gray-700 uppercase">3 Character References (Not Related by Consanguinity/Affinity)</h4>
+                                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                          {[0, 1, 2].map((idx) => {
+                                                              const refItem = profileData.references?.[idx] || { name: '', address: '', phone: '' };
+                                                              return (
+                                                                  <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs space-y-2">
+                                                                      <p className="font-bold text-[#193153]">Reference #{idx + 1}</p>
+                                                                      {isEditingProfile ? (
+                                                                          <>
+                                                                              <input type="text" placeholder="Full Name" value={refItem.name || ''} onChange={(e) => updateReferenceRow(idx, 'name', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
+                                                                              <input type="text" placeholder="Address / Agency" value={refItem.address || ''} onChange={(e) => updateReferenceRow(idx, 'address', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
+                                                                              <input type="tel" placeholder="Contact No." value={refItem.phone || ''} onChange={(e) => updateReferenceRow(idx, 'phone', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
+                                                                          </>
+                                                                      ) : (
+                                                                          <div>
+                                                                              <p className="font-semibold text-gray-900">{refItem.name || '-'}</p>
+                                                                              <p className="text-gray-500">{refItem.address || '-'}</p>
+                                                                              <p className="text-blue-600">{refItem.phone || '-'}</p>
+                                                                          </div>
+                                                                      )}
+                                                                  </div>
+                                                              );
+                                                          })}
+                                                      </div>
+                                                  </div>
 
-                                                                                    setProfileData(updatedProfile);
+                                                  {/* Statutory Declaration Summary */}
+                                                  <div className="border-t pt-3 bg-amber-50/50 p-3 rounded-lg border border-amber-200">
+                                                      <h4 className="text-xs font-bold text-amber-900 uppercase mb-1">CSC Statutory Disclosures (Q34 - Q40)</h4>
+                                                      <p className="text-xs text-amber-800">
+                                                          Statutory answers are saved and attached to every official government job application snapshot.
+                                                      </p>
+                                                  </div>
+                                              </CardContent>
+                                          </Card>
+                                      )}
 
-                                                                                    try {
-                                                                                        localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(updatedProfile));
-                                                                                    } catch (e) {}
+                                      {/* CS Form No. 212 Section XI: Supporting Documents Vault */}
+                                      {(pdsActiveSection === 'all' || pdsActiveSection === 11) && (
+                                          <Card className="md:col-span-2 shadow-sm">
+                                              <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-gray-100">
+                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2">
+                                                      <FileText className="w-5 h-5 text-blue-600" /> CS Form 212 - Section XI: Supporting Documents Vault
+                                                  </h3>
+                                                  <Button
+                                                      size="sm"
+                                                      variant="outline"
+                                                      onClick={() => setIsAddDocModalOpen(true)}
+                                                      className="text-xs border-[#193153] text-[#193153] hover:bg-blue-50 flex items-center gap-1.5 shadow-sm"
+                                                  >
+                                                      <Plus className="w-3.5 h-3.5 text-blue-600" /> Add Document
+                                                  </Button>
+                                              </CardHeader>
+                                              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-4">
+                                                  {(() => {
+                                                      const defaultDocsList = [
+                                                          { name: "Letter of Intent", icon: FileText, color: "text-blue-600", bg: "bg-blue-100", isDefault: true },
+                                                          { name: "Personal Data Sheet (PDS)", icon: User, color: "text-green-600", bg: "bg-green-100", isDefault: true },
+                                                          { name: "Work Experience Sheet", icon: Briefcase, color: "text-orange-600", bg: "bg-orange-100", isDefault: true },
+                                                          { name: "Certificate of Eligibility", icon: CheckCircle, color: "text-purple-600", bg: "bg-purple-100", isDefault: true },
+                                                          { name: "Transcript of Records (TOR)", icon: GraduationCap, color: "text-red-600", bg: "bg-red-100", isDefault: true },
+                                                          { name: "Training Certificates", icon: FileText, color: "text-teal-600", bg: "bg-teal-100", isDefault: true },
+                                                          { name: "Performance Rating", icon: FileText, color: "text-yellow-600", bg: "bg-yellow-100", isDefault: true },
+                                                      ];
 
-                                                                                    router.post('/profile/save', {
-                                                                                        profile_data: updatedProfile
-                                                                                    });
+                                                      const customDocsList = (profileData.customDocuments || []).map((name: string) => ({
+                                                          name: name,
+                                                          icon: FileText,
+                                                          color: "text-indigo-600",
+                                                          bg: "bg-indigo-100",
+                                                          isDefault: false
+                                                      }));
 
-                                                                                    toast.success(`${doc.name} saved to profile & database!`);
-                                                                                } catch (err) {
-                                                                                    console.error(err);
-                                                                                    toast.error("Could not save file. Please try a smaller file.");
-                                                                                }
-                                                                            };
-                                                                            reader.readAsDataURL(file);
-                                                                        }
-                                                                    }}
-                                                                />
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="ghost"
-                                                                    className="h-8 text-xs hover:bg-blue-50 hover:text-blue-600"
-                                                                    onClick={() => document.getElementById(`file-profile-${i}`)?.click()}
-                                                                >
-                                                                    {isUploaded ? 'Update' : 'Upload'}
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                });
-                                            })()}
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            </div>
-                        )}
+                                                      const allDocs = [...defaultDocsList, ...customDocsList];
+
+                                                      return allDocs.map((doc, i) => {
+                                                          const isUploadedLocally = localStorage.getItem(`profile_doc_${auth.user.id}_${doc.name}`) === 'uploaded';
+                                                          const isUploadedInDB = profileData.documents_meta?.[doc.name]?.status === 'uploaded';
+                                                          const isUploaded = isUploadedLocally || isUploadedInDB;
+
+                                                          const fileName = localStorage.getItem(`profile_file_${auth.user.id}_${doc.name}`) || profileData.documents_meta?.[doc.name]?.fileName;
+
+                                                          return (
+                                                              <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-gray-200 transition-all">
+                                                                  <div className="flex items-center gap-3">
+                                                                      <div className={`${doc.bg} p-2 rounded ${doc.color}`}>
+                                                                          <doc.icon className="w-4 h-4" />
+                                                                      </div>
+                                                                      <div className="flex flex-col">
+                                                                          <div className="flex items-center gap-1.5">
+                                                                              <span className="text-sm font-medium">{doc.name}</span>
+                                                                              {!doc.isDefault && (
+                                                                                  <span className="text-[9px] bg-indigo-50 text-indigo-600 font-semibold px-1.5 py-0.5 rounded border border-indigo-200">Custom</span>
+                                                                              )}
+                                                                          </div>
+                                                                          {fileName && (
+                                                                              <span className="text-[10px] text-gray-500 truncate max-w-37.5">
+                                                                                  {fileName}
+                                                                              </span>
+                                                                          )}
+                                                                      </div>
+                                                                  </div>
+                                                                  <div className="flex items-center gap-2">
+                                                                      {isUploaded ? (
+                                                                          <div className="flex items-center gap-2">
+                                                                              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200">Saved</span>
+                                                                              <Eye
+                                                                                  className="w-4 h-4 text-[#193153] hover:text-[#193153]/70 cursor-pointer transition-colors"
+                                                                                  onClick={() => {
+                                                                                      const content = localStorage.getItem(`profile_content_${auth.user.id}_${doc.name}`) || sessionStorage.getItem(`profile_content_${auth.user.id}_${doc.name}`);
+                                                                                      if (content) {
+                                                                                          setViewingDocument({
+                                                                                              name: doc.name,
+                                                                                              url: content,
+                                                                                              fileName: fileName || doc.name
+                                                                                          });
+                                                                                      } else {
+                                                                                          toast.error("File content missing on local device.");
+                                                                                      }
+                                                                                  }}
+                                                                              />
+                                                                              <Trash2
+                                                                                  className="w-4 h-4 text-red-400 hover:text-red-600 cursor-pointer transition-colors"
+                                                                                  onClick={() => {
+                                                                                      localStorage.removeItem(`profile_doc_${auth.user.id}_${doc.name}`);
+                                                                                      localStorage.removeItem(`profile_file_${auth.user.id}_${doc.name}`);
+                                                                                      localStorage.removeItem(`profile_content_${auth.user.id}_${doc.name}`);
+                                                                                      sessionStorage.removeItem(`profile_content_${auth.user.id}_${doc.name}`);
+
+                                                                                      let updatedProfile = { ...profileData };
+                                                                                      if (!doc.isDefault) {
+                                                                                          const updatedCustoms = (profileData.customDocuments || []).filter((d: string) => d !== doc.name);
+                                                                                          const updatedMeta = { ...(profileData.documents_meta || {}) };
+                                                                                          delete updatedMeta[doc.name];
+                                                                                          updatedProfile = {
+                                                                                              ...profileData,
+                                                                                              customDocuments: updatedCustoms,
+                                                                                              documents_meta: updatedMeta
+                                                                                          };
+                                                                                      } else {
+                                                                                          const updatedMeta = { ...(profileData.documents_meta || {}) };
+                                                                                          delete updatedMeta[doc.name];
+                                                                                          updatedProfile = {
+                                                                                              ...profileData,
+                                                                                              documents_meta: updatedMeta
+                                                                                          };
+                                                                                      }
+
+                                                                                      setProfileData(updatedProfile);
+                                                                                      try {
+                                                                                          localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(updatedProfile));
+                                                                                      } catch (e) {}
+
+                                                                                      router.post('/profile/save', { profile_data: updatedProfile });
+                                                                                      toast.info(`${doc.name} removed from profile.`);
+                                                                                  }}
+                                                                              />
+                                                                          </div>
+                                                                      ) : (
+                                                                          <div className="flex items-center gap-1.5">
+                                                                              <span className="text-xs text-gray-400 italic">Missing</span>
+                                                                              {!doc.isDefault && (
+                                                                                  <Trash2
+                                                                                      className="w-3.5 h-3.5 text-red-300 hover:text-red-500 cursor-pointer transition-colors ml-1"
+                                                                                      onClick={() => {
+                                                                                          const updatedCustoms = (profileData.customDocuments || []).filter((d: string) => d !== doc.name);
+                                                                                          const updatedProfile = {
+                                                                                              ...profileData,
+                                                                                              customDocuments: updatedCustoms
+                                                                                          };
+                                                                                          setProfileData(updatedProfile);
+                                                                                          try {
+                                                                                              localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(updatedProfile));
+                                                                                          } catch (e) {}
+                                                                                          router.post('/profile/save', { profile_data: updatedProfile });
+                                                                                          toast.info(`"${doc.name}" slot removed.`);
+                                                                                      }}
+                                                                                  />
+                                                                              )}
+                                                                          </div>
+                                                                      )}
+                                                                      <input
+                                                                          type="file"
+                                                                          id={`file-profile-${i}`}
+                                                                          className="hidden"
+                                                                          onChange={(e) => {
+                                                                              const file = e.target.files?.[0];
+                                                                              if (file) {
+                                                                                  if (file.size > 2 * 1024 * 1024) {
+                                                                                      toast.error("File too large (>2MB). Please upload a smaller file.");
+                                                                                      return;
+                                                                                  }
+
+                                                                                  const reader = new FileReader();
+                                                                                  reader.onload = (ev) => {
+                                                                                      try {
+                                                                                          const result = ev.target?.result as string;
+                                                                                          localStorage.setItem(`profile_doc_${auth.user.id}_${doc.name}`, 'uploaded');
+                                                                                          localStorage.setItem(`profile_file_${auth.user.id}_${doc.name}`, file.name);
+
+                                                                                          try {
+                                                                                              localStorage.setItem(`profile_content_${auth.user.id}_${doc.name}`, result);
+                                                                                          } catch (storageErr) {
+                                                                                              try {
+                                                                                                  sessionStorage.setItem(`profile_content_${auth.user.id}_${doc.name}`, result);
+                                                                                              } catch (sessionErr) {}
+                                                                                          }
+
+                                                                                          const updatedMeta = {
+                                                                                              ...(profileData.documents_meta || {}),
+                                                                                              [doc.name]: {
+                                                                                                  status: 'uploaded',
+                                                                                                  fileName: file.name,
+                                                                                                  updatedAt: new Date().toISOString()
+                                                                                              }
+                                                                                          };
+
+                                                                                          const updatedProfile = {
+                                                                                              ...profileData,
+                                                                                              documents_meta: updatedMeta
+                                                                                          };
+
+                                                                                          setProfileData(updatedProfile);
+
+                                                                                          try {
+                                                                                              localStorage.setItem(`user_profile_data_${auth.user.id}`, JSON.stringify(updatedProfile));
+                                                                                          } catch (e) {}
+
+                                                                                          router.post('/profile/save', {
+                                                                                              profile_data: updatedProfile
+                                                                                          });
+
+                                                                                          toast.success(`${doc.name} saved to profile & database!`);
+                                                                                      } catch (err) {
+                                                                                          console.error(err);
+                                                                                          toast.error("Could not save file. Please try a smaller file.");
+                                                                                      }
+                                                                                  };
+                                                                                  reader.readAsDataURL(file);
+                                                                              }
+                                                                          }}
+                                                                      />
+                                                                      <Button
+                                                                          size="sm"
+                                                                          variant="ghost"
+                                                                          className="h-8 text-xs hover:bg-blue-50 hover:text-blue-600"
+                                                                          onClick={() => document.getElementById(`file-profile-${i}`)?.click()}
+                                                                      >
+                                                                          {isUploaded ? 'Update' : 'Upload'}
+                                                                      </Button>
+                                                                  </div>
+                                                              </div>
+                                                          );
+                                                      });
+                                                  })()}
+                                              </CardContent>
+                                          </Card>
+                                      )}
+                                   </div>
+                               </div>
+                           )}
                     </div>
                 </div>
-
                 {/* --- CHATBOT --- */}
                 <ChatBot />
 

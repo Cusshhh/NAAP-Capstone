@@ -56,6 +56,22 @@ class HandleInertiaRequests extends Middleware
             'pending_applicants_count' => $request->user() && ($request->user()->isAdmin() || in_array($request->user()->email, ['admin@naap.edu.ph', 'admin@admin.com']))
                 ? \App\Models\Application::whereIn('status', ['Submitted', 'Pending Review', 'Pending'])->count()
                 : 0,
+            'pending_applications' => $request->user() && ($request->user()->isAdmin() || in_array($request->user()->email, ['admin@naap.edu.ph', 'admin@admin.com']))
+                ? \App\Models\Application::whereIn('status', ['Submitted', 'Pending Review', 'Pending'])
+                    ->select('id', 'status', 'email', 'job_title', 'applicant_name', 'created_at')
+                    ->latest()
+                    ->get()
+                    ->map(function ($a) {
+                        return [
+                            'id' => $a->id,
+                            'status' => $a->status,
+                            'email' => $a->email,
+                            'jobTitle' => $a->job_title,
+                            'applicantName' => $a->applicant_name,
+                            'submittedDate' => $a->created_at->toISOString(),
+                        ];
+                    })->toArray()
+                : [],
             'flash' => [
                 'message' => $request->session()->get('message'),
                 'error' => $request->session()->get('error'),

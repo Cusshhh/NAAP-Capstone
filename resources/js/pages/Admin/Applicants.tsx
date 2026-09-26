@@ -45,10 +45,24 @@ export default function Applicants({ auth, applications: serverApplications }: {
         return new Set();
     });
 
-    const markAsViewed = (appId: any) => {
+    const getAppViewKey = (app: any): string => {
+        if (!app) return '';
+        if (typeof app === 'string' || typeof app === 'number') {
+            return String(app);
+        }
+        const id = app.id ?? '';
+        const email = (app.email || app.applicantEmail || app.applicant_email || '').toLowerCase().trim();
+        if (email) {
+            return `app_${id}_${email}`;
+        }
+        return `app_${id}`;
+    };
+
+    const markAsViewed = (app: any) => {
+        const key = typeof app === 'object' && app !== null ? getAppViewKey(app) : String(app);
         setViewedAppIds(prev => {
             const next = new Set(prev);
-            next.add(String(appId));
+            next.add(key);
             if (typeof window !== 'undefined') {
                 localStorage.setItem('viewed_applicant_ids', JSON.stringify(Array.from(next)));
                 window.dispatchEvent(new Event('storage'));
@@ -537,7 +551,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
         filteredApplications.forEach(app => {
             const emailKey = (app.email || '').toLowerCase().trim() || (app.applicantName || '').toLowerCase().trim();
             const isUnviewedStatus = ['Submitted', 'Pending Review', 'Pending'].includes(app.status);
-            const isViewed = viewedAppIds.has(String(app.id)) || viewedAppIds.has(Number(app.id));
+            const isViewed = viewedAppIds.has(getAppViewKey(app));
             const isNew = isUnviewedStatus && !isViewed;
             const isPending = isUnviewedStatus;
 
@@ -1074,7 +1088,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                 if (!viewingAppDetails) {
                                     const hasAnyUnreadInModal = selectedApplicantModal.applications.some((a: any) =>
                                         ['Submitted', 'Pending Review', 'Pending'].includes(a.status) &&
-                                        (!viewedAppIds.has(String(a.id)) && !viewedAppIds.has(Number(a.id)))
+                                        !viewedAppIds.has(getAppViewKey(a))
                                     );
 
                                     return (
@@ -1137,7 +1151,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                  const appStatus = getFormattedStatus(liveApp);
 
                                                                  const isNewApp = ['Submitted', 'Pending Review', 'Pending'].includes(liveApp.status) &&
-                                                                     (!viewedAppIds.has(String(liveApp.id)) && !viewedAppIds.has(Number(liveApp.id)));
+                                                                     !viewedAppIds.has(getAppViewKey(liveApp));
 
                                                                  return (
                                                                      <TableRow
@@ -1184,7 +1198,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                                 className="bg-[#193153] hover:bg-[#193153]/90 text-white font-semibold text-xs px-3 py-1 h-8 shadow-2xs inline-flex items-center justify-center gap-1"
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
-                                                                                    markAsViewed(liveApp.id);
+                                                                                    markAsViewed(liveApp);
                                                                                     if (liveApp.status === 'Submitted') {
                                                                                         handleStatusUpdate(liveApp.id, 'Under Review');
                                                                                     }
@@ -1544,7 +1558,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
                                                             const standardRequirements = [
                                                                 { title: "Letter of Intent (LOI)", keys: ["Letter of Intent", "LOI", "Application Letter"] },
-                                                                { title: "Personal Data Sheet (CS Form 212, Rev. 2025)", keys: ["Personal Data Sheet (PDS)", "PDS", "CS Form 212"] },
+                                                                { title: "Personal Data Sheet (CS Form No. 212, Rev. 2026)", keys: ["Personal Data Sheet (PDS)", "PDS", "CS Form 212"] },
                                                                 { title: "Work Experience Sheet (WES)", keys: ["Work Experience Sheet", "WES"] },
                                                                 { title: "Certificate of Eligibility / License", keys: ["Certificate of Eligibility", "COE", "License", "Board Rating"] },
                                                                 { title: "Transcript of Records (TOR) / Diploma", keys: ["Transcript of Records (TOR)", "TOR", "Diploma"] },

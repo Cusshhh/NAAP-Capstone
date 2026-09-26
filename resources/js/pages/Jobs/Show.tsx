@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { ArrowLeft, MapPin, Briefcase, Clock, Calendar, Users, CheckCircle, Upload, TrendingUp, Shield, Edit, Plus, Trash2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, MapPin, Briefcase, Clock, Calendar, Users, CheckCircle, Upload, TrendingUp, Shield, ShieldCheck, Edit, Plus, Trash2, ExternalLink } from 'lucide-react';
  import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -173,6 +173,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
     const [selectedEligibilities, setSelectedEligibilities] = useState<string[]>([]);
     const [otherEligibilityText, setOtherEligibilityText] = useState<string>('');
     const [extraCustomDocs, setExtraCustomDocs] = useState<{ id: number, label: string, file: File | null }[]>([]);
+    const [swornOathAgreed, setSwornOathAgreed] = useState<boolean>(false);
     // Auto-fill from Profile
     // Update the useEffect hook to populate form data from local storage when the application form (isApplyOpen) is opened.
     // This ensures that users don't have to re-enter their information if they have already saved it in their dashboard.
@@ -350,6 +351,10 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
             toast.error("Please specify your custom eligibility in the field provided.");
             return;
         }
+        if (!swornOathAgreed) {
+            toast.error("Please read and check the Sworn Declaration under CS Form No. 212 before submitting.");
+            return;
+        }
 
         setIsSubmitting(true);
 
@@ -366,10 +371,12 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
             "Performance Rating"
         ];
         const uploadedDocs = docNames.map(docName => {
-            const isUploaded = localStorage.getItem(`doc_${user?.id}_${docName}`) === 'uploaded' || localStorage.getItem(`profile_doc_${user?.id}_${docName}`) === 'uploaded';
+            if (!user?.id) return null;
+            const isUploaded = localStorage.getItem(`doc_${user.id}_${docName}`) === 'uploaded' || localStorage.getItem(`profile_doc_${user.id}_${docName}`) === 'uploaded';
             if (!isUploaded) return null;
-            const fileName = localStorage.getItem(`file_${user?.id}_${docName}`) || localStorage.getItem(`profile_file_${user?.id}_${docName}`) || `${docName.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`;
-            const content = localStorage.getItem(`content_${user?.id}_${docName}`) || localStorage.getItem(`profile_content_${user?.id}_${docName}`) || '';
+            const fileName = localStorage.getItem(`file_${user.id}_${docName}`) || localStorage.getItem(`profile_file_${user.id}_${docName}`);
+            if (!fileName) return null;
+            const content = localStorage.getItem(`content_${user.id}_${docName}`) || localStorage.getItem(`profile_content_${user.id}_${docName}`) || '';
             return {
                 name: docName,
                 fileName: fileName,
@@ -1290,7 +1297,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                 {(() => {
                                     const defaultCoreDocs = [
                                         "Letter of Intent",
-                                        "Personal Data Sheet (CS Form 212, Rev. 2025)",
+                                        "Personal Data Sheet (CS Form No. 212, Rev. 2026)",
                                         "Work Experience Sheet (WES)",
                                         "Certificate of Eligibility",
                                         "Transcript of Records (TOR)",
@@ -1401,11 +1408,33 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                                     }}
                                                     className="bg-white text-xs h-9 border-blue-200 cursor-pointer"
                                                 />
-                                            </div>
+                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
+                        </div>
+
+                        {/* 8. Sworn Declaration / CS Form 212 Oath */}
+                        <div className="space-y-3 bg-[#193153] text-white p-4.5 rounded-xl border border-slate-700 shadow-sm mt-6">
+                            <div className="flex items-center gap-2 text-[#ffdd59] font-bold text-sm">
+                                <ShieldCheck className="w-5 h-5 text-[#ffdd59]" />
+                                <span>CS Form No. 212 (Revised 2026) - Sworn Declaration & Attestation</span>
+                            </div>
+                            <p className="text-xs text-slate-200 leading-relaxed italic">
+                                "I declare under oath that the information provided in this Personal Data Sheet (CS Form No. 212) and all attached documents is true, correct, and complete to the best of my knowledge and belief. I acknowledge that any misrepresentation or deliberate omission of material facts may subject me to administrative, civil, or criminal liability under Philippine laws."
+                            </p>
+                            <div className="flex items-start space-x-2.5 pt-2 border-t border-slate-700/80">
+                                <Checkbox
+                                    id="sworn-oath-check"
+                                    checked={swornOathAgreed}
+                                    onCheckedChange={(checked) => setSwornOathAgreed(!!checked)}
+                                    className="mt-0.5 border-slate-400 bg-white data-[state=checked]:bg-[#ffdd59] data-[state=checked]:text-[#193153]"
+                                />
+                                <Label htmlFor="sworn-oath-check" className="text-xs font-bold text-white cursor-pointer select-none leading-snug">
+                                    I hereby certify and swear under oath that all details above are true, accurate, and snapshot from my official Personal Data Sheet (PDS). <span className="text-[#ffdd59]">*</span>
+                                </Label>
+                            </div>
                         </div>
                     </div>
 
@@ -1413,7 +1442,15 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                             <Button type="button" variant="outline" onClick={() => setIsApplyOpen(false)} disabled={isSubmitting}>
                                 Cancel
                             </Button>
-                            <Button type="submit" className="bg-[#193153] hover:bg-[#ffdd59] hover:text-[#193153] font-bold" disabled={isSubmitting}>
+                            <Button 
+                                type="submit" 
+                                className={`font-bold transition-all ${
+                                    swornOathAgreed 
+                                        ? 'bg-[#193153] hover:bg-[#ffdd59] hover:text-[#193153] text-white cursor-pointer' 
+                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed border-0'
+                                }`} 
+                                disabled={isSubmitting || !swornOathAgreed}
+                            >
                                 {isSubmitting ? "Submitting Application..." : "Submit Application"}
                             </Button>
                         </DialogFooter>
@@ -1654,7 +1691,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     {(() => {
                                         const defaultCoreDocs = [
                                             "Letter of Intent",
-                                            "Personal Data Sheet (CS Form 212, Rev. 2025)",
+                                            "Personal Data Sheet (CS Form No. 212, Rev. 2026)",
                                             "Work Experience Sheet (WES)",
                                             "Certificate of Eligibility",
                                             "Transcript of Records (TOR)",

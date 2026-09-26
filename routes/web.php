@@ -338,20 +338,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
                                     $skillsList[($seed + 7) % count($skillsList)],
                                 ];
                             })($app->job_title),
-                        'documents' => isset($app->dynamic_responses['documents'])
+                        'documents' => isset($app->dynamic_responses['documents']) && is_array($app->dynamic_responses['documents'])
                             ? $app->dynamic_responses['documents']
-                            : [
-                                [
-                                    'name' => 'Letter of Intent',
-                                    'fileName' => 'letter_of_intent.pdf',
-                                    'url' => null,
-                                ],
-                                [
-                                    'name' => 'Personal Data Sheet (PDS)',
-                                    'fileName' => 'pds_form.pdf',
-                                    'url' => null,
-                                ],
-                            ],
+                            : [],
                         // Dynamic, Balanced PDS Qualification Match Score (0-100%)
                         'aiScore' => (function ($app) {
                             $dyn = $app->dynamic_responses ?? [];

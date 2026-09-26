@@ -78,6 +78,19 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
         return combined;
     };
 
+    const getAppViewKey = (app: any): string => {
+        if (!app) return '';
+        if (typeof app === 'string' || typeof app === 'number') {
+            return String(app);
+        }
+        const id = app.id ?? '';
+        const email = (app.email || app.applicantEmail || app.applicant_email || '').toLowerCase().trim();
+        if (email) {
+            return `app_${id}_${email}`;
+        }
+        return `app_${id}`;
+    };
+
     const getPendingReviewCount = () => {
         try {
             let viewedIdsSet = new Set<string>();
@@ -93,23 +106,33 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
                 } catch (e) {}
             }
 
+            const pageProps = props as any;
+            const serverPendingApps = pageProps?.pending_applications || [];
+            
+            // Priority 1: Use server-provided pending_applications array
+            if (Array.isArray(serverPendingApps) && serverPendingApps.length > 0) {
+                const unviewed = serverPendingApps.filter((a: any) => {
+                    const key = getAppViewKey(a);
+                    const isViewed = viewedIdsSet.has(key);
+                    return !isViewed;
+                });
+                return unviewed.length;
+            }
+
+            // Priority 2: Use client/cached apps list
             const apps = getAllActiveApps();
-            let countFromApps = 0;
             if (Array.isArray(apps) && apps.length > 0) {
-                countFromApps = apps.filter((a: any) => {
+                const unviewedApps = apps.filter((a: any) => {
                     const status = a.status || '';
                     const isUnviewedStatus = ['Submitted', 'Pending Review', 'Pending'].includes(status);
-                    const isViewed = viewedIdsSet.has(String(a.id)) || (typeof a.id === 'number' && viewedIdsSet.has(String(a.id)));
+                    const key = getAppViewKey(a);
+                    const isViewed = viewedIdsSet.has(key);
                     return isUnviewedStatus && !isViewed;
-                }).length;
+                });
+                return unviewedApps.length;
             }
 
-            if (serverPendingApplicantsCount > 0) {
-                const unviewedServerCount = Math.max(0, serverPendingApplicantsCount - viewedIdsSet.size);
-                return Math.max(countFromApps, unviewedServerCount);
-            }
-
-            return countFromApps;
+            return serverPendingApplicantsCount;
         } catch (e) {}
         return serverPendingApplicantsCount;
     };
