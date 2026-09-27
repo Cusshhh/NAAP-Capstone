@@ -349,18 +349,30 @@ export default function AdminLayout({ children, auth, user: userProp, title, hea
             const activeApps = getAllActiveApps();
             const dynamicActivities = getActivities(activeApps, []);
             
-            // Format DB activity logs if any
-            const formattedDbLogs = (dbActivityLogs || []).map((log: any) => ({
-                id: `db_act_${log.id}`,
-                action: log.action || 'Activity Logged',
-                details: log.details || '',
-                time: log.created_at ? formatTime(new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : 'Recent',
-                timestamp: log.created_at ? new Date(log.created_at).getTime() : Date.now(),
-                href: '/admin/activity-log',
-                type: 'activity'
-            }));
+            // Format DB activity logs if any (excluding routine applicant profile update alerts)
+            const formattedDbLogs = (dbActivityLogs || [])
+                .filter((log: any) => {
+                    const actionStr = (log.action || '').toLowerCase();
+                    const detailsStr = (log.details || '').toLowerCase();
+                    return !actionStr.includes('updated profile information') && !detailsStr.includes('updated account profile');
+                })
+                .map((log: any) => ({
+                    id: `db_act_${log.id}`,
+                    action: log.action || 'Activity Logged',
+                    details: log.details || '',
+                    time: log.created_at ? formatTime(new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : 'Recent',
+                    timestamp: log.created_at ? new Date(log.created_at).getTime() : Date.now(),
+                    href: '/admin/activity-log',
+                    type: 'activity'
+                }));
 
-            const formattedDynActivities = (dynamicActivities || []).map((act: any) => {
+            const formattedDynActivities = (dynamicActivities || [])
+                .filter((act: any) => {
+                    const actionStr = (act.action || '').toLowerCase();
+                    const detailsStr = (act.details || '').toLowerCase();
+                    return !actionStr.includes('updated profile information') && !detailsStr.includes('updated account profile');
+                })
+                .map((act: any) => {
                 let destHref = '/admin/activity-log';
                 if (act.action === 'New Application' || act.action === 'Candidate Hired') destHref = '/admin/applicants';
                 else if (act.action === 'Job Posted') destHref = '/admin/jobs';

@@ -105,8 +105,6 @@ class ProfileController extends Controller
         $user->profile_data = $profileData;
         $user->save();
 
-        \App\Models\ActivityLog::write('Updated Profile Information', "Updated account profile details and avatar for {$user->name}.", 'Account Settings', 'UserCheck', 'text-blue-600 bg-blue-100');
-
         return to_route('profile.edit');
     }
 
