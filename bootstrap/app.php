@@ -25,5 +25,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response) {
+            if ($response->getStatusCode() === 429) {
+                return response()->view('errors.429', [], 429);
+            }
+            return $response;
+        });
     })->create();
