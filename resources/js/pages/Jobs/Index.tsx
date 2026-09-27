@@ -28,7 +28,8 @@ export default function JobListings({ auth, jobs: serverJobs }: JobIndexProps) {
     useEffect(() => {
         if (user && typeof window !== 'undefined') {
             const pData = (user as any)?.profile_data || {};
-            const isRemoved = pData.photo_removed || (pData.avatar_url === null && pData.photo === null && pData.avatar === null && !(user as any)?.avatar_url);
+            const serverPhoto = (user as any)?.avatar_url || pData.avatar_url || pData.photo || pData.avatar;
+            const isRemoved = pData.photo_removed && !serverPhoto;
             if (isRemoved) {
                 localStorage.removeItem(`user_profile_image_${user.id}`);
                 setProfileImage(null);

@@ -431,7 +431,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     // Profile Image State
     const [profileImage, setProfileImage] = useState<string | null>(() => {
         const pData = auth?.user?.profile_data || {};
-        const isPhotoRemoved = pData.photo_removed || (pData.avatar_url === null && pData.photo === null && pData.avatar === null && !auth?.user?.avatar_url);
+        const serverPhoto = auth?.user?.avatar_url || pData.avatar_url || pData.photo || pData.avatar;
+        const isPhotoRemoved = pData.photo_removed && !serverPhoto;
         if (isPhotoRemoved) {
             if (typeof window !== 'undefined' && auth?.user?.id) {
                 localStorage.removeItem(`user_profile_image_${auth.user.id}`);
@@ -439,10 +440,6 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             return null;
         }
 
-        const serverPhoto = auth?.user?.avatar_url 
-            || pData.avatar_url 
-            || pData.photo 
-            || pData.avatar;
         if (serverPhoto) return serverPhoto;
 
         if (typeof window !== 'undefined' && auth?.user?.id) {

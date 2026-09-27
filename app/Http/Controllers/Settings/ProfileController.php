@@ -65,6 +65,10 @@ class ProfileController extends Controller
             $profileData['avatar_url'] = $url;
             $profileData['photo'] = $url;
             $profileData['avatar'] = $url;
+            $profileData['photo_removed'] = false;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'avatar_url')) {
+                $user->avatar_url = $url;
+            }
         } elseif ($request->input('avatar_data')) {
             $avatarData = $request->input('avatar_data');
             if (str_starts_with($avatarData, 'data:image')) {
@@ -92,6 +96,10 @@ class ProfileController extends Controller
             $profileData['avatar_url'] = $url;
             $profileData['photo'] = $url;
             $profileData['avatar'] = $url;
+            $profileData['photo_removed'] = false;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'avatar_url')) {
+                $user->avatar_url = $url;
+            }
         }
 
         $user->profile_data = $profileData;

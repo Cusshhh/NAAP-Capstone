@@ -16,14 +16,12 @@ export function UserInfo({
     useEffect(() => {
         if (user && typeof window !== 'undefined') {
             const pData = (user as any)?.profile_data || {};
-            const isRemoved = pData.photo_removed || (pData.avatar_url === null && pData.photo === null && pData.avatar === null && !(user as any)?.avatar_url);
+            const serverPhoto = (user as any)?.avatar_url || pData.avatar_url || pData.photo || pData.avatar || user.avatar;
+            const isRemoved = pData.photo_removed && !serverPhoto;
             if (isRemoved) {
                 localStorage.removeItem(`user_profile_image_${user.id}`);
                 setProfileImage(null);
-                return;
-            }
-            const serverPhoto = (user as any)?.avatar_url || pData.avatar_url || pData.photo || pData.avatar || user.avatar;
-            if (serverPhoto) {
+            } else if (serverPhoto) {
                 setProfileImage(serverPhoto);
             } else {
                 const savedData = localStorage.getItem(`user_profile_data_${user.id}`);

@@ -22,7 +22,8 @@ export default function Profile({ mustVerifyEmail, status }: any) {
 
     // Avatar State
     const [avatarPreview, setAvatarPreview] = useState<string | null>(() => {
-        const isRemoved = user.profile_data?.photo_removed || (user.profile_data && user.profile_data.avatar_url === null && user.profile_data.photo === null && !user.avatar_url);
+        const hasPhoto = !!(user.avatar_url || user.profile_data?.avatar_url || user.profile_data?.photo || user.profile_data?.avatar);
+        const isRemoved = user.profile_data?.photo_removed && !hasPhoto;
         if (isRemoved) {
             if (user?.id && typeof window !== 'undefined') {
                 localStorage.removeItem(`user_profile_image_${user.id}`);

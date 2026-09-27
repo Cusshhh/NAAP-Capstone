@@ -261,9 +261,18 @@ class ApplicantController extends Controller
                                 $profile['photo'] = $url;
                                 $profile['avatar'] = $url;
                                 $profile['avatar_url'] = $url;
+                                $profile['photo_removed'] = false;
+                                if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'avatar_url')) {
+                                    $user->avatar_url = $url;
+                                }
                             }
                         } catch (\Exception $ex) {
                             Log::warning('Base64 photo conversion error: '.$ex->getMessage());
+                        }
+                    } elseif (!empty($profile[$photoKey]) && is_string($profile[$photoKey]) && empty($profile['remove_avatar'])) {
+                        $profile['photo_removed'] = false;
+                        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'avatar_url')) {
+                            $user->avatar_url = $profile[$photoKey];
                         }
                     }
                 }
