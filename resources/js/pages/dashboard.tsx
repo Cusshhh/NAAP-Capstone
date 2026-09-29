@@ -2864,8 +2864,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                              if (profileData.dob || profileData.sex || profileData.civilStatus) score += 10;
                                                              if (profileData.phone || profileData.email) score += 10;
                                                              if (profileData.address || profileData.resCity) score += 10;
-                                                             if (profileData.fatherLastName || profileData.motherLastName || profileData.spouseLastName) score += 10;
-                                                             if (profileData.educationLevel || profileData.schoolName) score += 15;
+                                                                                                                          if (profileData.educationLevel || profileData.schoolName) score += 15;
                                                              if ((profileData.eligibilities && profileData.eligibilities.length > 0) || profileData.licenseNo) score += 10;
                                                              if (profileData.recentPositionTitle || (profileData.workExperiences && profileData.workExperiences.length > 0)) score += 10;
                                                              if (profileData.trainingHours > 0 || (profileData.skills && profileData.skills.length > 0)) score += 10;
@@ -2883,8 +2882,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                  if (profileData.dob || profileData.sex || profileData.civilStatus) score += 10;
                                                                  if (profileData.phone || profileData.email) score += 10;
                                                                  if (profileData.address || profileData.resCity) score += 10;
-                                                                 if (profileData.fatherLastName || profileData.motherLastName || profileData.spouseLastName) score += 10;
-                                                                 if (profileData.educationLevel || profileData.schoolName) score += 15;
+                                                                                                                                  if (profileData.educationLevel || profileData.schoolName) score += 15;
                                                                  if ((profileData.eligibilities && profileData.eligibilities.length > 0) || profileData.licenseNo) score += 10;
                                                                  if (profileData.recentPositionTitle || (profileData.workExperiences && profileData.workExperiences.length > 0)) score += 10;
                                                                  if (profileData.trainingHours > 0 || (profileData.skills && profileData.skills.length > 0)) score += 10;
@@ -2910,18 +2908,15 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                  View All Sections
                                              </button>
                                              {[
-                                                 { id: 1, label: 'Sec I: Personal Info', icon: User },
-                                                 { id: 2, label: 'Sec II: Contact & Address', icon: MapPin },
-                                                 { id: 3, label: 'Sec III: Family Background', icon: Users },
-                                                 { id: 4, label: 'Sec IV: Educational Background', icon: GraduationCap },
-                                                 { id: 5, label: 'Sec V: Eligibility & Licenses', icon: Award },
-                                                 { id: 6, label: 'Sec VI: Work Experience', icon: Briefcase },
-                                                 { id: 7, label: 'Sec VII: Voluntary Work', icon: Heart },
-                                                 { id: 8, label: 'Sec VIII: Training / L&D', icon: BookOpen },
-                                                 { id: 9, label: 'Sec IX: Other Info', icon: Star },
-                                                 { id: 10, label: 'Sec X: References', icon: Shield },
-                                                 { id: 11, label: 'Sec XI: Documents Vault', icon: FileText },
-                                             ].map((sec) => (
+                                                  { id: 1, label: 'Sec I: Personal Info', icon: User },
+                                                  { id: 2, label: 'Sec II: Contact & Address', icon: MapPin },
+                                                  { id: 4, label: 'Sec III: Educational Background', icon: GraduationCap },
+                                                  { id: 5, label: 'Sec IV: Eligibility & Licenses', icon: Award },
+                                                  { id: 6, label: 'Sec V: Work Experience', icon: Briefcase },
+                                                  { id: 8, label: 'Sec VI: Training / L&D', icon: BookOpen },
+                                                  { id: 9, label: 'Sec VII: Other Info', icon: Star },
+                                                  { id: 11, label: 'Sec VIII: Documents Vault', icon: FileText },
+                                              ].map((sec) => (
                                                  <button
                                                      key={sec.id}
                                                      type="button"
@@ -3196,142 +3191,12 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                           </Card>
                                       )}
 
-                                      {/* CS Form No. 212 Section III: Family Background */}
-                                      {(pdsActiveSection === 'all' || pdsActiveSection === 3) && (
-                                          <Card className="md:col-span-2 shadow-sm">
-                                              <CardHeader className="border-b border-gray-100 pb-3">
-                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                      <Users className="w-5 h-5 text-emerald-600" /> CS Form 212 - Section III: Family Background
-                                                  </h3>
-                                              </CardHeader>
-                                              <CardContent className="space-y-4 pt-4">
-                                                  {/* Spouse Info */}
-                                                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2">
-                                                      <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wider">Spouse Details (If Applicable)</h4>
-                                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                          <div>
-                                                              <label className="text-[11px] font-bold text-gray-400 uppercase">Spouse Last Name</label>
-                                                              {isEditingProfile ? (
-                                                                  <input type="text" name="spouseLastName" value={profileData.spouseLastName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
-                                                              ) : <p className="font-medium text-gray-900 text-sm">{profileData.spouseLastName || '-'}</p>}
-                                                          </div>
-                                                          <div>
-                                                              <label className="text-[11px] font-bold text-gray-400 uppercase">Spouse First Name</label>
-                                                              {isEditingProfile ? (
-                                                                  <input type="text" name="spouseFirstName" value={profileData.spouseFirstName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
-                                                              ) : <p className="font-medium text-gray-900 text-sm">{profileData.spouseFirstName || '-'}</p>}
-                                                          </div>
-                                                          <div>
-                                                              <label className="text-[11px] font-bold text-gray-400 uppercase">Spouse Middle Name</label>
-                                                              {isEditingProfile ? (
-                                                                  <input type="text" name="spouseMiddleName" value={profileData.spouseMiddleName || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
-                                                              ) : <p className="font-medium text-gray-900 text-sm">{profileData.spouseMiddleName || '-'}</p>}
-                                                          </div>
-                                                          <div>
-                                                              <label className="text-[11px] font-bold text-gray-400 uppercase">Occupation</label>
-                                                              {isEditingProfile ? (
-                                                                  <input type="text" name="spouseOccupation" value={profileData.spouseOccupation || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
-                                                              ) : <p className="font-medium text-gray-900 text-sm">{profileData.spouseOccupation || '-'}</p>}
-                                                          </div>
-                                                          <div>
-                                                              <label className="text-[11px] font-bold text-gray-400 uppercase">Employer / Business</label>
-                                                              {isEditingProfile ? (
-                                                                  <input type="text" name="spouseEmployer" value={profileData.spouseEmployer || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
-                                                              ) : <p className="font-medium text-gray-900 text-sm">{profileData.spouseEmployer || '-'}</p>}
-                                                          </div>
-                                                          <div>
-                                                              <label className="text-[11px] font-bold text-gray-400 uppercase">Telephone No.</label>
-                                                              {isEditingProfile ? (
-                                                                  <input type="text" name="spouseTelephone" value={profileData.spouseTelephone || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm bg-white" />
-                                                              ) : <p className="font-medium text-gray-900 text-sm">{profileData.spouseTelephone || '-'}</p>}
-                                                          </div>
-                                                      </div>
-                                                  </div>
-
-                                                  {/* Parents Info */}
-                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2">
-                                                          <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wider">Father Name</h4>
-                                                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                                              <div>
-                                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">Last Name</label>
-                                                                  {isEditingProfile ? <input type="text" name="fatherLastName" value={profileData.fatherLastName || ''} onChange={handleProfileChange} className="w-full mt-0.5 p-1.5 border border-gray-300 rounded text-xs bg-white" /> : <p className="text-xs font-medium">{profileData.fatherLastName || '-'}</p>}
-                                                              </div>
-                                                              <div>
-                                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">First Name</label>
-                                                                  {isEditingProfile ? <input type="text" name="fatherFirstName" value={profileData.fatherFirstName || ''} onChange={handleProfileChange} className="w-full mt-0.5 p-1.5 border border-gray-300 rounded text-xs bg-white" /> : <p className="text-xs font-medium">{profileData.fatherFirstName || '-'}</p>}
-                                                              </div>
-                                                              <div>
-                                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">Middle Name</label>
-                                                                  {isEditingProfile ? <input type="text" name="fatherMiddleName" value={profileData.fatherMiddleName || ''} onChange={handleProfileChange} className="w-full mt-0.5 p-1.5 border border-gray-300 rounded text-xs bg-white" /> : <p className="text-xs font-medium">{profileData.fatherMiddleName || '-'}</p>}
-                                                              </div>
-                                                          </div>
-                                                      </div>
-
-                                                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2">
-                                                          <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wider">Mother Maiden Name</h4>
-                                                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                                              <div>
-                                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">Maiden Last Name</label>
-                                                                  {isEditingProfile ? <input type="text" name="motherLastName" value={profileData.motherLastName || ''} onChange={handleProfileChange} className="w-full mt-0.5 p-1.5 border border-gray-300 rounded text-xs bg-white" /> : <p className="text-xs font-medium">{profileData.motherLastName || '-'}</p>}
-                                                              </div>
-                                                              <div>
-                                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">First Name</label>
-                                                                  {isEditingProfile ? <input type="text" name="motherFirstName" value={profileData.motherFirstName || ''} onChange={handleProfileChange} className="w-full mt-0.5 p-1.5 border border-gray-300 rounded text-xs bg-white" /> : <p className="text-xs font-medium">{profileData.motherFirstName || '-'}</p>}
-                                                              </div>
-                                                              <div>
-                                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">Middle Name</label>
-                                                                  {isEditingProfile ? <input type="text" name="motherMiddleName" value={profileData.motherMiddleName || ''} onChange={handleProfileChange} className="w-full mt-0.5 p-1.5 border border-gray-300 rounded text-xs bg-white" /> : <p className="text-xs font-medium">{profileData.motherMiddleName || '-'}</p>}
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-
-                                                  {/* Children Section */}
-                                                  <div className="border-t pt-3 space-y-2">
-                                                      <div className="flex items-center justify-between">
-                                                          <h4 className="text-xs font-bold text-gray-700 uppercase">Children (Name & Date of Birth)</h4>
-                                                          {isEditingProfile && (
-                                                              <button type="button" onClick={addChildRow} className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                                                                  <Plus className="w-3.5 h-3.5" /> Add Child
-                                                              </button>
-                                                          )}
-                                                      </div>
-                                                      {Array.isArray(profileData.children) && profileData.children.length > 0 ? (
-                                                          <div className="space-y-2">
-                                                              {profileData.children.map((child: any, idx: number) => (
-                                                                  <div key={idx} className="flex items-center gap-2 bg-gray-50 p-2 rounded-md border border-gray-200 text-xs">
-                                                                      {isEditingProfile ? (
-                                                                          <>
-                                                                              <input type="text" placeholder="Full Name of Child" value={child.name || ''} onChange={(e) => updateChildRow(idx, 'name', e.target.value)} className="flex-1 p-1.5 border border-gray-300 rounded bg-white" />
-                                                                              <input type="date" value={child.birthdate || ''} onChange={(e) => updateChildRow(idx, 'birthdate', e.target.value)} className="w-36 p-1.5 border border-gray-300 rounded bg-white" />
-                                                                              <button type="button" onClick={() => removeChildRow(idx)} className="text-red-500 hover:text-red-700 p-1">
-                                                                                  <Trash2 className="w-4 h-4" />
-                                                                              </button>
-                                                                          </>
-                                                                      ) : (
-                                                                          <div className="flex justify-between w-full font-medium">
-                                                                              <span>{child.name || 'Unnamed Child'}</span>
-                                                                              <span className="text-gray-500">{child.birthdate ? `Born: ${child.birthdate}` : ''}</span>
-                                                                          </div>
-                                                                      )}
-                                                                  </div>
-                                                              ))}
-                                                          </div>
-                                                      ) : (
-                                                          <p className="text-xs text-gray-400 italic">No children listed.</p>
-                                                      )}
-                                                  </div>
-                                              </CardContent>
-                                          </Card>
-                                      )}
-
                                       {/* CS Form No. 212 Section IV: Educational Background */}
                                       {(pdsActiveSection === 'all' || pdsActiveSection === 4) && (
                                           <Card className="md:col-span-2 shadow-sm">
                                               <CardHeader className="border-b border-gray-100 pb-3">
                                                   <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                      <GraduationCap className="w-5 h-5 text-purple-600" /> CS Form 212 - Section IV: Educational Background
+                                                      <GraduationCap className="w-5 h-5 text-purple-600" /> CS Form 212 - Section III: Educational Background
                                                   </h3>
                                               </CardHeader>
                                               <CardContent className="space-y-4 pt-4">
@@ -3396,7 +3261,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                           <Card className="md:col-span-2 shadow-sm">
                                               <CardHeader className="border-b border-gray-100 pb-3">
                                                   <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                      <Award className="w-5 h-5 text-amber-600" /> CS Form 212 - Section V: Civil Service & Professional Eligibilities
+                                                      <Award className="w-5 h-5 text-amber-600" /> CS Form 212 - Section IV: Civil Service & Professional Eligibilities
                                                   </h3>
                                               </CardHeader>
                                               <CardContent className="space-y-4 pt-4">
@@ -3523,7 +3388,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                           <Card className="md:col-span-2 shadow-sm">
                                               <CardHeader className="border-b border-gray-100 pb-3">
                                                   <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                      <Briefcase className="w-5 h-5 text-orange-600" /> CS Form 212 - Section VI: Work Experience
+                                                      <Briefcase className="w-5 h-5 text-orange-600" /> CS Form 212 - Section V: Work Experience
                                                   </h3>
                                               </CardHeader>
                                               <CardContent className="space-y-4 pt-4">
@@ -3613,72 +3478,12 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                           </Card>
                                       )}
 
-                                      {/* CS Form No. 212 Section VII: Voluntary Work */}
-                                      {(pdsActiveSection === 'all' || pdsActiveSection === 7) && (
-                                          <Card className="md:col-span-2 shadow-sm">
-                                              <CardHeader className="border-b border-gray-100 pb-3">
-                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                      <Heart className="w-5 h-5 text-rose-600" /> CS Form 212 - Section VII: Voluntary Work or Involvement
-                                                  </h3>
-                                              </CardHeader>
-                                              <CardContent className="space-y-4 pt-4">
-                                                  <div className="flex items-center justify-between">
-                                                      <h4 className="text-xs font-bold text-gray-700 uppercase">Voluntary Work / Civic Organizations</h4>
-                                                      {isEditingProfile && (
-                                                          <button type="button" onClick={addVoluntaryRow} className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                                                              <Plus className="w-3.5 h-3.5" /> Add Voluntary Work
-                                                          </button>
-                                                      )}
-                                                  </div>
-                                                  {Array.isArray(profileData.voluntaryWorks) && profileData.voluntaryWorks.length > 0 ? (
-                                                      <div className="space-y-3">
-                                                          {profileData.voluntaryWorks.map((vol: any, idx: number) => (
-                                                              <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs">
-                                                                  {isEditingProfile ? (
-                                                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                                                                          <div>
-                                                                              <label className="text-[10px] font-bold text-gray-400">Organization Name & Address</label>
-                                                                              <input type="text" placeholder="e.g. Red Cross Phils" value={vol.organization || ''} onChange={(e) => updateVoluntaryRow(idx, 'organization', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
-                                                                          </div>
-                                                                          <div>
-                                                                              <label className="text-[10px] font-bold text-gray-400">No. of Hours</label>
-                                                                              <input type="text" placeholder="e.g. 40" value={vol.hours || ''} onChange={(e) => updateVoluntaryRow(idx, 'hours', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
-                                                                          </div>
-                                                                          <div>
-                                                                              <label className="text-[10px] font-bold text-gray-400">Position / Nature of Work</label>
-                                                                              <input type="text" placeholder="e.g. Volunteer Officer" value={vol.position || ''} onChange={(e) => updateVoluntaryRow(idx, 'position', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
-                                                                          </div>
-                                                                          <div className="flex items-end justify-end">
-                                                                              <button type="button" onClick={() => removeVoluntaryRow(idx)} className="text-red-500 hover:text-red-700 p-1.5">
-                                                                                  <Trash2 className="w-4 h-4" />
-                                                                              </button>
-                                                                          </div>
-                                                                      </div>
-                                                                  ) : (
-                                                                      <div className="flex justify-between items-center">
-                                                                          <div>
-                                                                              <p className="font-bold text-gray-900">{vol.organization || 'Organization'}</p>
-                                                                              <p className="text-gray-600">{vol.position ? `Role: ${vol.position}` : ''}</p>
-                                                                          </div>
-                                                                          <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">{vol.hours ? `${vol.hours} hrs` : ''}</span>
-                                                                      </div>
-                                                                  )}
-                                                              </div>
-                                                          ))}
-                                                      </div>
-                                                  ) : (
-                                                      <p className="text-xs text-gray-400 italic">No voluntary work declared.</p>
-                                                  )}
-                                              </CardContent>
-                                          </Card>
-                                      )}
-
                                       {/* CS Form No. 212 Section VIII: Training Programs / L&D */}
                                       {(pdsActiveSection === 'all' || pdsActiveSection === 8) && (
                                           <Card className="md:col-span-2 shadow-sm">
                                               <CardHeader className="border-b border-gray-100 pb-3">
                                                   <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                      <BookOpen className="w-5 h-5 text-teal-600" /> CS Form 212 - Section VIII: Learning & Development (L&D) / Training Programs
+                                                      <BookOpen className="w-5 h-5 text-teal-600" /> CS Form 212 - Section VI: Learning & Development (L&D) / Training Programs
                                                   </h3>
                                               </CardHeader>
                                               <CardContent className="space-y-4 pt-4">
@@ -3757,7 +3562,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                           <Card className="md:col-span-2 shadow-sm">
                                               <CardHeader className="border-b border-gray-100 pb-3">
                                                   <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                      <Star className="w-5 h-5 text-amber-500" /> CS Form 212 - Section IX: Special Skills, Distinctions & Memberships
+                                                      <Star className="w-5 h-5 text-amber-500" /> CS Form 212 - Section VII: Special Skills, Distinctions & Memberships
                                                   </h3>
                                               </CardHeader>
                                               <CardContent className="space-y-4 pt-4">
@@ -3870,59 +3675,12 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                           </Card>
                                       )}
 
-                                      {/* CS Form No. 212 Section X: References & Statutory Details */}
-                                      {(pdsActiveSection === 'all' || pdsActiveSection === 10) && (
-                                          <Card className="md:col-span-2 shadow-sm">
-                                              <CardHeader className="border-b border-gray-100 pb-3">
-                                                  <h3 className="font-bold text-[#193153] flex items-center gap-2 text-base">
-                                                      <Shield className="w-5 h-5 text-blue-700" /> CS Form 212 - Section X: Character References & Statutory Background
-                                                  </h3>
-                                              </CardHeader>
-                                              <CardContent className="space-y-4 pt-4">
-                                                  <div className="space-y-3">
-                                                      <h4 className="text-xs font-bold text-gray-700 uppercase">3 Character References (Not Related by Consanguinity/Affinity)</h4>
-                                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                          {[0, 1, 2].map((idx) => {
-                                                              const refItem = profileData.references?.[idx] || { name: '', address: '', phone: '' };
-                                                              return (
-                                                                  <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs space-y-2">
-                                                                      <p className="font-bold text-[#193153]">Reference #{idx + 1}</p>
-                                                                      {isEditingProfile ? (
-                                                                          <>
-                                                                              <input type="text" placeholder="Full Name" value={refItem.name || ''} onChange={(e) => updateReferenceRow(idx, 'name', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
-                                                                              <input type="text" placeholder="Address / Agency" value={refItem.address || ''} onChange={(e) => updateReferenceRow(idx, 'address', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
-                                                                              <input type="tel" placeholder="Contact No." value={refItem.phone || ''} onChange={(e) => updateReferenceRow(idx, 'phone', e.target.value)} className="w-full p-1.5 border rounded bg-white" />
-                                                                          </>
-                                                                      ) : (
-                                                                          <div>
-                                                                              <p className="font-semibold text-gray-900">{refItem.name || '-'}</p>
-                                                                              <p className="text-gray-500">{refItem.address || '-'}</p>
-                                                                              <p className="text-blue-600">{refItem.phone || '-'}</p>
-                                                                          </div>
-                                                                      )}
-                                                                  </div>
-                                                              );
-                                                          })}
-                                                      </div>
-                                                  </div>
-
-                                                  {/* Statutory Declaration Summary */}
-                                                  <div className="border-t pt-3 bg-amber-50/50 p-3 rounded-lg border border-amber-200">
-                                                      <h4 className="text-xs font-bold text-amber-900 uppercase mb-1">CSC Statutory Disclosures (Q34 - Q40)</h4>
-                                                      <p className="text-xs text-amber-800">
-                                                          Statutory answers are saved and attached to every official government job application snapshot.
-                                                      </p>
-                                                  </div>
-                                              </CardContent>
-                                          </Card>
-                                      )}
-
                                       {/* CS Form No. 212 Section XI: Supporting Documents Vault */}
                                       {(pdsActiveSection === 'all' || pdsActiveSection === 11) && (
                                           <Card className="md:col-span-2 shadow-sm">
                                               <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-gray-100">
                                                   <h3 className="font-bold text-[#193153] flex items-center gap-2">
-                                                      <FileText className="w-5 h-5 text-blue-600" /> CS Form 212 - Section XI: Supporting Documents Vault
+                                                      <FileText className="w-5 h-5 text-blue-600" /> CS Form 212 - Section VIII: Supporting Documents Vault
                                                   </h3>
                                                   <Button
                                                       size="sm"
