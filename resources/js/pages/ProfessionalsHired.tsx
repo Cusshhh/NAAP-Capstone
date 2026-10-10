@@ -47,9 +47,9 @@ const Card = ({ className, children }: any) => (
 
 // --- CONFIGURATION: HERO IMAGES (Using Public Paths) ---
 const heroImages = [
-    '/images/profhired.jpg',
-    '/images/profhired2.jpg',
-    '/images/profhired3.jpg'
+    '/images/csc.png',
+    '/images/L1.jpg',
+    '/images/L2.jpg'
 ];
 
 // --- NEW CONFIGURATION: HERO SLIDE TEXT CONTENT ---
@@ -271,7 +271,7 @@ export default function ProfessionalsHired({ serverStats }: { serverStats?: any 
                 </nav>
 
                 {/* --- DYNAMIC HERO SECTION --- */}
-                <div className="relative min-h-[500px] md:h-[560px] flex items-center justify-center overflow-hidden bg-[#193153] py-10 md:py-0">
+                <div className="relative min-h-[550px] md:h-[620px] flex items-center justify-center overflow-hidden bg-[#193153] py-10 md:py-0">
 
                     {/* Background Images Carousel Layer */}
                     {heroImages.map((imgSrc, index) => (
@@ -282,7 +282,7 @@ export default function ProfessionalsHired({ serverStats }: { serverStats?: any 
                             <img
                                 src={imgSrc}
                                 alt={`Slide ${index + 1}`}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover object-center"
                             />
                             {/* Gradient Overlay */}
                             <div className="absolute inset-0 bg-linear-to-t from-[#193153]/95 via-[#193153]/70 to-[#193153]/40" />
@@ -305,17 +305,17 @@ export default function ProfessionalsHired({ serverStats }: { serverStats?: any 
 
                     {/* Hero Text Content (Dynamic) */}
                     <div className="container relative z-10 px-4 text-center h-full flex flex-col justify-center py-6 md:py-0">
-                        <div className="max-w-4xl mx-auto relative">
+                        <div className="max-w-4xl mx-auto relative flex flex-col items-center">
 
                             {/* Content Container */}
-                            <div className="relative min-h-[220px] sm:min-h-[200px] md:min-h-[220px] flex items-center justify-center">
+                            <div className="relative w-full min-h-[270px] sm:min-h-[250px] md:min-h-[280px] flex items-center justify-center">
                                 {heroSlideContent.map((content, index) => (
                                     <div
                                         key={index}
-                                        className={`absolute inset-x-0 flex flex-col items-center transition-all duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 -z-10 translate-y-4'}`}
+                                        className={`absolute inset-x-0 flex flex-col items-center transition-all duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10 translate-y-0 pointer-events-auto' : 'opacity-0 -z-10 translate-y-4 pointer-events-none'}`}
                                     >
                                         {/* BADGE */}
-                                        <div className="inline-flex items-center gap-1.5 bg-[#ffdd59] text-[#193153] px-3.5 py-1 rounded-full text-xs sm:text-sm font-bold mb-3">
+                                        <div className="inline-flex items-center gap-1.5 bg-[#ffdd59] text-[#193153] px-3.5 py-1 rounded-full text-xs sm:text-sm font-bold mb-3 shadow-md">
                                             <Award className="w-4 h-4" /> {content.badge}
                                         </div>
 
@@ -333,7 +333,7 @@ export default function ProfessionalsHired({ serverStats }: { serverStats?: any 
                             </div>
 
                             {/* Static Buttons */}
-                            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 relative z-20 mt-6 sm:mt-10 md:mt-24 px-4 sm:px-0">
+                            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 relative z-20 mt-10 sm:mt-14 md:mt-28 px-4 sm:px-0">
                                 <Button onClick={openRegister} variant="accent" size="lg" className="h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base w-full sm:w-auto">
                                     Join Our Team <ArrowRight className="ml-2 w-5 h-5" />
                                 </Button>

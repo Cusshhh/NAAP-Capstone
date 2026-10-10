@@ -76,6 +76,57 @@ class StaffingController extends Controller
         return redirect()->back()->with('success', "Position '{$position->position}' saved successfully and ready for posting.");
     }
 
+    public function update(Request $request, $id)
+    {
+        $position = StaffingPosition::findOrFail($id);
+
+        $validated = $request->validate([
+            'office' => 'required|string|max:255',
+            'position' => 'required|string|max:255',
+            'sg' => 'required|integer',
+            'status' => 'nullable|string|in:Filled,Unfilled,On-process',
+            'campus' => 'nullable|string|max:255',
+            'plantilla_item' => 'nullable|string|max:255',
+            'employment_type' => 'nullable|string',
+            'location' => 'nullable|string|max:255',
+            'qs_education' => 'nullable|string',
+            'qs_experience' => 'nullable|string',
+            'qs_eligibility' => 'nullable|string',
+            'qs_training' => 'nullable|string',
+            'description' => 'nullable|string',
+            'competency' => 'nullable|string',
+            'responsibilities' => 'nullable',
+            'requirements' => 'nullable',
+            'deadline' => 'nullable|date',
+            'custom_file_requirements' => 'nullable|array',
+        ]);
+
+        $position->update([
+            'campus' => $validated['campus'] ?? $position->campus ?? 'Villamor Air Base, Pasay City',
+            'office' => $validated['office'],
+            'position' => $validated['position'],
+            'sg' => $validated['sg'],
+            'status' => $validated['status'] ?? $position->status,
+            'plantilla_item' => $validated['plantilla_item'] ?? null,
+            'employment_type' => $validated['employment_type'] ?? 'Full-time',
+            'location' => $validated['location'] ?? 'Villamor Air Base, Pasay City',
+            'qs_education' => $validated['qs_education'] ?? null,
+            'qs_experience' => $validated['qs_experience'] ?? null,
+            'qs_eligibility' => $validated['qs_eligibility'] ?? null,
+            'qs_training' => $validated['qs_training'] ?? null,
+            'description' => $validated['description'] ?? null,
+            'competency' => $validated['competency'] ?? null,
+            'responsibilities' => is_array($validated['responsibilities'] ?? null) ? $validated['responsibilities'] : (is_string($validated['responsibilities'] ?? null) ? array_filter(explode("\n", $validated['responsibilities'])) : null),
+            'requirements' => is_array($validated['requirements'] ?? null) ? $validated['requirements'] : null,
+            'deadline' => $validated['deadline'] ?? null,
+            'custom_file_requirements' => $validated['custom_file_requirements'] ?? null,
+        ]);
+
+        ActivityLog::write('Updated Staffing Position', "Updated details for staffing position '{$position->position}' ({$position->office}).", 'Staffing Monitoring', 'Edit', 'text-amber-600 bg-amber-100');
+
+        return redirect()->back()->with('success', "Position '{$position->position}' updated successfully.");
+    }
+
     public function postJob($id)
     {
         $position = StaffingPosition::findOrFail($id);

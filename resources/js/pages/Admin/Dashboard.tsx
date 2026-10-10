@@ -130,7 +130,12 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
 
     const jobs = getJobs();
     const campuses = Array.from(new Set(jobs.map(j => j.location).filter(Boolean)));
-    const positions = Array.from(new Set(jobs.map(j => j.title).filter(Boolean))).sort();
+    const positions = Array.from(new Set([
+        ...(dbJobs || []).map((j: any) => j.title),
+        ...(dbApplications || []).map((a: any) => a.job_title || a.jobTitle),
+        ...allApps.map((a: any) => a.jobTitle || a.job_title),
+        ...jobs.map((j: any) => j.title)
+    ].filter((p): p is string => Boolean(p) && typeof p === 'string'))).sort();
 
 
     const [viewMode, setViewMode] = useState<'global' | 'campus'>('global');

@@ -439,7 +439,10 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
     const statuses = ['Submitted', 'Under Review', 'Rejected', 'Hired', 'Withdrawn'];
     const campuses = Array.from(new Set(applications.map(app => app.campus).filter(Boolean)));
-    const positions = Array.from(new Set(applications.map(app => app.jobTitle).filter(Boolean))).sort();
+    const positions = Array.from(new Set([
+        ...applications.map(app => app.jobTitle || app.job_title),
+        ...getJobs().map((j: any) => j.title)
+    ].filter((p): p is string => Boolean(p) && typeof p === 'string'))).sort();
 
     const filteredApplications = applications.filter(app => {
         const matchesSearch = app.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) || app.jobTitle.toLowerCase().includes(searchTerm.toLowerCase());

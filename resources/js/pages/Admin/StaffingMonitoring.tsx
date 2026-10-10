@@ -2,7 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import {
     Users, Briefcase, FileText, Award, LogOut, Shield,
     Search, Filter, MapPin, Plus, ArrowRight, CheckCircle,
-    XCircle, AlertCircle, Building2, Layout, Trash2, Calendar
+    XCircle, AlertCircle, Building2, Layout, Trash2, Calendar, Pencil
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
@@ -52,6 +52,29 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
     });
 
     const [newCustomRequirement, setNewCustomRequirement] = useState('');
+
+    // Edit Position Modal State
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState<any | null>(null);
+    const [editFormState, setEditFormState] = useState({
+        office: '',
+        position: '',
+        plantilla_item: '',
+        sg: 19,
+        employment_type: 'Full-time',
+        location: 'Villamor Air Base, Pasay City',
+        status: 'Unfilled',
+        qs_education: '',
+        qs_experience: '',
+        qs_eligibility: '',
+        qs_training: '',
+        description: '',
+        competency: '',
+        responsibilities: '',
+        deadline: '',
+        custom_file_requirements: [] as { id: number; label: string }[],
+    });
+    const [newEditCustomRequirement, setNewEditCustomRequirement] = useState('');
 
     // Custom Delete & Clear Dialog state
     const [deleteItemTarget, setDeleteItemTarget] = useState<any | null>(null);
@@ -133,6 +156,93 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
             },
             onError: () => {
                 toast.error('Failed to save position.');
+            }
+        });
+    };
+
+    const handleOpenEditModal = (item: any) => {
+        setEditingItem(item);
+        let customDocs: { id: number; label: string }[] = [];
+        if (Array.isArray(item.custom_file_requirements)) {
+            customDocs = item.custom_file_requirements.map((doc: any, idx: number) => {
+                if (typeof doc === 'string') return { id: Date.now() + idx, label: doc };
+                return doc;
+            });
+        }
+        setEditFormState({
+            office: item.office || '',
+            position: item.position || '',
+            plantilla_item: item.plantilla_item || '',
+            sg: item.sg || 19,
+            employment_type: item.employment_type || 'Full-time',
+            location: item.location || 'Villamor Air Base, Pasay City',
+            status: item.status || 'Unfilled',
+            qs_education: item.qs_education || "Bachelor's Degree relevant to the job",
+            qs_experience: item.qs_experience || "Two (2) years of Relevant Experience",
+            qs_eligibility: item.qs_eligibility || "Career Service Professional/ Second level eligibility",
+            qs_training: item.qs_training || "Eight (8) Hours of Relevant Training",
+            description: item.description || '',
+            competency: item.competency || '',
+            responsibilities: Array.isArray(item.responsibilities) ? item.responsibilities.join('\n') : (item.responsibilities || ''),
+            deadline: item.deadline ? (typeof item.deadline === 'string' && item.deadline.includes('T') ? item.deadline.split('T')[0] : item.deadline) : '',
+            custom_file_requirements: customDocs,
+        });
+        setIsEditModalOpen(true);
+    };
+
+    const handleAddEditCustomAttachment = () => {
+        if (!newEditCustomRequirement.trim()) return;
+        setEditFormState((prev) => ({
+            ...prev,
+            custom_file_requirements: [
+                ...prev.custom_file_requirements,
+                { id: Date.now(), label: newEditCustomRequirement.trim() },
+            ],
+        }));
+        setNewEditCustomRequirement('');
+    };
+
+    const handleRemoveEditCustomAttachment = (id: number) => {
+        setEditFormState((prev) => ({
+            ...prev,
+            custom_file_requirements: prev.custom_file_requirements.filter((r) => r.id !== id),
+        }));
+    };
+
+    const handleEditPositionSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingItem) return;
+        if (!editFormState.office.trim() || !editFormState.position.trim()) {
+            toast.error('Please fill in required fields (Office/Department and Position Title).');
+            return;
+        }
+
+        router.put(`/admin/staffing/${editingItem.id}`, {
+            office: editFormState.office.trim(),
+            position: editFormState.position.trim(),
+            plantilla_item: editFormState.plantilla_item.trim(),
+            sg: Number(editFormState.sg) || 19,
+            status: editFormState.status,
+            employment_type: editFormState.employment_type,
+            location: editFormState.location,
+            qs_education: editFormState.qs_education,
+            qs_experience: editFormState.qs_experience,
+            qs_eligibility: editFormState.qs_eligibility,
+            qs_training: editFormState.qs_training,
+            description: editFormState.description,
+            competency: editFormState.competency,
+            responsibilities: editFormState.responsibilities,
+            deadline: editFormState.deadline || null,
+            custom_file_requirements: editFormState.custom_file_requirements,
+            campus: editFormState.location
+        }, {
+            onSuccess: () => {
+                toast.success(`Position "${editFormState.position}" updated successfully!`);
+                setIsEditModalOpen(false);
+                setEditingItem(null);
+            },
+            onError: () => {
+                toast.error('Failed to update position.');
             }
         });
     };
@@ -345,6 +455,15 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                                                             <Plus className="w-3.5 h-3.5 mr-1 text-blue-600" /> Post Job
                                                         </Button>
                                                     )}
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 p-0 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg"
+                                                        onClick={() => handleOpenEditModal(item)}
+                                                        title="Edit Position"
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5" />
+                                                    </Button>
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
@@ -708,6 +827,303 @@ export default function StaffingMonitoring({ auth, staffingData: serverStaffing 
                                 className="bg-[#193153] hover:bg-[#193153]/90 text-white font-medium"
                             >
                                 Save Position
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Position Modal */}
+            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                            <Pencil className="h-5 w-5 text-amber-600" />
+                            Edit Staffing Position
+                        </DialogTitle>
+                        <DialogDescription>
+                            Update position details, qualification standards, and plantilla information for <span className="font-semibold text-gray-800">{editingItem?.position}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form onSubmit={handleEditPositionSubmit} className="space-y-5 py-2">
+                        {/* Section 1: Position Details */}
+                        <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-4">
+                            <h4 className="text-xs uppercase font-bold text-[#193153] tracking-wider flex items-center gap-2">
+                                <Briefcase className="h-4 w-4 text-blue-600" />
+                                1. Position Details
+                            </h4>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor="edit_position" className="text-xs font-semibold text-gray-700">Position Title *</Label>
+                                    <Input
+                                        id="edit_position"
+                                        value={editFormState.position}
+                                        onChange={(e) => setEditFormState({ ...editFormState, position: e.target.value })}
+                                        placeholder="e.g. Information Technology Officer I"
+                                        className="mt-1 text-sm bg-white"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="edit_plantilla_item" className="text-xs font-semibold text-gray-700">Item No.</Label>
+                                    <Input
+                                        id="edit_plantilla_item"
+                                        value={editFormState.plantilla_item}
+                                        onChange={(e) => setEditFormState({ ...editFormState, plantilla_item: e.target.value })}
+                                        placeholder="e.g. PSCAB-ITO1-36-2023"
+                                        className="mt-1 text-sm bg-white"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor="edit_office" className="text-xs font-semibold text-gray-700">Place of Assignment / Department *</Label>
+                                    <Input
+                                        id="edit_office"
+                                        value={editFormState.office}
+                                        onChange={(e) => setEditFormState({ ...editFormState, office: e.target.value })}
+                                        placeholder="e.g. ICT UNIT, VAB CAMPUS - PASAY CITY"
+                                        className="mt-1 text-sm bg-white"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="edit_sg" className="text-xs font-semibold text-gray-700">Salary Grade (SG 1 - 33) *</Label>
+                                    <Select value={String(editFormState.sg)} onValueChange={(val) => setEditFormState({ ...editFormState, sg: Number(val) })}>
+                                        <SelectTrigger className="mt-1 bg-white">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-60">
+                                            {Array.from({ length: 33 }, (_, i) => i + 1).map((sgNum) => (
+                                                <SelectItem key={sgNum} value={String(sgNum)}>
+                                                    SG {sgNum} {SALARY_GRADE_MAP[sgNum] ? `(₱${SALARY_GRADE_MAP[sgNum].toLocaleString()}/mo)` : ''}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <Label htmlFor="edit_employment_type" className="text-xs font-semibold text-gray-700">Employment Type</Label>
+                                    <Select value={editFormState.employment_type} onValueChange={(val) => setEditFormState({ ...editFormState, employment_type: val })}>
+                                        <SelectTrigger className="mt-1 bg-white">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Full-time">Full-time / Permanent</SelectItem>
+                                            <SelectItem value="Contractual">Contractual / COS</SelectItem>
+                                            <SelectItem value="Part-time">Part-time</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label htmlFor="edit_location" className="text-xs font-semibold text-gray-700">Location / Campus</Label>
+                                    <Input
+                                        id="edit_location"
+                                        value={editFormState.location}
+                                        onChange={(e) => setEditFormState({ ...editFormState, location: e.target.value })}
+                                        placeholder="e.g. Villamor Air Base, Pasay City"
+                                        className="mt-1 text-sm bg-white"
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="edit_status" className="text-xs font-semibold text-gray-700">Position Status</Label>
+                                    <Select value={editFormState.status} onValueChange={(val) => setEditFormState({ ...editFormState, status: val })}>
+                                        <SelectTrigger className="mt-1 bg-white">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Unfilled">Unfilled</SelectItem>
+                                            <SelectItem value="Filled">Filled</SelectItem>
+                                            <SelectItem value="On-process">On-process</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Section 2: Qualification Standards */}
+                        <div className="bg-blue-50/60 border border-blue-200 p-4 rounded-xl space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-xs uppercase font-bold text-blue-900 tracking-wider flex items-center gap-2">
+                                    <Shield className="h-4 w-4 text-blue-600" />
+                                    2. Qualification Standards
+                                </h4>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor="edit_qs_education" className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                                        🎓 Education Requirement *
+                                    </Label>
+                                    <Input
+                                        id="edit_qs_education"
+                                        value={editFormState.qs_education}
+                                        onChange={(e) => setEditFormState({ ...editFormState, qs_education: e.target.value })}
+                                        placeholder="e.g. Bachelor's Degree relevant to the job"
+                                        className="mt-1 text-sm bg-white"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="edit_qs_experience" className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                                        💼 Work Experience Requirement *
+                                    </Label>
+                                    <Input
+                                        id="edit_qs_experience"
+                                        value={editFormState.qs_experience}
+                                        onChange={(e) => setEditFormState({ ...editFormState, qs_experience: e.target.value })}
+                                        placeholder="e.g. Two (2) years of Relevant Experience"
+                                        className="mt-1 text-sm bg-white"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="edit_qs_eligibility" className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                                        📜 Eligibility / License Requirement *
+                                    </Label>
+                                    <Input
+                                        id="edit_qs_eligibility"
+                                        value={editFormState.qs_eligibility}
+                                        onChange={(e) => setEditFormState({ ...editFormState, qs_eligibility: e.target.value })}
+                                        placeholder="e.g. Career Service Professional/ Second level eligibility"
+                                        className="mt-1 text-sm bg-white"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="edit_qs_training" className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                                        🏋️ Training & L&D Requirement *
+                                    </Label>
+                                    <Input
+                                        id="edit_qs_training"
+                                        value={editFormState.qs_training}
+                                        onChange={(e) => setEditFormState({ ...editFormState, qs_training: e.target.value })}
+                                        placeholder="e.g. Eight (8) Hours of Relevant Training"
+                                        className="mt-1 text-sm bg-white"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Job Description */}
+                        <div>
+                            <Label htmlFor="edit_description" className="text-xs font-semibold text-gray-700">Job Description *</Label>
+                            <Textarea
+                                id="edit_description"
+                                rows={3}
+                                value={editFormState.description}
+                                onChange={(e) => setEditFormState({ ...editFormState, description: e.target.value })}
+                                placeholder="Brief description of the position..."
+                                className="mt-1 text-sm bg-white"
+                            />
+                        </div>
+
+                        {/* Competencies */}
+                        <div>
+                            <Label htmlFor="edit_competency" className="text-xs font-semibold text-gray-700">Competencies / Core Skills</Label>
+                            <Textarea
+                                id="edit_competency"
+                                rows={2}
+                                value={editFormState.competency}
+                                onChange={(e) => setEditFormState({ ...editFormState, competency: e.target.value })}
+                                placeholder="e.g. Accountability, Customer Service Excellence, Strategic Thinking"
+                                className="mt-1 text-sm bg-white"
+                            />
+                        </div>
+
+                        {/* Key Responsibilities */}
+                        <div>
+                            <Label htmlFor="edit_responsibilities" className="text-xs font-semibold text-gray-700">Key Responsibilities (one per line) *</Label>
+                            <Textarea
+                                id="edit_responsibilities"
+                                rows={3}
+                                value={editFormState.responsibilities}
+                                onChange={(e) => setEditFormState({ ...editFormState, responsibilities: e.target.value })}
+                                placeholder="e.g., Manage campus network infrastructure&#10;Implement cybersecurity safeguards"
+                                className="mt-1 text-sm bg-white"
+                            />
+                        </div>
+
+                        {/* Required Document Attachments */}
+                        <div className="space-y-3 pt-1">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-semibold text-gray-700">Required Document Attachments</Label>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        type="text"
+                                        placeholder="Add Custom Document (e.g., Flying Logbook)"
+                                        value={newEditCustomRequirement}
+                                        onChange={(e) => setNewEditCustomRequirement(e.target.value)}
+                                        className="h-8 text-xs w-64 bg-white"
+                                    />
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={handleAddEditCustomAttachment}
+                                        className="h-8 text-xs bg-white text-blue-700 border-blue-200 hover:bg-blue-50"
+                                    >
+                                        <Plus className="h-3.5 w-3.5 mr-1" /> Add
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {editFormState.custom_file_requirements.length > 0 && (
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                    {editFormState.custom_file_requirements.map((req) => (
+                                        <span
+                                            key={req.id}
+                                            className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-800 px-2.5 py-1 rounded-md text-xs font-medium"
+                                        >
+                                            📄 {req.label}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveEditCustomAttachment(req.id)}
+                                                className="hover:text-red-600 font-bold ml-1"
+                                            >
+                                                ×
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Application Closing Date */}
+                        <div className="pt-1">
+                            <Label htmlFor="edit_deadline" className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                                <Calendar className="h-3.5 w-3.5 text-blue-600" />
+                                Application Closing Date / Deadline *
+                            </Label>
+                            <Input
+                                id="edit_deadline"
+                                type="date"
+                                value={editFormState.deadline}
+                                onChange={(e) => setEditFormState({ ...editFormState, deadline: e.target.value })}
+                                className="mt-1 text-sm bg-white sm:w-64"
+                            />
+                        </div>
+
+                        <DialogFooter className="pt-4 border-t mt-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsEditModalOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                className="bg-amber-600 hover:bg-amber-700 text-white font-medium"
+                            >
+                                Save Changes
                             </Button>
                         </DialogFooter>
                     </form>

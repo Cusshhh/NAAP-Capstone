@@ -616,6 +616,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/staffing', [\App\Http\Controllers\Admin\StaffingController::class, 'index'])->name('staffing');
         Route::post('/staffing', [\App\Http\Controllers\Admin\StaffingController::class, 'store'])->name('staffing.store');
+        Route::put('/staffing/{id}', [\App\Http\Controllers\Admin\StaffingController::class, 'update'])->name('staffing.update');
+        Route::post('/staffing/{id}/update', [\App\Http\Controllers\Admin\StaffingController::class, 'update']);
         Route::post('/staffing/{id}/post-job', [\App\Http\Controllers\Admin\StaffingController::class, 'postJob'])->name('staffing.postJob');
         Route::post('/staffing/clear-all', [\App\Http\Controllers\Admin\StaffingController::class, 'clearAll'])->name('staffing.clearAll');
         Route::delete('/staffing/{id}', [\App\Http\Controllers\Admin\StaffingController::class, 'destroy'])->name('staffing.destroy');

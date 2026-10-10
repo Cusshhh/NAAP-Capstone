@@ -188,11 +188,19 @@ class AdminApplicationController extends Controller
             }
 
             if ($request->filled('job_title') && $request->job_title !== 'all') {
-                $query->where('job_title', $request->job_title);
+                $jobTitle = trim($request->job_title);
+                $query->where(function ($q) use ($jobTitle) {
+                    $q->where('job_title', $jobTitle)
+                      ->orWhere('job_title', 'LIKE', '%'.$jobTitle.'%');
+                });
             }
 
             if ($request->filled('position') && $request->position !== 'all') {
-                $query->where('job_title', $request->position);
+                $pos = trim($request->position);
+                $query->where(function ($q) use ($pos) {
+                    $q->where('job_title', $pos)
+                      ->orWhere('job_title', 'LIKE', '%'.$pos.'%');
+                });
             }
 
             // Order chronologically for clean 1, 2, 3... numbering
