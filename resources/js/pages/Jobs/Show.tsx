@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { ArrowLeft, MapPin, Briefcase, Clock, Calendar, Users, CheckCircle, Upload, TrendingUp, Shield, ShieldCheck, Edit, Plus, Trash2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, MapPin, Briefcase, Clock, Calendar, Users, CheckCircle, Upload, TrendingUp, Shield, ShieldCheck, Edit, Plus, Trash2, ExternalLink, FileText } from 'lucide-react';
  import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -275,6 +275,86 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
         }
     }, [isApplyOpen]);
 
+    const normalizeDocKey = (name: string): string => {
+        const lower = (name || '').toLowerCase().trim();
+        if (lower.includes('letter of intent') || lower.includes('intent')) return 'letter_of_intent';
+        if (lower.includes('personal data sheet') || lower.includes('pds') || lower.includes('212')) return 'pds';
+        if (lower.includes('work experience') || lower.includes('wes')) return 'wes';
+        if (lower.includes('eligibility') || lower.includes('csc') || lower.includes('prc')) return 'eligibility';
+        if (lower.includes('transcript') || lower.includes('tor')) return 'tor';
+        if (lower.includes('training') || lower.includes('certificate')) return 'training';
+        if (lower.includes('performance') || lower.includes('ipcr') || lower.includes('opcr')) return 'performance';
+        return lower.replace(/[^a-z0-9]/g, '_');
+    };
+
+    const getProfileDocument = (reqLabel: string) => {
+        if (!user?.id || typeof window === 'undefined') return null;
+
+        const targetKey = normalizeDocKey(reqLabel);
+
+        const standardDocs = [
+            "Letter of Intent",
+            "Personal Data Sheet (PDS)",
+            "Work Experience Sheet",
+            "Certificate of Eligibility",
+            "Transcript of Records (TOR)",
+            "Training Certificates",
+            "Performance Rating"
+        ];
+
+        let allCandidateNames = [reqLabel, ...standardDocs];
+        try {
+            const savedProfileStr = localStorage.getItem(`user_profile_data_${user.id}`);
+            if (savedProfileStr) {
+                const parsed = JSON.parse(savedProfileStr);
+                if (parsed.customDocuments && Array.isArray(parsed.customDocuments)) {
+                    allCandidateNames.push(...parsed.customDocuments);
+                }
+                if (parsed.documents_meta && typeof parsed.documents_meta === 'object') {
+                    allCandidateNames.push(...Object.keys(parsed.documents_meta));
+                }
+            }
+        } catch (e) {}
+
+        const pData = (user as any)?.profile_data || {};
+        const metaDocs = pData.documents_meta || {};
+
+        for (const candidate of allCandidateNames) {
+            const isMatch = normalizeDocKey(candidate) === targetKey || candidate.toLowerCase().trim() === reqLabel.toLowerCase().trim();
+            if (isMatch) {
+                // Priority 1: Check localStorage content and status
+                const isUploadedLocally = localStorage.getItem(`profile_doc_${user.id}_${candidate}`) === 'uploaded' ||
+                                          localStorage.getItem(`doc_${user.id}_${candidate}`) === 'uploaded';
+                const localFileName = localStorage.getItem(`profile_file_${user.id}_${candidate}`) ||
+                                      localStorage.getItem(`file_${user.id}_${candidate}`);
+                const localContent = localStorage.getItem(`profile_content_${user.id}_${candidate}`) ||
+                                     sessionStorage.getItem(`profile_content_${user.id}_${candidate}`) ||
+                                     localStorage.getItem(`content_${user.id}_${candidate}`) || '';
+
+                if (isUploadedLocally && localFileName) {
+                    return {
+                        name: reqLabel,
+                        fileName: localFileName,
+                        url: localContent || null,
+                        source: 'profile'
+                    };
+                }
+
+                // Priority 2: Check server documents_meta
+                if (metaDocs[candidate]?.status === 'uploaded' || metaDocs[candidate]?.fileName) {
+                    return {
+                        name: reqLabel,
+                        fileName: metaDocs[candidate].fileName || `${candidate}.pdf`,
+                        url: metaDocs[candidate].url || localContent || null,
+                        source: 'profile'
+                    };
+                }
+            }
+        }
+
+        return null;
+    };
+
     // Simulate File Upload
     // Simulate File Upload with Data URL storage for preview
     const handleFileUpload = (docName: string, file: File) => {
@@ -372,29 +452,49 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
 
         const fullName = formatApplicantFullName(formData);
 
-        // Gather uploaded documents from localStorage (including base64 contents)
-        const docNames = [
+        // Gather uploaded documents (from newly selected files + auto-attached from profile)
+        const defaultCoreDocs = [
             "Letter of Intent",
-            "Personal Data Sheet (PDS)",
-            "Work Experience Sheet",
+            "Personal Data Sheet (CS Form No. 212, Rev. 2026)",
+            "Work Experience Sheet (WES)",
             "Certificate of Eligibility",
             "Transcript of Records (TOR)",
-            "Training Certificates",
-            "Performance Rating"
+            "Relevant Training Certificates",
+            "Performance Rating (IPCR/OPCR)"
         ];
-        const uploadedDocs = docNames.map(docName => {
-            if (!user?.id) return null;
-            const isUploaded = localStorage.getItem(`doc_${user.id}_${docName}`) === 'uploaded' || localStorage.getItem(`profile_doc_${user.id}_${docName}`) === 'uploaded';
-            if (!isUploaded) return null;
-            const fileName = localStorage.getItem(`file_${user.id}_${docName}`) || localStorage.getItem(`profile_file_${user.id}_${docName}`);
-            if (!fileName) return null;
-            const content = localStorage.getItem(`content_${user.id}_${docName}`) || localStorage.getItem(`profile_content_${user.id}_${docName}`) || '';
-            return {
-                name: docName,
-                fileName: fileName,
-                url: content // Base64 data URL
-            };
-        }).filter(Boolean);
+        const activeReqList = safeCustomFiles.length > 0
+            ? safeCustomFiles
+            : defaultCoreDocs.map((label, idx) => ({ id: `core-${idx}`, label }));
+
+        const allDocLabels = Array.from(new Set([
+            ...activeReqList.map((r: any) => typeof r === 'string' ? r : r.label),
+            ...extraCustomDocs.map((d: any) => d.label).filter(Boolean)
+        ]));
+
+        const uploadedDocs: any[] = [];
+        for (const docLabel of allDocLabels) {
+            const newlySelected = customFiles[docLabel];
+            if (newlySelected) {
+                const content = localStorage.getItem(`profile_content_${user?.id}_${docLabel}`) ||
+                                localStorage.getItem(`content_${user?.id}_${docLabel}`) || '';
+                uploadedDocs.push({
+                    name: docLabel,
+                    fileName: newlySelected.name,
+                    url: content,
+                    source: 'application_upload'
+                });
+            } else {
+                const profileDoc = getProfileDocument(docLabel);
+                if (profileDoc) {
+                    uploadedDocs.push({
+                        name: docLabel,
+                        fileName: profileDoc.fileName,
+                        url: profileDoc.url,
+                        source: 'profile_vault'
+                    });
+                }
+            }
+        }
 
         // Build realistic experience summary from exact applicant inputs
         let experienceDescription = "";
@@ -497,6 +597,23 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
             ...prev,
             [label]: file
         }));
+
+        if (file && user?.id) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const dataUrl = e.target?.result as string;
+                localStorage.setItem(`profile_doc_${user.id}_${label}`, 'uploaded');
+                localStorage.setItem(`profile_file_${user.id}_${label}`, file.name);
+                try {
+                    localStorage.setItem(`profile_content_${user.id}_${label}`, dataUrl);
+                } catch (err) {
+                    try {
+                        sessionStorage.setItem(`profile_content_${user.id}_${label}`, dataUrl);
+                    } catch (sErr) {}
+                }
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const handleUploadToFollowDocument = (documentLabel: string, file: File) => {
@@ -1324,11 +1441,15 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                     return reqList.map((req, i) => {
                                         const reqLabel = typeof req === 'string' ? req : req.label;
                                         const isToFollow = toFollowDocs[reqLabel] || false;
+                                        const profileDoc = getProfileDocument(reqLabel);
+                                        const newlySelected = customFiles[reqLabel];
+                                        const hasUploaded = !!newlySelected || !!profileDoc;
+
                                         return (
                                             <div key={req.id || i} className="p-3 bg-gray-50/80 border border-gray-200 rounded-xl space-y-2 shadow-2xs">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <Label htmlFor={`req-${i}`} className="text-xs font-semibold text-[#193153] leading-snug block">
-                                                        {reqLabel} {!isToFollow && <span className="text-red-500">*</span>}
+                                                        {reqLabel} {!isToFollow && !hasUploaded && <span className="text-red-500">*</span>}
                                                     </Label>
 
                                                     <div className="flex items-center space-x-1.5 shrink-0 bg-white px-2 py-0.5 rounded border border-gray-200 shadow-2xs">
@@ -1348,6 +1469,65 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                                 {isToFollow ? (
                                                     <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg font-medium">
                                                         ⏳ Marked as "To Follow". You may submit this document later.
+                                                    </div>
+                                                ) : newlySelected ? (
+                                                    <div className="flex items-center justify-between p-2.5 bg-blue-50 border border-blue-200 rounded-xl">
+                                                        <div className="flex items-center gap-2 overflow-hidden">
+                                                            <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                                                            <div className="flex flex-col min-w-0">
+                                                                <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                                                                    New File Attached
+                                                                </span>
+                                                                <span className="text-xs font-medium text-gray-800 truncate" title={newlySelected.name}>
+                                                                    {newlySelected.name}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                            <label className="text-[11px] font-medium text-blue-600 hover:text-blue-800 cursor-pointer underline">
+                                                                Change
+                                                                <input
+                                                                    type="file"
+                                                                    className="hidden"
+                                                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                                    onChange={(e) => handleCustomFileChange(reqLabel, e.target.files?.[0] || null)}
+                                                                />
+                                                            </label>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleCustomFileChange(reqLabel, null)}
+                                                                className="text-xs text-red-500 hover:text-red-700 font-bold px-1"
+                                                                title="Clear file"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : profileDoc ? (
+                                                    <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl shadow-2xs">
+                                                        <div className="flex items-center gap-2 overflow-hidden">
+                                                            <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                                                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                                            </div>
+                                                            <div className="flex flex-col min-w-0">
+                                                                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1">
+                                                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                                    Auto-Attached from Profile Vault
+                                                                </span>
+                                                                <span className="text-xs font-semibold text-gray-800 truncate" title={profileDoc.fileName}>
+                                                                    📄 {profileDoc.fileName}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <label className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 cursor-pointer underline shrink-0 ml-2">
+                                                            Replace
+                                                            <input
+                                                                type="file"
+                                                                className="hidden"
+                                                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                                onChange={(e) => handleCustomFileChange(reqLabel, e.target.files?.[0] || null)}
+                                                            />
+                                                        </label>
                                                     </div>
                                                 ) : (
                                                     <Input
