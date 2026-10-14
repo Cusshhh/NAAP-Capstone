@@ -384,9 +384,6 @@ export default function Applicants({ auth, applications: serverApplications, vac
     };
 
     const scoreToPercentage = (score: number) => {
-        if (score <= 45 && score > 0) {
-            return Math.min(100, Math.max(0, Math.round((score / 45) * 100)));
-        }
         return Math.min(100, Math.max(0, Math.round(score)));
     };
 
@@ -616,7 +613,7 @@ export default function Applicants({ auth, applications: serverApplications, vac
                     totalApplications: 1,
                     pendingAppsCount: isPending ? 1 : 0,
                     hasPendingApps: isPending,
-                    topScore: app.aiScore || 0,
+                    topScore: getAppAiData(app).percentage,
                     latestSubmittedDate: app.submittedDate,
                     latestStatus: getFormattedStatus(app),
                     hasUnreadMessages: !!app.hasUnreadMessages,
@@ -633,8 +630,9 @@ export default function Applicants({ auth, applications: serverApplications, vac
                     existing.pendingAppsCount = (existing.pendingAppsCount || 0) + 1;
                     existing.hasPendingApps = true;
                 }
-                if ((app.aiScore || 0) > existing.topScore) {
-                    existing.topScore = app.aiScore || 0;
+                const appScore = getAppAiData(app).percentage;
+                if (appScore > existing.topScore) {
+                    existing.topScore = appScore;
                 }
                 if (new Date(app.submittedDate).getTime() > new Date(existing.latestSubmittedDate).getTime()) {
                     existing.latestSubmittedDate = app.submittedDate;
