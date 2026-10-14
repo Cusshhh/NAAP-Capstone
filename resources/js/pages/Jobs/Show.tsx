@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { ArrowLeft, MapPin, Briefcase, Clock, Calendar, Users, CheckCircle, Upload, TrendingUp, Shield, ShieldCheck, Edit, Plus, Trash2, ExternalLink, FileText } from 'lucide-react';
+import { ArrowLeft, MapPin, Briefcase, Clock, Calendar, Users, CheckCircle, Upload, TrendingUp, Shield, ShieldCheck, Edit, Plus, Trash2, ExternalLink, FileText, Loader2 } from 'lucide-react';
  import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -96,6 +96,8 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [uploadingDocLabel, setUploadingDocLabel] = useState<string | null>(null);
+    const [removingDocLabel, setRemovingDocLabel] = useState<string | null>(null);
+    const [docToRemove, setDocToRemove] = useState<string | null>(null);
     const [profileImage, setProfileImage] = useState<string | null>(null);
 
     useEffect(() => {
@@ -649,6 +651,155 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
             setUploadingDocLabel(null);
             toast.error(`Failed to initiate upload: ${err?.message || 'Error occurred'}`);
         }
+    };
+
+    const dataURLtoFile = (dataurl: string, filename: string): File => {
+        try {
+            const arr = dataurl.split(',');
+            const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new File([u8arr], filename, { type: mime });
+        } catch (e) {
+            return new File([""], filename, { type: 'application/pdf' });
+        }
+    };
+
+    const handleAttachFromProfileVault = async (documentLabel: string, profileDoc: any) => {
+        if (!application?.id || !profileDoc) return;
+
+        try {
+            setUploadingDocLabel(documentLabel);
+            const toastId = toast.loading(`Attaching '${profileDoc.fileName || documentLabel}' from Profile Vault...`);
+
+            // 1. If base64 content is available from localStorage/sessionStorage
+            if (profileDoc.url && typeof profileDoc.url === 'string' && profileDoc.url.startsWith('data:')) {
+                const file = dataURLtoFile(profileDoc.url, profileDoc.fileName || `${documentLabel}.jpg`);
+                const formDataPayload = new FormData();
+                formDataPayload.append('document_label', documentLabel);
+                formDataPayload.append('file', file);
+
+                router.post(`/applications/${application.id}/upload-to-follow`, formDataPayload, {
+                    onSuccess: () => {
+                        setUploadingDocLabel(null);
+                        toast.dismiss(toastId);
+                        toast.success(`'${documentLabel}' attached from Profile Vault!`, {
+                            description: "Your document is now officially synced with your application."
+                        });
+                    },
+                    onError: (errors) => {
+                        setUploadingDocLabel(null);
+                        toast.dismiss(toastId);
+                        const firstErr = Object.values(errors)[0] as string;
+                        toast.error(`Failed to attach document: ${firstErr || 'Unknown error'}`);
+                    },
+                    onFinish: () => {
+                        setUploadingDocLabel(null);
+                    }
+                });
+                return;
+            }
+
+            // 2. If it is a web/storage URL
+            if (profileDoc.url && typeof profileDoc.url === 'string' && (profileDoc.url.startsWith('http') || profileDoc.url.startsWith('/storage'))) {
+                try {
+                    const res = await fetch(profileDoc.url);
+                    const blob = await res.blob();
+                    const file = new File([blob], profileDoc.fileName || `${documentLabel}.pdf`, { type: blob.type || 'application/pdf' });
+                    const formDataPayload = new FormData();
+                    formDataPayload.append('document_label', documentLabel);
+                    formDataPayload.append('file', file);
+
+                    router.post(`/applications/${application.id}/upload-to-follow`, formDataPayload, {
+                        onSuccess: () => {
+                            setUploadingDocLabel(null);
+                            toast.dismiss(toastId);
+                            toast.success(`'${documentLabel}' attached from Profile Vault!`, {
+                                description: "Your document is now officially synced with your application."
+                            });
+                        },
+                        onError: (errors) => {
+                            setUploadingDocLabel(null);
+                            toast.dismiss(toastId);
+                            const firstErr = Object.values(errors)[0] as string;
+                            toast.error(`Failed to attach document: ${firstErr || 'Unknown error'}`);
+                        },
+                        onFinish: () => {
+                            setUploadingDocLabel(null);
+                        }
+                    });
+                    return;
+                } catch (fetchErr) {
+                    console.warn("Could not fetch remote vault file, trying server vault attach", fetchErr);
+                }
+            }
+
+            // 3. Fallback: Request server-side vault attach
+            const formDataPayload = new FormData();
+            formDataPayload.append('document_label', documentLabel);
+            formDataPayload.append('vault_attach', '1');
+            formDataPayload.append('file_name', profileDoc.fileName || `${documentLabel}.pdf`);
+
+            router.post(`/applications/${application.id}/upload-to-follow`, formDataPayload, {
+                onSuccess: () => {
+                    setUploadingDocLabel(null);
+                    toast.dismiss(toastId);
+                    toast.success(`'${documentLabel}' attached from Profile Vault!`, {
+                        description: "Your document is now officially synced with your application."
+                    });
+                },
+                onError: (errors) => {
+                    setUploadingDocLabel(null);
+                    toast.dismiss(toastId);
+                    const firstErr = Object.values(errors)[0] as string;
+                    toast.error(`Failed to attach from vault: ${firstErr || 'Unknown error'}`);
+                },
+                onFinish: () => {
+                    setUploadingDocLabel(null);
+                }
+            });
+        } catch (err: any) {
+            setUploadingDocLabel(null);
+            toast.error(`Error attaching vault document: ${err?.message || 'Error occurred'}`);
+        }
+    };
+
+    const handleConfirmRemoveDocument = () => {
+        if (!docToRemove || !application?.id) {
+            setDocToRemove(null);
+            return;
+        }
+
+        const documentLabel = docToRemove;
+        setDocToRemove(null);
+        setRemovingDocLabel(documentLabel);
+
+        const toastId = toast.loading(`Removing '${documentLabel}'...`);
+
+        router.post(`/applications/${application.id}/remove-to-follow`, {
+            document_label: documentLabel
+        }, {
+            onSuccess: () => {
+                setRemovingDocLabel(null);
+                toast.dismiss(toastId);
+                toast.success(`'${documentLabel}' removed successfully!`, {
+                    description: "You may now upload the correct document."
+                });
+            },
+            onError: (errors) => {
+                setRemovingDocLabel(null);
+                toast.dismiss(toastId);
+                const firstErr = Object.values(errors)[0] as string;
+                toast.error(`Failed to remove document: ${firstErr || 'Unknown error'}`);
+            },
+            onFinish: () => {
+                setRemovingDocLabel(null);
+            }
+        });
     };
 
 
@@ -1932,6 +2083,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                                     const fileObj = customResponses[reqLabel] || legacyDocsMap[reqLabel];
                                                     const isToFollow = toFollowList.includes(reqLabel) || !!toFollowDocs[reqLabel];
                                                     const isUploaded = !!fileObj || (!!attachedDocs[reqLabel] && !isToFollow);
+                                                    const profileDoc = getProfileDocument(reqLabel);
 
                                                     let fileDisplay = '';
                                                     let fileUrl: string | null = null;
@@ -1967,21 +2119,63 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                                                             <ExternalLink className="w-2.5 h-2.5 shrink-0" />
                                                                         </a>
                                                                     ) : (
-                                                                        <p className="text-[10px] text-gray-400 truncate">
-                                                                            {isUploaded ? (fileDisplay || 'Attached Document') : (isToFollow ? 'Marked as "To Follow"' : 'Pending')}
-                                                                        </p>
+                                                                        <div className="flex items-center gap-1.5 truncate">
+                                                                            <p className="text-[10px] text-gray-400 truncate">
+                                                                                {isUploaded ? (fileDisplay || 'Attached Document') : (isToFollow ? 'Marked as "To Follow"' : 'Pending')}
+                                                                            </p>
+                                                                            {isToFollow && profileDoc && (
+                                                                                <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded shrink-0 flex items-center gap-1">
+                                                                                    <span className="w-1 h-1 rounded-full bg-emerald-500"></span>
+                                                                                    In Vault: {profileDoc.fileName}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
                                                                     )}
                                                                 </div>
                                                             </div>
                                                             {isUploaded ? (
-                                                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] shrink-0 font-semibold">
-                                                                    Uploaded & Received
-                                                                </Badge>
+                                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-semibold">
+                                                                        Uploaded & Received
+                                                                    </Badge>
+                                                                    {appData?.status !== 'Withdrawn' && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setDocToRemove(reqLabel)}
+                                                                            disabled={removingDocLabel === reqLabel}
+                                                                            className="inline-flex items-center justify-center p-1 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+                                                                            title={`Remove '${reqLabel}'`}
+                                                                        >
+                                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             ) : isToFollow ? (
                                                                 <div className="flex items-center gap-1.5 shrink-0">
                                                                     <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] font-semibold">
                                                                         To Follow
                                                                     </Badge>
+                                                                    {profileDoc && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleAttachFromProfileVault(reqLabel, profileDoc)}
+                                                                            disabled={uploadingDocLabel === reqLabel}
+                                                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                                                                            title={`Attach '${profileDoc.fileName}' from Profile Vault`}
+                                                                        >
+                                                                            {uploadingDocLabel === reqLabel ? (
+                                                                                <>
+                                                                                    <Loader2 className="w-2.5 h-2.5 animate-spin mr-0.5 text-emerald-600" />
+                                                                                    <span>Attaching...</span>
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <CheckCircle className="w-2.5 h-2.5 text-emerald-600" />
+                                                                                    <span>Use Vault ({profileDoc.fileName})</span>
+                                                                                </>
+                                                                            )}
+                                                                        </button>
+                                                                    )}
                                                                     <label className="cursor-pointer">
                                                                         <input
                                                                             type="file"
@@ -2049,9 +2243,22 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                                                     )}
                                                                 </div>
                                                             </div>
-                                                            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] shrink-0 font-semibold">
-                                                                Uploaded & Received
-                                                            </Badge>
+                                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-semibold">
+                                                                    Uploaded & Received
+                                                                </Badge>
+                                                                {appData?.status !== 'Withdrawn' && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setDocToRemove(extraKey)}
+                                                                        disabled={removingDocLabel === extraKey}
+                                                                        className="inline-flex items-center justify-center p-1 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+                                                                        title={`Remove '${extraKey}'`}
+                                                                    >
+                                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     );
                                                 })}
@@ -2066,6 +2273,53 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                     <DialogFooter className="border-t pt-4 shrink-0 mt-2">
                         <Button onClick={() => setIsDetailsOpen(false)} className="bg-[#193153] text-white hover:bg-[#ffdd59] hover:text-[#193153] font-bold">
                             Close Details
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* --- CONFIRM REMOVE UPLOADED DOCUMENT DIALOG --- */}
+            <Dialog open={!!docToRemove} onOpenChange={(open) => !open && setDocToRemove(null)}>
+                <DialogContent className="sm:max-w-md bg-white border border-gray-200 shadow-2xl rounded-2xl p-6">
+                    <DialogHeader className="flex flex-col items-center text-center space-y-3 pt-2">
+                        <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 border border-red-200 flex items-center justify-center">
+                            <Trash2 className="w-6 h-6" />
+                        </div>
+                        <DialogTitle className="text-lg font-bold text-gray-900">
+                            Remove Uploaded Document?
+                        </DialogTitle>
+                        <DialogDescription className="text-center text-gray-600 text-xs">
+                            Are you sure you want to remove the uploaded file for <strong className="text-gray-900">{docToRemove}</strong>?
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 space-y-1">
+                        <p className="font-semibold text-amber-900 flex items-center gap-1">
+                            <span>💡</span> What happens next:
+                        </p>
+                        <p className="leading-relaxed">
+                            The current file will be removed and this requirement will revert to <strong>"To Follow"</strong>. You will be able to click <strong>"Upload Now"</strong> to upload the correct document immediately.
+                        </p>
+                    </div>
+
+                    <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end border-t pt-4 mt-3">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDocToRemove(null)}
+                            className="w-full sm:w-auto text-xs"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleConfirmRemoveDocument}
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 shadow-sm w-full sm:w-auto text-xs"
+                        >
+                            <Trash2 className="w-3.5 h-3.5 mr-1" />
+                            Yes, Remove Document
                         </Button>
                     </DialogFooter>
                 </DialogContent>

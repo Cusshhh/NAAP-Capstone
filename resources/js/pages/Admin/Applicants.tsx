@@ -1,6 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import axios from 'axios';
-import { Shield, Users, LogOut, Search, Download, Star, Calendar, Eye, Edit, Trash, Plus, ChevronDown, ChevronUp, Briefcase, Layout, TrendingUp, GraduationCap, Award, BookOpen, FileText, ExternalLink, X, Send, RotateCcw, ArrowLeft } from 'lucide-react';
+import { Shield, Users, LogOut, Search, Download, Star, Calendar, Eye, Edit, Trash, Plus, ChevronDown, ChevronUp, Briefcase, Layout, TrendingUp, GraduationCap, Award, BookOpen, FileText, ExternalLink, X, Send, RotateCcw, ArrowLeft, CheckCircle, ShieldCheck, Lock } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +46,7 @@ const calculateAge = (dobStr?: string) => {
     }
 };
 
-export default function Applicants({ auth, applications: serverApplications }: { auth: any, applications: any[] }) {
+export default function Applicants({ auth, applications: serverApplications, vacancies: serverVacancies }: { auth: any, applications: any[], vacancies?: any[] }) {
     const admin = auth?.user || { name: 'Admin' };
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -195,6 +195,19 @@ export default function Applicants({ auth, applications: serverApplications }: {
     const [rejectionAppId, setRejectionAppId] = useState<any>(null);
     const [rejectionReason, setRejectionReason] = useState('Minimum educational requirements not met');
     const [customRejectionReason, setCustomRejectionReason] = useState('');
+
+    // Official Hiring Confirmation State (Prevents accidental clicks)
+    const [confirmHireModal, setConfirmHireModal] = useState<{
+        isOpen: boolean;
+        appId: any;
+        applicantName: string;
+        jobTitle: string;
+    }>({
+        isOpen: false,
+        appId: null,
+        applicantName: '',
+        jobTitle: '',
+    });
 
     // Messaging State
     const [messages, setMessages] = useState<any[]>([]);
@@ -351,9 +364,10 @@ export default function Applicants({ auth, applications: serverApplications }: {
             };
         }
 
-        const allJobs = getJobs();
+        const allJobs = [...(serverVacancies || []), ...getJobs()];
         const safeJobId = app.job_id || app.jobId;
-        const foundJob = allJobs.find((j: any) => String(j.id) === String(safeJobId)) || {
+        const foundJob = allJobs.find((j: any) => String(j.id) === String(safeJobId)) ||
+                         allJobs.find((j: any) => (j.title || '').toLowerCase() === (app.jobTitle || '').toLowerCase()) || {
             id: safeJobId || 0,
             title: app.jobTitle || app.job_title || app.position || app.dynamic_responses?.jobTitle || app.dynamic_responses?.job_title || 'Target Position'
         };
@@ -431,13 +445,15 @@ export default function Applicants({ auth, applications: serverApplications }: {
         if (status.includes('Withdrawn')) return 'bg-slate-200 text-slate-800 border border-slate-300';
         if (status.includes('Rejected')) return 'bg-red-100 text-red-800 border border-red-200';
         if (status.includes('Hired')) return 'bg-emerald-100 text-emerald-900 border border-emerald-200';
+        if (status.includes('Interview Completed')) return 'bg-teal-100 text-teal-800 border border-teal-200';
+        if (status.includes('Interview Scheduled') || status.includes('Interview')) return 'bg-purple-100 text-purple-800 border border-purple-200';
         if (status.includes('Under Review')) return 'bg-amber-100 text-amber-800 border border-amber-200';
         if (status.includes('Submitted')) return 'bg-blue-100 text-blue-800 border border-blue-200';
         if (status.includes('Archived')) return 'bg-gray-100 text-gray-700 border border-gray-200';
         return 'bg-gray-100 text-gray-800';
     };
 
-    const statuses = ['Submitted', 'Under Review', 'Rejected', 'Hired', 'Withdrawn'];
+    const statuses = ['Submitted', 'Under Review', 'Interview Scheduled', 'Interview Completed', 'Rejected', 'Hired', 'Withdrawn'];
     const campuses = Array.from(new Set(applications.map(app => app.campus).filter(Boolean)));
     const positions = Array.from(new Set([
         ...applications.map(app => app.jobTitle || app.job_title),
@@ -975,6 +991,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                             <SelectItem value="Submitted">Submitted</SelectItem>
                                             <SelectItem value="Under Review">Under Review</SelectItem>
                                             <SelectItem value="Interview Scheduled">Interview Scheduled</SelectItem>
+                                            <SelectItem value="Interview Completed">Interview Completed</SelectItem>
                                             <SelectItem value="Hired">Hired</SelectItem>
                                             <SelectItem value="Rejected">Rejected</SelectItem>
                                         </SelectContent>
@@ -1613,8 +1630,28 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                 <TabsContent value="documents" className="space-y-4">
                                                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
                                                         {(() => {
-                                                            const uploadedDocsList: any[] = currentApp.documents || currentApp.dynamic_responses?.documents || [];
-                                                            const toFollowList: string[] = currentApp.toFollowDocs || currentApp.to_follow_docs || currentApp.dynamic_responses?.toFollowDocs || [];
+                                                            const uploadedDocsList: any[] = [...(currentApp.documents || currentApp.dynamic_responses?.documents || [])];
+                                                            if (currentApp.custom_file_responses && typeof currentApp.custom_file_responses === 'object') {
+                                                                Object.entries(currentApp.custom_file_responses).forEach(([label, filePath]: [string, any]) => {
+                                                                    if (filePath && typeof filePath === 'string') {
+                                                                        const fileName = filePath.split('/').pop() || label;
+                                                                        const fileUrl = filePath.startsWith('http') || filePath.startsWith('/storage') ? filePath : `/storage/${filePath}`;
+                                                                        const existing = uploadedDocsList.find(d => (d.name || d.label || '').toLowerCase().trim() === label.toLowerCase().trim());
+                                                                        if (existing) {
+                                                                            existing.url = fileUrl;
+                                                                            existing.fileName = fileName;
+                                                                        } else {
+                                                                            uploadedDocsList.push({
+                                                                                name: label,
+                                                                                fileName: fileName,
+                                                                                url: fileUrl,
+                                                                                source: 'custom_file_responses'
+                                                                            });
+                                                                        }
+                                                                    }
+                                                                });
+                                                            }
+                                                            const toFollowList: string[] = currentApp.toFollowDocs || currentApp.to_follow_docs || currentApp.dynamic_responses?.toFollowDocs || currentApp.dynamic_responses?.to_follow_docs || [];
 
                                                             const standardRequirements = [
                                                                 { title: "Letter of Intent (LOI)", keys: ["Letter of Intent", "LOI", "Application Letter"] },
@@ -1734,7 +1771,10 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                 const isRejected = currentApp.status === 'Rejected';
                                                 const isArchived = currentApp.status === 'Archived';
                                                 const isWithdrawn = currentApp.status === 'Withdrawn';
+                                                const isInterviewCompleted = currentApp.status === 'Interview Completed';
+                                                const isInterviewScheduled = currentApp.status === 'Interview Scheduled' || currentApp.status === 'Interview';
                                                 const isTerminal = isHired || isRejected || isArchived || isWithdrawn;
+                                                const canHire = isInterviewCompleted && !isTerminal;
 
                                                 return (
                                                     <>
@@ -1758,18 +1798,60 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                                 <span>📦</span> Application is currently Archived. Unarchive to enable status actions.
                                                             </div>
                                                         )}
+
+                                                        {/* Stage-gate Sequential Banners */}
+                                                        {!isTerminal && isInterviewCompleted && (
+                                                            <div className="bg-teal-50 border border-teal-200 rounded-lg p-2.5 text-xs font-semibold text-teal-900 flex items-center justify-center gap-2 mt-2">
+                                                                <CheckCircle className="w-4 h-4 text-teal-600 shrink-0" />
+                                                                <span>Interview Completed. Candidate has completed interview assessment and is ready for official hiring appointment.</span>
+                                                            </div>
+                                                        )}
+
+                                                        {!isTerminal && isInterviewScheduled && (
+                                                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-2.5 text-xs font-semibold text-purple-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-2">
+                                                                <span className="flex items-center gap-1.5">
+                                                                    <Calendar className="w-4 h-4 text-purple-600 shrink-0" />
+                                                                    <span>Interview scheduled. Mark completed once interview evaluation is done.</span>
+                                                                </span>
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs h-7 px-3 shrink-0 shadow-xs"
+                                                                    onClick={() => handleStatusUpdate(currentApp.id, 'Interview Completed')}
+                                                                >
+                                                                    <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                                                                    Mark Interview Completed
+                                                                </Button>
+                                                            </div>
+                                                        )}
+
+                                                        {!isTerminal && !isInterviewScheduled && !isInterviewCompleted && (
+                                                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs font-semibold text-amber-900 flex items-center justify-center gap-1.5 mt-2">
+                                                                <Lock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                                                                <span>Hiring Action Locked: Candidate must undergo and complete the interview stage before official hiring.</span>
+                                                            </div>
+                                                        )}
+
                                                         <div className="flex gap-2 pt-2 border-t mt-2">
                                                             <Button
                                                                 size="sm"
-                                                                disabled={isTerminal}
+                                                                disabled={!canHire}
                                                                 className={`flex-1 font-bold ${
-                                                                    isTerminal
+                                                                    !canHire
                                                                         ? 'bg-gray-200 text-gray-400 hover:bg-gray-200 cursor-not-allowed border-none shadow-none'
-                                                                        : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                                                        : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
                                                                 }`}
-                                                                onClick={() => handleStatusUpdate(currentApp.id, 'Hired')}
+                                                                onClick={() => {
+                                                                    if (canHire) {
+                                                                        setConfirmHireModal({
+                                                                            isOpen: true,
+                                                                            appId: currentApp.id,
+                                                                            applicantName: currentApp.applicantName,
+                                                                            jobTitle: currentApp.jobTitle
+                                                                        });
+                                                                    }
+                                                                }}
                                                             >
-                                                                {isHired ? 'Hired' : 'Hire Applicant'}
+                                                                {isHired ? 'Hired' : canHire ? 'Hire Applicant' : '🔒 Hire Locked (Requires Interview)'}
                                                             </Button>
                                                             <Button
                                                                 size="sm"
@@ -2170,6 +2252,44 @@ export default function Applicants({ auth, applications: serverApplications }: {
                                                 {interview.resultNotes && <p className="mt-2 text-sm bg-gray-50 p-2 rounded"><strong>Notes:</strong> {interview.resultNotes}</p>}
                                             </div>
                                             <div className="flex items-center space-x-2">
+                                                {(() => {
+                                                    const appId = interview.applicationId || interview.application_id;
+                                                    const targetApp = appId
+                                                        ? applications.find(a => String(a.id) === String(appId))
+                                                        : applications.find(a => (a.email && interview.applicantEmail && a.email.toLowerCase() === interview.applicantEmail.toLowerCase()) || (a.applicantName && interview.candidateName && a.applicantName.toLowerCase() === interview.candidateName.toLowerCase()));
+
+                                                    if (targetApp && targetApp.status === 'Interview Completed') {
+                                                        return (
+                                                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-md">
+                                                                <CheckCircle className="h-3.5 w-3.5 text-teal-600" />
+                                                                Completed
+                                                            </span>
+                                                        );
+                                                    }
+                                                    if (targetApp && targetApp.status === 'Hired') {
+                                                        return (
+                                                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
+                                                                <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                                                                Hired
+                                                            </span>
+                                                        );
+                                                    }
+                                                    if (targetApp && !['Rejected', 'Archived', 'Withdrawn'].includes(targetApp.status)) {
+                                                        return (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="text-xs text-purple-700 border-purple-300 bg-purple-50 hover:bg-purple-100 font-semibold h-8"
+                                                                onClick={() => handleStatusUpdate(targetApp.id, 'Interview Completed')}
+                                                                title="Mark this candidate's interview as completed"
+                                                            >
+                                                                <CheckCircle className="h-3.5 w-3.5 mr-1 text-purple-600" />
+                                                                Mark Completed
+                                                            </Button>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
@@ -2216,7 +2336,7 @@ export default function Applicants({ auth, applications: serverApplications }: {
                     {viewingDocument?.url && (
                         <div className="bg-white border-b px-6 py-2 flex items-center justify-between shrink-0 shadow-sm">
                             <span className="text-xs text-gray-500 font-medium">
-                                {viewingDocument.url.startsWith('data:image') ? '💡 Click the document image below to zoom in/out' : '📄 Document preview'}
+                                {(viewingDocument.url.startsWith('data:image') || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(viewingDocument.url)) ? '💡 Click the document image below to zoom in/out' : '📄 Document preview'}
                             </span>
                             <div className="flex gap-2">
                                 <Button variant="outline" size="sm" onClick={handleOpenInNewTab} className="h-8 text-xs border-gray-300 text-gray-700 hover:bg-gray-100 py-1 px-3">
@@ -2233,8 +2353,8 @@ export default function Applicants({ auth, applications: serverApplications }: {
 
                     <div className={`flex-1 bg-gray-100 p-6 overflow-auto relative ${isZoomed ? 'block text-center' : 'flex items-center justify-center'}`}>
                         {/* Real File Viewer */}
-                        {viewingDocument?.url && viewingDocument.url.startsWith('data:') ? (
-                            viewingDocument.url.startsWith('data:image') ? (
+                        {viewingDocument?.url && (viewingDocument.url.startsWith('data:') || viewingDocument.url.startsWith('/storage') || viewingDocument.url.startsWith('http')) ? (
+                            (viewingDocument.url.startsWith('data:image') || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(viewingDocument.url)) ? (
                                 <img
                                     src={viewingDocument.url}
                                     alt={viewingDocument.name}
@@ -2496,6 +2616,66 @@ export default function Applicants({ auth, applications: serverApplications }: {
                         >
                             Yes, Cancel Interview
                         </button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* --- OFFICIAL HIRING CONFIRMATION MODAL --- */}
+            <Dialog open={confirmHireModal.isOpen} onOpenChange={(open) => !open && setConfirmHireModal(prev => ({ ...prev, isOpen: false }))}>
+                <DialogContent className="sm:max-w-md bg-white border border-gray-200 shadow-2xl rounded-2xl p-6">
+                    <DialogHeader className="flex flex-col items-center text-center space-y-3 pt-2">
+                        <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center justify-center">
+                            <ShieldCheck className="w-8 h-8" />
+                        </div>
+                        <DialogTitle className="text-xl font-bold text-gray-900 tracking-tight">
+                            Confirm Official Appointment?
+                        </DialogTitle>
+                        <DialogDescription className="text-center text-gray-600 text-sm">
+                            You are about to officially appoint and hire this candidate.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-xl p-4 my-2 text-sm space-y-2">
+                        <div className="flex justify-between items-center text-xs text-gray-500 uppercase tracking-wider font-semibold">
+                            <span>Candidate</span>
+                            <span className="text-teal-700 bg-teal-100 px-2.5 py-0.5 rounded-full font-bold">Interview Completed</span>
+                        </div>
+                        <p className="text-base font-bold text-[#193153]">{confirmHireModal.applicantName || 'Candidate'}</p>
+                        <p className="text-xs text-gray-600">Position: <strong className="text-gray-900">{confirmHireModal.jobTitle || 'N/A'}</strong></p>
+                    </div>
+
+                    <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+                        <p className="font-semibold flex items-center gap-1.5 text-amber-900">
+                            <span>⚠️</span> Notice of Final Appointment:
+                        </p>
+                        <p className="leading-relaxed">
+                            Marking this candidate as <strong>Hired</strong> will record their official employment status and issue a formal appointment notification. This action finalizes the recruitment workflow.
+                        </p>
+                    </div>
+
+                    <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end border-t pt-4 mt-3">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setConfirmHireModal(prev => ({ ...prev, isOpen: false }))}
+                            className="w-full sm:w-auto"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={() => {
+                                const appId = confirmHireModal.appId;
+                                setConfirmHireModal(prev => ({ ...prev, isOpen: false }));
+                                if (appId) {
+                                    handleStatusUpdate(appId, 'Hired');
+                                }
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 shadow-sm w-full sm:w-auto"
+                        >
+                            <CheckCircle className="w-4 h-4 mr-1.5" />
+                            Yes, Officially Hire
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

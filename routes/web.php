@@ -66,6 +66,7 @@ Route::get('/api/open-jobs', function () {
 Route::get('/dashboard', [\App\Http\Controllers\ApplicantController::class, 'dashboard'])->middleware(['auth'])->name('dashboard');
 Route::post('/profile/save', [\App\Http\Controllers\ApplicantController::class, 'saveProfileData'])->middleware(['auth'])->name('profile.saveData');
 Route::post('/applications/{application}/upload-to-follow', [\App\Http\Controllers\ApplicantController::class, 'uploadToFollowDocument'])->middleware(['auth'])->name('applications.upload-to-follow');
+Route::post('/applications/{application}/remove-to-follow', [\App\Http\Controllers\ApplicantController::class, 'removeToFollowDocument'])->middleware(['auth'])->name('applications.remove-to-follow');
 
 Route::get('/calendar', function () {
     $user = Auth::user();
@@ -284,7 +285,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/applicants', function () {
             $rawApps = \App\Models\Application::query()
-                ->select('id', 'applicant_name', 'email', 'job_title', 'status', 'created_at', 'education', 'dynamic_responses')
                 ->latest()
                 ->get();
 
@@ -338,9 +338,43 @@ Route::middleware(['auth', 'verified'])->group(function () {
                                     $skillsList[($seed + 7) % count($skillsList)],
                                 ];
                             })($app->job_title),
-                        'documents' => isset($app->dynamic_responses['documents']) && is_array($app->dynamic_responses['documents'])
-                            ? $app->dynamic_responses['documents']
-                            : [],
+                        'documents' => (function ($app) {
+                            $docs = isset($app->dynamic_responses['documents']) && is_array($app->dynamic_responses['documents'])
+                                ? $app->dynamic_responses['documents']
+                                : [];
+
+                            if (!empty($app->custom_file_responses) && is_array($app->custom_file_responses)) {
+                                foreach ($app->custom_file_responses as $label => $filePath) {
+                                    $fileName = basename($filePath);
+                                    $url = str_starts_with($filePath, 'http') || str_starts_with($filePath, '/storage')
+                                        ? $filePath
+                                        : '/storage/' . $filePath;
+
+                                    $found = false;
+                                    foreach ($docs as &$d) {
+                                        if (isset($d['name']) && strtolower(trim($d['name'])) === strtolower(trim($label))) {
+                                            $d['fileName'] = $fileName;
+                                            $d['url'] = $url;
+                                            $d['source'] = 'application_custom';
+                                            $found = true;
+                                            break;
+                                        }
+                                    }
+                                    unset($d);
+
+                                    if (!$found) {
+                                        $docs[] = [
+                                            'name' => $label,
+                                            'fileName' => $fileName,
+                                            'url' => $url,
+                                            'source' => 'to_follow_upload',
+                                        ];
+                                    }
+                                }
+                            }
+
+                            return $docs;
+                        })($app),
                         // Dynamic, Balanced PDS Qualification Match Score (0-100%)
                         'aiScore' => (function ($app) {
                             $dyn = $app->dynamic_responses ?? [];
@@ -491,6 +525,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                             ? (int) $app->dynamic_responses['trainingHours']
                             : 0,
                         'toFollowDocs' => $app->to_follow_docs ?? [],
+                        'to_follow_docs' => $app->to_follow_docs ?? [],
                         'custom_file_responses' => $app->custom_file_responses ?? [],
                         'dynamic_responses' => (function ($app) {
                             $dyn = $app->dynamic_responses ?? [];
@@ -531,6 +566,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                         })($app),
                     ];
                 }),
+                'vacancies' => \App\Models\Vacancy::all(),
             ]);
         })->name('applicants');
 

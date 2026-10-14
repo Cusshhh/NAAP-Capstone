@@ -1312,6 +1312,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     }, []);
 
     const [filterStatus, setFilterStatus] = useState('Total');
+    const [selectedTrackerAppId, setSelectedTrackerAppId] = useState<number | string | null>(null);
 
     const filteredApplications = myApplications.filter(app => {
         if (filterStatus === 'Total') return true;
@@ -1320,6 +1321,15 @@ export default function ApplicantDashboard({ auth, applications: propApplication
         if (filterStatus === 'Interview') return app.status === 'Interview Scheduled' || app.status === 'Interview';
         return false;
     });
+
+    const activeTrackerApp = useMemo(() => {
+        if (selectedTrackerAppId) {
+            const found = myApplications.find(a => String(a.id) === String(selectedTrackerAppId));
+            if (found) return found;
+        }
+        if (!myApplications || myApplications.length === 0) return null;
+        return myApplications.find(a => !['Withdrawn'].includes(a.status)) || myApplications[0] || null;
+    }, [selectedTrackerAppId, myApplications]);
 
     const [activeTab, setActiveTab] = useState<'applications' | 'profile'>('applications');
     const user = auth.user;
@@ -1835,8 +1845,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
     const getStatusBadge = (status: string, jobTitle?: string) => {
         let displayStatus = status;
 
-        // Only override to Interview if application is active (not Hired, Rejected, or Withdrawn)
-        if (!['Hired', 'Rejected', 'Withdrawn'].includes(status) && jobTitle && typeof window !== 'undefined') {
+        // Only override to Interview if application is active (not Hired, Rejected, Withdrawn, or Interview Completed)
+        if (!['Hired', 'Rejected', 'Withdrawn', 'Interview Completed'].includes(status) && jobTitle && typeof window !== 'undefined') {
             try {
                 const savedInterviews = getCombinedInterviews();
                 const hasInterview = savedInterviews.some((interview: any) => {
@@ -1854,6 +1864,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             'Submitted': 'bg-blue-100 text-blue-700 border-blue-200',
             'Under Review': 'bg-yellow-100 text-yellow-700 border-yellow-200',
             'Interview': 'bg-purple-100 text-purple-700 border-purple-200',
+            'Interview Scheduled': 'bg-purple-100 text-purple-700 border-purple-200',
+            'Interview Completed': 'bg-teal-100 text-teal-800 border-teal-200',
             'Hired': 'bg-emerald-100 text-emerald-700 border-emerald-200',
             'Rejected': 'bg-red-100 text-red-700 border-red-200',
             'Withdrawn': 'bg-gray-100 text-gray-700 border-gray-200',
@@ -1862,6 +1874,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
             'Submitted': Clock,
             'Under Review': FileText,
             'Interview': Calendar,
+            'Interview Scheduled': Calendar,
+            'Interview Completed': CheckCircle,
             'Hired': CheckCircle,
             'Rejected': XCircle,
             'Withdrawn': Ban,
@@ -2229,20 +2243,16 @@ export default function ApplicantDashboard({ auth, applications: propApplication
 
                                     {/* Live Application Progress Tracker (Visual Stepper) */}
                                     {(() => {
-                                        const latestApp = myApplications && myApplications.length > 0
-                                            ? (myApplications.find(a => !['Withdrawn'].includes(a.status)) || myApplications[0])
-                                            : null;
-
                                         const getStepStatus = (stepIndex: number) => {
-                                            if (!latestApp) return 'upcoming';
-                                            let currentStatus = latestApp.status;
+                                            if (!activeTrackerApp) return 'upcoming';
+                                            let currentStatus = activeTrackerApp.status;
 
-                                            if (!['Hired', 'Rejected', 'Withdrawn'].includes(currentStatus) && latestApp.jobTitle && typeof window !== 'undefined') {
+                                            if (!['Hired', 'Rejected', 'Withdrawn'].includes(currentStatus) && activeTrackerApp.jobTitle && typeof window !== 'undefined') {
                                                 try {
                                                     const savedInterviews = getCombinedInterviews();
                                                     const hasInterview = savedInterviews.some((interview: any) => {
                                                         if (!interview) return false;
-                                                        const isMatchingJob = (interview.position || '').toLowerCase() === latestApp.jobTitle.toLowerCase();
+                                                        const isMatchingJob = (interview.position || '').toLowerCase() === activeTrackerApp.jobTitle.toLowerCase();
                                                         return isMatchingJob && checkInterviewMatch(interview);
                                                     });
                                                     if (hasInterview) {
@@ -2270,6 +2280,10 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                 if (stepIndex === 3) return 'current';
                                                 return 'upcoming';
                                             }
+                                            if (currentStatus === 'Interview Completed') {
+                                                if (stepIndex <= 3) return 'completed';
+                                                return 'upcoming';
+                                            }
                                             if (currentStatus === 'Hired') {
                                                 if (stepIndex <= 3) return 'completed';
                                                 if (stepIndex === 4) return 'hired';
@@ -2290,22 +2304,58 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                             Live Application Progress Tracker
                                                         </h2>
                                                         <p className="text-xs text-gray-500 mt-0.5">
-                                                            {latestApp ? (
-                                                                <>Target Position: <strong className="text-gray-900">{latestApp.jobTitle}</strong> ({latestApp.location || 'Pasay City'})</>
+                                                            {activeTrackerApp ? (
+                                                                <>Target Position: <strong className="text-gray-900">{activeTrackerApp.jobTitle}</strong> ({activeTrackerApp.location || 'Pasay City'})</>
                                                             ) : (
                                                                 'No active job application under review. Explore open positions to start your application.'
                                                             )}
                                                         </p>
                                                     </div>
-                                                    {latestApp && (
+                                                    {activeTrackerApp && (
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Current Status:</span>
-                                                            {getStatusBadge(latestApp.status, latestApp.jobTitle)}
+                                                            {getStatusBadge(activeTrackerApp.status, activeTrackerApp.jobTitle)}
                                                         </div>
                                                     )}
                                                 </div>
 
-                                                {latestApp ? (
+                                                {/* Multiple Applications Position Switcher */}
+                                                {myApplications && myApplications.length > 1 && (
+                                                    <div className="bg-slate-50/90 p-2.5 rounded-xl border border-slate-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                            <Briefcase className="w-3.5 h-3.5 text-blue-600" />
+                                                            <span className="text-xs font-bold text-slate-700">Track Position:</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                                                            {myApplications.map((app) => {
+                                                                const isSelected = String(app.id) === String(activeTrackerApp?.id);
+                                                                return (
+                                                                    <button
+                                                                        key={app.id}
+                                                                        type="button"
+                                                                        onClick={() => setSelectedTrackerAppId(app.id)}
+                                                                        className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-2 border shrink-0 cursor-pointer ${
+                                                                            isSelected
+                                                                                ? 'bg-[#193153] text-white border-[#193153] shadow-sm ring-2 ring-blue-500/20'
+                                                                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                                                                        }`}
+                                                                    >
+                                                                        <span className="font-semibold max-w-[180px] sm:max-w-[240px] truncate">{app.jobTitle}</span>
+                                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
+                                                                            isSelected 
+                                                                                ? 'bg-white/20 text-white' 
+                                                                                : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                                                        }`}>
+                                                                            {app.status}
+                                                                        </span>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {activeTrackerApp ? (
                                                     <div className="py-3 px-2">
                                                         <div className="grid grid-cols-4 gap-2 relative">
                                                             {/* Connecting Line */}
@@ -2318,6 +2368,7 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                         const st3 = getStepStatus(3);
                                                                         const st2 = getStepStatus(2);
                                                                         if (st4 !== 'upcoming') return '76%';
+                                                                        if (st3 === 'completed') return '50%';
                                                                         if (st3 === 'current') return '50%';
                                                                         if (st2 === 'current') return '25%';
                                                                         return '0%';
@@ -2374,7 +2425,9 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                             {isDone ? <CheckCircle className="w-5 h-5" /> : '3'}
                                                                         </div>
                                                                         <span className={`text-xs font-bold mt-2.5 ${isCurrent ? 'text-purple-900 font-extrabold' : isDone ? 'text-blue-900' : 'text-gray-400'}`}>3. Interview</span>
-                                                                        <span className="text-[10px] text-gray-500 hidden sm:block mt-0.5">Board Assessment</span>
+                                                                        <span className="text-[10px] text-gray-500 hidden sm:block mt-0.5">
+                                                                            {activeTrackerApp.status === 'Interview Completed' ? 'Interview Completed' : 'Board Assessment'}
+                                                                        </span>
                                                                     </div>
                                                                 );
                                                             })()}
@@ -2455,15 +2508,30 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-gray-100 text-sm bg-white">
-                                                            {filteredApplications.map(app => (
-                                                                <tr key={app.id} className="hover:bg-blue-50/50 transition-colors group">
+                                                            {filteredApplications.map(app => {
+                                                                const isCurrentlyTracked = String(app.id) === String(activeTrackerApp?.id);
+                                                                return (
+                                                                <tr key={app.id} className={`transition-colors group ${
+                                                                    isCurrentlyTracked ? 'bg-blue-50/70' : 'hover:bg-blue-50/40'
+                                                                }`}>
                                                                     <td className="py-3.5 px-4">
                                                                         <div className="flex items-center gap-3">
-                                                                            <div className="p-2 bg-blue-50 text-[#193153] rounded-lg group-hover:bg-[#193153] group-hover:text-[#ffdd59] transition-colors shrink-0">
+                                                                            <div className={`p-2 rounded-lg transition-colors shrink-0 ${
+                                                                                isCurrentlyTracked
+                                                                                    ? 'bg-[#193153] text-[#ffdd59]'
+                                                                                    : 'bg-blue-50 text-[#193153] group-hover:bg-[#193153] group-hover:text-[#ffdd59]'
+                                                                            }`}>
                                                                                 <Briefcase className="w-4 h-4" />
                                                                             </div>
                                                                             <div>
-                                                                                <h3 className="font-bold text-gray-900 text-sm">{app.jobTitle}</h3>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <h3 className="font-bold text-gray-900 text-sm">{app.jobTitle}</h3>
+                                                                                    {isCurrentlyTracked && (
+                                                                                        <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
+                                                                                            Tracking
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
                                                                                 <span className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
                                                                                     <MapPin className="w-3 h-3" /> {app.location || 'Pasay City'}
                                                                                 </span>
@@ -2481,6 +2549,23 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                     </td>
                                                                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                                                                         <div className="flex items-center justify-end gap-1.5">
+                                                                            <CustomTooltip content={isCurrentlyTracked ? "Currently in Tracker" : "Track in Live Tracker"} side="top">
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="sm"
+                                                                                    className={`h-9 w-9 p-0 ${
+                                                                                        isCurrentlyTracked
+                                                                                            ? 'text-[#193153] bg-blue-100 hover:bg-blue-200 ring-1 ring-blue-300'
+                                                                                            : 'text-slate-400 hover:text-[#193153] hover:bg-slate-100'
+                                                                                    }`}
+                                                                                    onClick={() => {
+                                                                                        setSelectedTrackerAppId(app.id);
+                                                                                        window.scrollTo({ top: 180, behavior: 'smooth' });
+                                                                                    }}
+                                                                                >
+                                                                                    <Clock className="w-5 h-5" />
+                                                                                </Button>
+                                                                            </CustomTooltip>
                                                                             <CustomTooltip content="View Details" side="top">
                                                                                 <Link href={`/jobs/${app.jobId}?viewSubmitted=1`}>
                                                                                     <Button variant="ghost" size="sm" className="text-slate-600 hover:text-[#193153] hover:bg-slate-100 h-9 w-9 p-0">
@@ -2521,7 +2606,8 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                                         </div>
                                                                     </td>
                                                                 </tr>
-                                                            ))}
+                                                            );
+                                                        })}
                                                         </tbody>
                                                     </table>
                                                 </div>

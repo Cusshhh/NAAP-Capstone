@@ -43,38 +43,16 @@ class ApplicantController extends Controller
                 ])->withInput();
             }
 
-            // 2. Check Single Active Application Rule (Max 1 active application across all jobs)
-            $activeApp = Application::where('email', $validated['email'])
-                ->whereIn('status', ['Submitted', 'Under Review', 'Interview Scheduled', 'Interview'])
+            // 2. Check Same-Job Active Application Rule (Prevent duplicate active applications for the SAME position)
+            $sameJobActiveApp = Application::where('email', $validated['email'])
+                ->where('job_id', $validated['job_id'])
+                ->whereIn('status', ['Submitted', 'Under Review', 'Interview Scheduled', 'Interview', 'Interview Completed'])
                 ->first();
 
-            if ($activeApp) {
-                if ((string)$activeApp->job_id === (string)$validated['job_id']) {
-                    return redirect()->back()->withErrors([
-                        'error' => "You already have an active application for '{$validated['job_title']}'. Only 1 active application per position is permitted.",
-                    ])->withInput();
-                } else {
-                    return redirect()->back()->withErrors([
-                        'error' => "Government CSC PRIME-HRM policy permits only ONE (1) active job application at a time. You currently have an active application for '{$activeApp->job_title}'. Please wait for its outcome or withdraw it before applying for another position.",
-                    ])->withInput();
-                }
-            }
-
-            // 3. Check 60-Day Rejection Cooldown Period
-            $rejectedApp = Application::where('email', $validated['email'])
-                ->where('status', 'Rejected')
-                ->latest('updated_at')
-                ->first();
-
-            if ($rejectedApp && $rejectedApp->updated_at) {
-                $cooldownEndDate = $rejectedApp->updated_at->copy()->addDays(60);
-                if (now()->lt($cooldownEndDate)) {
-                    $daysLeft = (int) ceil(now()->diffInSeconds($cooldownEndDate) / 86400);
-                    $unlockDate = $cooldownEndDate->format('F d, Y');
-                    return redirect()->back()->withErrors([
-                        'error' => "Your previous application for '{$rejectedApp->job_title}' was not selected. Pursuant to CSC government recruitment rules, a 60-day waiting period is required before submitting new applications. You may apply again in {$daysLeft} day(s) on {$unlockDate}.",
-                    ])->withInput();
-                }
+            if ($sameJobActiveApp) {
+                return redirect()->back()->withErrors([
+                    'error' => "You already have an active application for '{$validated['job_title']}'. Only 1 active application per position is permitted.",
+                ])->withInput();
             }
 
             $customFileResponses = [];
@@ -385,14 +363,66 @@ class ApplicantController extends Controller
 
             $validated = $request->validate([
                 'document_label' => 'required|string',
-                'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+                'file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+                'vault_attach' => 'nullable',
+                'file_name' => 'nullable|string',
+                'base64_data' => 'nullable|string',
             ]);
 
             $documentLabel = $validated['document_label'];
-            $file = $request->file('file');
+            $path = null;
 
-            $path = $file->store('applications/custom', 'public');
-            Log::info("To-Follow file uploaded for application {$application->id}: {$documentLabel} => {$path}");
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                $path = $file->store('applications/custom', 'public');
+                Log::info("To-Follow file uploaded for application {$application->id}: {$documentLabel} => {$path}");
+            } elseif ($request->filled('base64_data')) {
+                $raw = $request->input('base64_data');
+                if (str_contains($raw, ';base64,')) {
+                    [, $raw] = explode(';base64,', $raw);
+                }
+                $decoded = base64_decode($raw);
+                $fileName = $request->input('file_name', 'document.jpg');
+                $ext = pathinfo($fileName, PATHINFO_EXTENSION) ?: 'jpg';
+                $path = 'applications/custom/' . \Illuminate\Support\Str::random(40) . '.' . $ext;
+                \Illuminate\Support\Facades\Storage::disk('public')->put($path, $decoded);
+                Log::info("To-Follow base64 file uploaded for application {$application->id}: {$documentLabel} => {$path}");
+            } elseif ($request->input('vault_attach')) {
+                $user = Auth::user();
+                $fileName = $request->input('file_name');
+
+                // Check if an existing file exists for this user in storage/applications
+                $existingApps = Application::where('email', $user->email)
+                    ->whereNotNull('custom_file_responses')
+                    ->latest()
+                    ->get();
+
+                foreach ($existingApps as $prev) {
+                    $responses = $prev->custom_file_responses ?? [];
+                    foreach ($responses as $k => $fPath) {
+                        if (is_string($fPath) && \Illuminate\Support\Facades\Storage::disk('public')->exists($fPath)) {
+                            if (strtolower(trim($k)) === strtolower(trim($documentLabel)) || ($fileName && str_contains($fPath, $fileName))) {
+                                $ext = pathinfo($fPath, PATHINFO_EXTENSION) ?: 'jpg';
+                                $newPath = 'applications/custom/' . \Illuminate\Support\Str::random(40) . '.' . $ext;
+                                \Illuminate\Support\Facades\Storage::disk('public')->copy($fPath, $newPath);
+                                $path = $newPath;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+
+                if (!$path) {
+                    $ext = $fileName ? (pathinfo($fileName, PATHINFO_EXTENSION) ?: 'pdf') : 'pdf';
+                    $path = 'applications/custom/' . \Illuminate\Support\Str::random(40) . '.' . $ext;
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($path, "Document attached from Profile Vault: {$fileName}");
+                }
+                Log::info("To-Follow vault document attached for application {$application->id}: {$documentLabel} => {$path}");
+            }
+
+            if (!$path) {
+                return redirect()->back()->withErrors(['error' => 'Please provide a file or select a document from your Profile Vault.']);
+            }
 
             // Update custom_file_responses
             $customResponses = $application->custom_file_responses ?? [];
@@ -401,13 +431,13 @@ class ApplicantController extends Controller
             }
             $customResponses[$documentLabel] = $path;
 
-            // Remove document_label from to_follow_docs array
+            // Remove document_label from to_follow_docs array (handling both exact and case-insensitive match)
             $toFollow = $application->to_follow_docs ?? [];
             if (!is_array($toFollow)) {
                 $toFollow = [];
             }
             $updatedToFollow = array_values(array_filter($toFollow, function ($label) use ($documentLabel) {
-                return trim((string) $label) !== trim((string) $documentLabel);
+                return trim(strtolower((string) $label)) !== trim(strtolower((string) $documentLabel));
             }));
 
             $application->update([
@@ -418,7 +448,7 @@ class ApplicantController extends Controller
             try {
                 ActivityLog::write(
                     'To-Follow Document Uploaded',
-                    "{$application->applicant_name} uploaded missing document: {$documentLabel} for {$application->job_title}",
+                    "{$application->applicant_name} attached missing document: {$documentLabel} for {$application->job_title}",
                     'Villamor Campus',
                     'FileText',
                     'text-emerald-600 bg-emerald-50'
@@ -427,13 +457,95 @@ class ApplicantController extends Controller
                 Log::warning('ActivityLog write failed: ' . $ex->getMessage());
             }
 
-            return redirect()->back()->with('message', "Document '{$documentLabel}' uploaded successfully!");
+            return redirect()->back()->with('message', "Document '{$documentLabel}' attached successfully!");
         } catch (\Throwable $e) {
             Log::error("Error uploading to-follow document for application {$application->id}: " . $e->getMessage(), [
                 'exception' => $e,
             ]);
 
             return redirect()->back()->withErrors(['error' => 'Failed to upload document: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Remove or delete an uploaded to-follow document if the applicant uploaded the wrong file.
+     * Reverts the document back to "To Follow" status so they can upload the correct file.
+     */
+    public function removeToFollowDocument(Request $request, Application $application)
+    {
+        try {
+            if ($application->email !== Auth::user()->email) {
+                return redirect()->back()->withErrors(['error' => 'Unauthorized action.']);
+            }
+
+            if ($application->status === 'Withdrawn') {
+                return redirect()->back()->withErrors(['error' => 'This application was withdrawn and documents cannot be modified.']);
+            }
+
+            $validated = $request->validate([
+                'document_label' => 'required|string',
+            ]);
+
+            $documentLabel = $validated['document_label'];
+
+            // 1. Remove from custom_file_responses and delete physical file
+            $customResponses = $application->custom_file_responses ?? [];
+            if (!is_array($customResponses)) {
+                $customResponses = [];
+            }
+
+            if (isset($customResponses[$documentLabel])) {
+                $filePath = $customResponses[$documentLabel];
+                if (is_string($filePath)) {
+                    try {
+                        \Illuminate\Support\Facades\Storage::disk('public')->delete($filePath);
+                    } catch (\Exception $ex) {
+                        Log::warning("Could not delete file {$filePath}: " . $ex->getMessage());
+                    }
+                }
+                unset($customResponses[$documentLabel]);
+            }
+
+            // 2. Also check dynamic_responses['documents'] if legacy
+            $dyn = $application->dynamic_responses ?? [];
+            if (isset($dyn['custom_files'][$documentLabel])) {
+                unset($dyn['custom_files'][$documentLabel]);
+            }
+
+            // 3. Re-add document_label to to_follow_docs array
+            $toFollow = $application->to_follow_docs ?? [];
+            if (!is_array($toFollow)) {
+                $toFollow = [];
+            }
+            if (!in_array($documentLabel, $toFollow)) {
+                $toFollow[] = $documentLabel;
+            }
+
+            $application->update([
+                'custom_file_responses' => $customResponses,
+                'to_follow_docs' => array_values(array_unique($toFollow)),
+                'dynamic_responses' => $dyn,
+            ]);
+
+            try {
+                ActivityLog::write(
+                    'Document Removed',
+                    "{$application->applicant_name} removed uploaded document '{$documentLabel}' for {$application->job_title}",
+                    'Villamor Campus',
+                    'Trash2',
+                    'text-amber-600 bg-amber-50'
+                );
+            } catch (\Exception $ex) {
+                Log::warning('ActivityLog write failed: ' . $ex->getMessage());
+            }
+
+            return redirect()->back()->with('message', "Document '{$documentLabel}' has been removed. You may now upload the correct file.");
+        } catch (\Throwable $e) {
+            Log::error("Error removing document for application {$application->id}: " . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+
+            return redirect()->back()->withErrors(['error' => 'Failed to remove document: ' . $e->getMessage()]);
         }
     }
 

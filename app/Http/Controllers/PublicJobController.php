@@ -74,7 +74,7 @@ class PublicJobController extends Controller
                 $interview = \App\Models\Interview::where('application_id', $application->id)->first();
             }
 
-            // Check CSC Restrictions
+            // Check CSC Restrictions: Only active employees (Hired) are restricted from submitting new external applications
             $hired = \App\Models\Application::where('email', $userEmail)->where('status', 'Hired')->first();
             if ($hired) {
                 $restriction = [
@@ -82,36 +82,6 @@ class PublicJobController extends Controller
                     'jobTitle' => $hired->job_title,
                     'message' => "You have been officially Hired for '{$hired->job_title}' at NAAP. Active employee accounts are restricted from submitting new job applications.",
                 ];
-            } else {
-                $active = \App\Models\Application::where('email', $userEmail)
-                    ->whereIn('status', ['Submitted', 'Under Review', 'Interview Scheduled', 'Interview'])
-                    ->first();
-                if ($active && (string)$active->job_id !== (string)$vacancy->id) {
-                    $restriction = [
-                        'type' => 'active_app',
-                        'jobTitle' => $active->job_title,
-                        'message' => "Government CSC PRIME-HRM policy permits only ONE (1) active job application at a time. You currently have an active application for '{$active->job_title}'. Please wait for its outcome or withdraw it before applying for another position.",
-                    ];
-                } else {
-                    $rejected = \App\Models\Application::where('email', $userEmail)
-                        ->where('status', 'Rejected')
-                        ->latest('updated_at')
-                        ->first();
-                    if ($rejected && $rejected->updated_at) {
-                        $cooldownEnd = $rejected->updated_at->copy()->addDays(60);
-                        if (now()->lt($cooldownEnd)) {
-                            $daysLeft = (int) ceil(now()->diffInSeconds($cooldownEnd) / 86400);
-                            $unlockDate = $cooldownEnd->format('F d, Y');
-                            $restriction = [
-                                'type' => 'cooldown',
-                                'daysLeft' => $daysLeft,
-                                'unlockDate' => $unlockDate,
-                                'jobTitle' => $rejected->job_title,
-                                'message' => "Your previous application for '{$rejected->job_title}' was not selected. Pursuant to CSC government recruitment rules, a 60-day waiting period is required before applying for positions. You may apply again in {$daysLeft} day(s) on {$unlockDate}.",
-                            ];
-                        }
-                    }
-                }
             }
         }
 

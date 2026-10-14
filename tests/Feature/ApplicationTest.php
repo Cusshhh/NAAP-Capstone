@@ -127,7 +127,96 @@ test('authenticated user can upload a to-follow document', function () {
     expect(array_keys($application->custom_file_responses))->toContain('PDS');
 });
 
-test('applicant cannot submit multiple active applications simultaneously', function () {
+test('authenticated user can attach a to-follow document from profile vault', function () {
+    $user = User::factory()->create([
+        'profile_data' => [
+            'documents_meta' => [
+                'Transcript of Records' => [
+                    'status' => 'uploaded',
+                    'fileName' => 'TOR.jpg',
+                ],
+            ],
+        ],
+    ]);
+    $this->actingAs($user);
+
+    $vacancy = \App\Models\Vacancy::create([
+        'title' => 'Software Engineer',
+        'department' => 'IT',
+        'employment_type' => 'Full-time',
+        'location' => 'Main Campus',
+        'description' => 'Test Vacancy',
+        'salary_grade' => '12',
+        'status' => 'Open',
+    ]);
+
+    $application = Application::create([
+        'job_id' => $vacancy->id,
+        'job_title' => $vacancy->title,
+        'email' => $user->email,
+        'applicant_name' => $user->name,
+        'phone_number' => '09123456789',
+        'education' => 'Bachelor',
+        'status' => 'Submitted',
+        'to_follow_docs' => ['Transcript of Records'],
+        'custom_file_responses' => [],
+    ]);
+
+    $response = $this->post("/applications/{$application->id}/upload-to-follow", [
+        'document_label' => 'Transcript of Records',
+        'vault_attach' => '1',
+        'file_name' => 'TOR.jpg',
+    ]);
+
+    $response->assertRedirect();
+
+    $application->refresh();
+
+    expect($application->to_follow_docs)->toBeEmpty();
+    expect(array_keys($application->custom_file_responses))->toContain('Transcript of Records');
+});
+
+test('authenticated user can remove an uploaded to-follow document and revert to to-follow status', function () {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $vacancy = \App\Models\Vacancy::create([
+        'title' => 'Software Engineer',
+        'department' => 'IT',
+        'employment_type' => 'Full-time',
+        'location' => 'Main Campus',
+        'description' => 'Test Vacancy',
+        'salary_grade' => '12',
+        'status' => 'Open',
+    ]);
+
+    $application = Application::create([
+        'job_id' => $vacancy->id,
+        'job_title' => $vacancy->title,
+        'email' => $user->email,
+        'applicant_name' => $user->name,
+        'phone_number' => '09123456789',
+        'education' => 'Bachelor',
+        'status' => 'Submitted',
+        'to_follow_docs' => [],
+        'custom_file_responses' => [
+            'Transcript of Records' => 'applications/custom/dummy.pdf',
+        ],
+    ]);
+
+    $response = $this->post("/applications/{$application->id}/remove-to-follow", [
+        'document_label' => 'Transcript of Records',
+    ]);
+
+    $response->assertRedirect();
+
+    $application->refresh();
+
+    expect($application->to_follow_docs)->toContain('Transcript of Records');
+    expect(array_keys($application->custom_file_responses ?? []))->not->toContain('Transcript of Records');
+});
+
+test('applicant can submit multiple active applications to different jobs simultaneously', function () {
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -145,6 +234,37 @@ test('applicant cannot submit multiple active applications simultaneously', func
     $response = $this->post('/applications', [
         'job_id' => $vacancy2->id,
         'job_title' => $vacancy2->title,
+        'email' => $user->email,
+        'applicant_name' => $user->name,
+        'phone_number' => '09123456789',
+        'education' => 'bachelor',
+    ]);
+
+    $response->assertRedirect();
+    $this->assertDatabaseHas('applications', [
+        'job_id' => $vacancy2->id,
+        'email' => $user->email,
+        'status' => 'Submitted',
+    ]);
+});
+
+test('applicant cannot submit duplicate active application to the same job', function () {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $vacancy1 = \App\Models\Vacancy::create(['title' => 'Position 1', 'department' => 'HR', 'employment_type' => 'Full-time', 'location' => 'Main', 'description' => 'Test', 'salary_grade' => '11', 'status' => 'Open']);
+
+    Application::create([
+        'job_id' => $vacancy1->id,
+        'job_title' => $vacancy1->title,
+        'email' => $user->email,
+        'applicant_name' => $user->name,
+        'status' => 'Under Review',
+    ]);
+
+    $response = $this->post('/applications', [
+        'job_id' => $vacancy1->id,
+        'job_title' => $vacancy1->title,
         'email' => $user->email,
         'applicant_name' => $user->name,
         'phone_number' => '09123456789',
@@ -181,7 +301,7 @@ test('hired applicant cannot submit new job applications', function () {
     $response->assertSessionHasErrors(['error']);
 });
 
-test('applicant cannot apply within 60-day rejection cooldown period', function () {
+test('applicant can apply to other jobs after rejection without 60-day cooldown', function () {
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -195,36 +315,7 @@ test('applicant cannot apply within 60-day rejection cooldown period', function 
         'applicant_name' => $user->name,
         'status' => 'Rejected',
     ]);
-    $rejectedApp->updated_at = now()->subDays(10);
-    $rejectedApp->save();
-
-    $response = $this->post('/applications', [
-        'job_id' => $vacancy2->id,
-        'job_title' => $vacancy2->title,
-        'email' => $user->email,
-        'applicant_name' => $user->name,
-        'phone_number' => '09123456789',
-        'education' => 'bachelor',
-    ]);
-
-    $response->assertSessionHasErrors(['error']);
-});
-
-test('applicant can apply after 60-day rejection cooldown expires', function () {
-    $user = User::factory()->create();
-    $this->actingAs($user);
-
-    $vacancy1 = \App\Models\Vacancy::create(['title' => 'Position 1', 'department' => 'HR', 'employment_type' => 'Full-time', 'location' => 'Main', 'description' => 'Test', 'salary_grade' => '11', 'status' => 'Open']);
-    $vacancy2 = \App\Models\Vacancy::create(['title' => 'Position 2', 'department' => 'IT', 'employment_type' => 'Full-time', 'location' => 'Main', 'description' => 'Test', 'salary_grade' => '12', 'status' => 'Open']);
-
-    $rejectedApp = Application::create([
-        'job_id' => $vacancy1->id,
-        'job_title' => $vacancy1->title,
-        'email' => $user->email,
-        'applicant_name' => $user->name,
-        'status' => 'Rejected',
-    ]);
-    $rejectedApp->updated_at = now()->subDays(61);
+    $rejectedApp->updated_at = now()->subDays(5);
     $rejectedApp->save();
 
     $response = $this->post('/applications', [

@@ -27,9 +27,18 @@ class AdminApplicationController extends Controller
             }
 
             $validated = $request->validate([
-                'status' => 'required|string|in:Submitted,Under Review,Interview,Interview Scheduled,Rejected,Hired,Archived',
+                'status' => 'required|string|in:Submitted,Under Review,Interview,Interview Scheduled,Interview Completed,Rejected,Hired,Archived',
                 'rejection_reason' => 'nullable|string',
             ]);
+
+            // Enforce sequential hiring policy: Must undergo and complete interview before hiring
+            if ($validated['status'] === 'Hired' && $application->status !== 'Interview Completed') {
+                $err = 'Candidate must undergo and complete the interview process (Interview Completed) before being officially hired.';
+                if ($request->wantsJson()) {
+                    return response()->json(['error' => $err], 422);
+                }
+                return back()->withErrors(['error' => $err]);
+            }
 
             $oldStatus = $application->status;
 

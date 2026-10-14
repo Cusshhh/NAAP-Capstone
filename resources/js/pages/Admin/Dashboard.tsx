@@ -198,6 +198,7 @@ export default function AdminDashboard({ auth, dbApplications = [], dbJobs = [],
                                             <SelectItem value="Submitted">Submitted</SelectItem>
                                             <SelectItem value="Under Review">Under Review</SelectItem>
                                             <SelectItem value="Interview Scheduled">Interview Scheduled</SelectItem>
+                                            <SelectItem value="Interview Completed">Interview Completed</SelectItem>
                                             <SelectItem value="Hired">Hired</SelectItem>
                                             <SelectItem value="Rejected">Rejected</SelectItem>
                                             <SelectItem value="Archived">Archived</SelectItem>
