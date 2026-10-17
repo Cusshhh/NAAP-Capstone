@@ -274,6 +274,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                 }
             });
             setAttachedDocs(docMap);
+            setToFollowDocs({});
         }
     }, [isApplyOpen]);
 
@@ -533,7 +534,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
             applicant_name: fullName,
             phone_number: formData.contactNumber,
             education: getEducationLabel(formData.educationLevel),
-            to_follow_docs: Object.keys(toFollowDocs).filter(k => toFollowDocs[k]),
+            to_follow_docs: Object.keys(toFollowDocs).filter(k => toFollowDocs[k] && !customFiles[k] && !getProfileDocument(k)),
             custom_files: customFiles,
             dynamic_responses: {
                 firstName: formData.firstName,
@@ -599,6 +600,14 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
             ...prev,
             [label]: file
         }));
+
+        if (file) {
+            setToFollowDocs(prev => {
+                const next = { ...prev };
+                delete next[label];
+                return next;
+            });
+        }
 
         if (file && user?.id) {
             const reader = new FileReader();
@@ -1591,10 +1600,10 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
 
                                     return reqList.map((req, i) => {
                                         const reqLabel = typeof req === 'string' ? req : req.label;
-                                        const isToFollow = toFollowDocs[reqLabel] || false;
                                         const profileDoc = getProfileDocument(reqLabel);
                                         const newlySelected = customFiles[reqLabel];
                                         const hasUploaded = !!newlySelected || !!profileDoc;
+                                        const isToFollow = !hasUploaded && (toFollowDocs[reqLabel] || false);
 
                                         return (
                                             <div key={req.id || i} className="p-3 bg-gray-50/80 border border-gray-200 rounded-xl space-y-2 shadow-2xs">
@@ -1603,9 +1612,15 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                                         {reqLabel} {!isToFollow && !hasUploaded && <span className="text-red-500">*</span>}
                                                     </Label>
 
-                                                    <div className="flex items-center space-x-1.5 shrink-0 bg-white px-2 py-0.5 rounded border border-gray-200 shadow-2xs">
-                                                        <Checkbox
-                                                            id={`to-follow-${i}`}
+                                                    {hasUploaded ? (
+                                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded border border-emerald-200">
+                                                            <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                                            Attached
+                                                        </span>
+                                                    ) : (
+                                                        <div className="flex items-center space-x-1.5 shrink-0 bg-white px-2 py-0.5 rounded border border-gray-200 shadow-2xs">
+                                                            <Checkbox
+                                                                id={`to-follow-${i}`}
                                                             checked={isToFollow}
                                                             onCheckedChange={(checked) => {
                                                                 setToFollowDocs(prev => ({ ...prev, [reqLabel]: !!checked }));
@@ -1615,6 +1630,7 @@ export default function JobDetails({ id, auth, job: serverJob, application, inte
                                                             To Follow
                                                         </Label>
                                                     </div>
+                                                    )}
                                                 </div>
 
                                                 {isToFollow ? (

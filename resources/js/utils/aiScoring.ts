@@ -545,7 +545,29 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
     else if (edLevelRaw.includes('bachelor')) degreeLevelLabel = "Bachelor's Degree";
     else if (edLevelRaw.includes('vocational')) degreeLevelLabel = "Vocational Diploma";
 
-    const fullEduText = degreeCourse ? `${degreeLevelLabel} in ${degreeCourse}` : (edLevelRaw ? degreeLevelLabel : '');
+    let fullEduText = '';
+    if (degreeCourse) {
+        const dcLower = degreeCourse.toLowerCase();
+        // Check if degreeCourse already includes a degree title, level, or abbreviation to avoid repeating "Bachelor's Degree in Bachelor of Science..."
+        const hasDegreeTitle = /^(bachelor|master|doctor|ph\.?d|juris doctor|associate|diploma|certificate|bs|ms|ba|ab|bfa|bsc|bed|bsed|beed|bsba|bsa|bsamt|bsae|bsce|bsee|bsme|bsece|bsit|bscs|bsis|bsoa|ll\.?b|j\.?d)\b/i.test(dcLower) ||
+            dcLower.includes("bachelor's") ||
+            dcLower.includes("master's") ||
+            dcLower.includes("doctoral") ||
+            dcLower.includes("doctorate") ||
+            dcLower.includes("bachelor of") ||
+            dcLower.includes("master of") ||
+            dcLower.includes("doctor of") ||
+            dcLower.includes("associate in") ||
+            dcLower.includes("diploma in");
+
+        if (hasDegreeTitle) {
+            fullEduText = degreeCourse;
+        } else {
+            fullEduText = `${degreeLevelLabel} in ${degreeCourse}`;
+        }
+    } else {
+        fullEduText = edLevelRaw ? degreeLevelLabel : '';
+    }
 
     let yrsExp = parseFloat(String(dyn.yearsOfExperience || app?.yearsOfExperience || '0')) || 0;
     let recentPos = String(dyn.recentPositionTitle || app?.recentPositionTitle || '').trim();
@@ -862,7 +884,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
 
                 const isLegalExpReq = reqLower.includes('legal') || reqLower.includes('law');
                 const isFltExpReq = reqLower.includes('flight') || reqLower.includes('flying') || reqLower.includes('pilot');
-                const isItExpReq = /\b(it|ict|software|programmer|programming|developer|sysadmin|systems admin|database|network engineer)\b/i.test(reqLower) || jobTitleLower.includes('programmer') || jobTitleLower.includes('software');
+                const isItExpReq = /\b(it|ict|software|programmer|programming|developer|sysadmin|systems admin|database|network engineer)\b/i.test(reqLower) || jobTitleLower.includes('information technology') || jobTitleLower.includes('it officer') || jobTitleLower.includes('programmer') || jobTitleLower.includes('software') || jobTitleLower.includes('computer');
                 const isCounselingExpReq = reqLower.includes('counsel') || reqLower.includes('guidance') || reqLower.includes('psycholog') || jobTitleLower.includes('counsel') || jobTitleLower.includes('guidance');
                 const isAeroExpReq = reqLower.includes('hangar') || reqLower.includes('aircraft') || reqLower.includes('avionics') || reqLower.includes('aeronautical') || jobTitleLower.includes('maintenance') || jobTitleLower.includes('amt');
                 const isAccountancyExpReq = reqLower.includes('accounting') || reqLower.includes('accountancy') || reqLower.includes('audit') || reqLower.includes('financial') || reqLower.includes('bookkeep') || jobTitleLower.includes('accountan') || jobTitleLower.includes('auditor') || jobTitleLower.includes('cashier') || jobTitleLower.includes('budget');
@@ -884,7 +906,7 @@ export function evaluateJobQualificationMatch(jobOrTitle: any, app: any): Qualif
                         fieldIrrelevanceReason = `Applicant's declared work experience role (${recentPos || 'Non-technical'}) is in ${isSoftwareOrItRole ? 'IT / Software Development' : 'an unrelated field'}, not technical aircraft maintenance hangar operations.`;
                     }
                 } else if (isItExpReq) {
-                    const isUnrelatedRole = posLower.includes('mechanic') || posLower.includes('counselor') || posLower.includes('nurse') || posLower.includes('pilot') || posLower.includes('flight attendant') || posLower.includes('driver');
+                    const isUnrelatedRole = posLower.includes('mechanic') || posLower.includes('counselor') || posLower.includes('nurse') || posLower.includes('pilot') || posLower.includes('flight attendant') || posLower.includes('driver') || posLower.includes('administrative') || posLower.includes('clerk') || posLower.includes('cashier');
                     const hasItRole = /\b(it|ict|tech|support|developer|dev|programmer|programming|systems|software|web|network|database|qa|devops|engineer)\b/i.test(roleAndDescLower);
 
                     if (isUnrelatedRole || !hasItRole) {

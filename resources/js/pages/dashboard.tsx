@@ -2931,18 +2931,18 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                              <div>
                                                  <div className="flex items-center gap-2">
                                                      <span className="bg-[#ffdd59] text-[#193153] text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                                                         CS Form No. 212 (Revised 2026)
+                                                         CSC QS-ALIGNED
                                                      </span>
-                                                     <span className="text-xs text-blue-200">Official Civil Service Personal Data Sheet</span>
+                                                     <span className="text-xs text-blue-200">Applicant Qualification Profile</span>
                                                  </div>
-                                                 <h3 className="text-lg font-bold mt-1">Applicant Master Profile & PDS Record</h3>
+                                                 <h3 className="text-lg font-bold mt-1">Applicant Profile & Details Record</h3>
                                                  <p className="text-xs text-blue-100 mt-0.5">
-                                                     Keep your PDS complete. Every job application automatically snapshots your master profile.
+                                                     Keep your profile details complete. Every job application automatically syncs your profile information.
                                                  </p>
                                              </div>
                                              <div className="w-full md:w-56 bg-white/10 p-3 rounded-lg border border-white/10 backdrop-blur-xs">
                                                  <div className="flex justify-between items-center text-xs font-bold mb-1">
-                                                     <span>PDS Completion</span>
+                                                     <span>Applicant Details Completion</span>
                                                      <span className="text-[#ffdd59]">
                                                          {(() => {
                                                              let score = 0;
@@ -3102,63 +3102,6 @@ export default function ApplicantDashboard({ auth, applications: propApplication
                                                           {isEditingProfile ? (
                                                               <input type="text" name="religion" value={profileData.religion || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
                                                           ) : <p className="font-medium text-gray-900">{profileData.religion || '-'}</p>}
-                                                      </div>
-
-                                                      <div>
-                                                          <label className="text-xs font-bold text-gray-400 uppercase">Height (m)</label>
-                                                          {isEditingProfile ? (
-                                                              <input type="text" name="height" placeholder="e.g. 1.75" value={profileData.height || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                          ) : <p className="font-medium text-gray-900">{profileData.height || '-'}</p>}
-                                                      </div>
-                                                      <div>
-                                                          <label className="text-xs font-bold text-gray-400 uppercase">Weight (kg)</label>
-                                                          {isEditingProfile ? (
-                                                              <input type="text" name="weight" placeholder="e.g. 68" value={profileData.weight || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                          ) : <p className="font-medium text-gray-900">{profileData.weight || '-'}</p>}
-                                                      </div>
-                                                      <div>
-                                                          <label className="text-xs font-bold text-gray-400 uppercase">Blood Type</label>
-                                                          {isEditingProfile ? (
-                                                              <input type="text" name="bloodType" placeholder="e.g. O+" value={profileData.bloodType || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                          ) : <p className="font-medium text-gray-900">{profileData.bloodType || '-'}</p>}
-                                                      </div>
-
-                                                      <div>
-                                                          <label className="text-xs font-bold text-gray-400 uppercase">GSIS ID No.</label>
-                                                          {isEditingProfile ? (
-                                                              <input type="text" name="gsisNo" value={profileData.gsisNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                          ) : <p className="font-medium text-gray-900">{profileData.gsisNo || '-'}</p>}
-                                                      </div>
-                                                      <div>
-                                                          <label className="text-xs font-bold text-gray-400 uppercase">PAG-IBIG ID No.</label>
-                                                          {isEditingProfile ? (
-                                                              <input type="text" name="pagibigNo" value={profileData.pagibigNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                          ) : <p className="font-medium text-gray-900">{profileData.pagibigNo || '-'}</p>}
-                                                      </div>
-                                                      <div>
-                                                          <label className="text-xs font-bold text-gray-400 uppercase">PHILHEALTH No.</label>
-                                                          {isEditingProfile ? (
-                                                              <input type="text" name="philhealthNo" value={profileData.philhealthNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                          ) : <p className="font-medium text-gray-900">{profileData.philhealthNo || '-'}</p>}
-                                                      </div>
-
-                                                      <div>
-                                                          <label className="text-xs font-bold text-gray-400 uppercase">SSS No.</label>
-                                                          {isEditingProfile ? (
-                                                              <input type="text" name="sssNo" value={profileData.sssNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                          ) : <p className="font-medium text-gray-900">{profileData.sssNo || '-'}</p>}
-                                                      </div>
-                                                      <div>
-                                                          <label className="text-xs font-bold text-gray-400 uppercase">TIN No.</label>
-                                                          {isEditingProfile ? (
-                                                              <input type="text" name="tinNo" value={profileData.tinNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                          ) : <p className="font-medium text-gray-900">{profileData.tinNo || '-'}</p>}
-                                                      </div>
-                                                      <div>
-                                                          <label className="text-xs font-bold text-gray-400 uppercase">Agency Employee No.</label>
-                                                          {isEditingProfile ? (
-                                                              <input type="text" name="agencyEmpNo" value={profileData.agencyEmpNo || ''} onChange={handleProfileChange} className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm" />
-                                                          ) : <p className="font-medium text-gray-900">{profileData.agencyEmpNo || '-'}</p>}
                                                       </div>
 
                                                       <div>
